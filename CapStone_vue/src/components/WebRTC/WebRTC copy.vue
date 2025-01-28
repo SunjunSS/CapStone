@@ -1,6 +1,4 @@
-<template> 
-
-<!-- 이게 최신꺼야 -->
+<template>
   <div id="app">
     <h1>WebRTC Audio Meeting</h1>
     <div v-if="!joined">
@@ -33,24 +31,6 @@
           <div class="meter-fill" :style="{ width: `${audioLevel}%` }"></div>
         </div>
       </div>
-
-      <!-- 음성 녹음 버튼, 회의록 보드 -->
-      <div>
-        <br>
-        <h3> Recording </h3>
-        <br>
-        <div class="clovaSpeech">
-          <button @click="toggleRecording">{{ isRecording ? "음성녹음 중지" : "음성녹음 시작" }}</button>
-        </div>
-
-        <br>
-        <h3> Meeting Report </h3>
-        <br>
-        
-        <div class="meeting-report" v-html="meetingContent"></div>
-        
-      </div>
-
 
       <div class="participants">
         <h3>Participants:</h3>
@@ -100,12 +80,6 @@ export default {
       audioAnalyser: null,
       retryAttempts: {},
       maxRetries: 3,
-
-      // 음성녹음 (kiup - test)
-      isRecording: false, // 녹음 상태 관리
-      mediaRecorder: null, // MediaRecorder 인스턴스
-      recordedChunks: [], // 녹음된 데이터
-      meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
     };
   },
   methods: {
@@ -185,13 +159,6 @@ export default {
           reject(new Error(`Connection failed: ${error.message}`));
         });
 
-
-        
-        // 녹음 상태 동기화 (누군가 녹음을 시작했을 때.)
-        this.socket.on("sync-recording", (isRecording) => {
-          this.isRecording = isRecording;
-        });
-
         // 기존 참가자 목록을 받았을 때
         this.socket.on("existing-participants", async ({ participants }) => {
           console.log("Received existing participants:", participants);
@@ -217,21 +184,6 @@ export default {
         this.socket.on("signal", this.handleSignal);
         this.socket.on("user-disconnected", this.handleUserDisconnected);
       });
-    },
-
-    // 녹음 시작/중지 처리 함수
-    toggleRecording() {
-      this.isRecording = !this.isRecording;
-
-      // 녹음 상태를 서버로 전송
-      this.socket.emit("start-recording", { userId: this.currentUserId, isRecording: this.isRecording });
-
-      // 클라이언트에서 녹음 시작/중지 처리
-      if (this.isRecording) {
-        console.log("녹음 시작");
-      } else {
-        console.log("녹음 중지");
-      }
     },
 
     async createPeerConnection(userId, isInitiator = false) {
@@ -498,18 +450,6 @@ export default {
   margin-left: 10px;
   position: relative;
 }
-
-.meeting-report {
-  width: 700px;
-  height: 500px;
-  border: 1px solid #ccc;
-  padding: 10px;
-  overflow-y: auto; /* 내용이 많아지면 스크롤 가능 */
-  font-size: 16px;
-  color: #888; /* 기본 텍스트 희미한 색상 */
-  background-color: #f9f9f9; /* 배경색 */
-}
-
 
 .meter-fill {
   height: 100%;

@@ -17,6 +17,10 @@ app.use(cors());
 // 방 정보를 저장할 객체
 const rooms = {};
 
+// 참가자 음성 스트림을 저장할 객체
+const teamStreams = {}; 
+
+// user가 회의방에 참가할 때 처리
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -31,12 +35,12 @@ io.on("connection", (socket) => {
 
     // 새로운 참가자에게 기존 참가자 목록을 전송
     socket.emit("existing-participants", {
-      participants: rooms[roomId]
+      participants: rooms[roomId],
     });
 
     // 기존 참가자들에게 새로운 참가자를 알림
     socket.to(roomId).emit("new-participant", {
-      participantId: socket.id
+      participantId: socket.id,
     });
 
     // 참가자 목록에 추가
@@ -46,6 +50,8 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("room-update", {
       participants: rooms[roomId],
     });
+
+    
 
     console.log(`User ${socket.id} joined room ${roomId}`);
     console.log(`Room ${roomId} participants:`, rooms[roomId]);
@@ -97,7 +103,7 @@ io.on("connection", (socket) => {
         console.log(`User ${socket.id} left room ${roomId}`);
         console.log(`Room ${roomId} participants:`, rooms[roomId]);
 
-        // 방이 비었으면 삭제
+        // 방이 비었으면 삭제 (방, 음성스트림)
         if (rooms[roomId].length === 0) {
           delete rooms[roomId];
           console.log(`Room ${roomId} deleted`);
