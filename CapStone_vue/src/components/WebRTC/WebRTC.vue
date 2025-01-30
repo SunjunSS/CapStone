@@ -174,7 +174,7 @@ export default {
     },
 
     async setupSignaling() {
-      this.socket = io("http://192.168.219.100:3000", {
+      this.socket = io("http://172.30.1.93:3000", {
         transports: ["websocket"],
         reconnection: true,
         reconnectionAttempts: 5,
