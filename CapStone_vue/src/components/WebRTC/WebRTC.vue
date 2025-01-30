@@ -1,4 +1,3 @@
-<template> 
 
 <template> 
 
@@ -94,10 +93,8 @@
 
 <script>
 import io from "socket.io-client";
-import AudioRecorder from "../audio/audioRecorder.js"; // 녹음 모듈 불러오기
 import parseSRT from "../audio/parseSRT.js";
 import AudioRecorder from "../audio/audioRecorder.js"; // 녹음 모듈 불러오기
-import parseSRT from "../audio/parseSRT.js";
 
 export default {
   name: "AudioMeetingApp",
