@@ -1,4 +1,5 @@
-<template>
+<template> 
+
   <div id="app">
     <h1>WebRTC Audio Meeting</h1>
     <div v-if="!joined">
@@ -32,6 +33,24 @@
         </div>
       </div>
 
+      <!-- 음성 녹음 버튼, 회의록 보드 -->
+      <div>
+        <br>
+        <h3> Recording </h3>
+        <br>
+        <div class="clovaSpeech">
+          <button @click="toggleRecording">{{ isRecording ? "음성녹음 중지" : "음성녹음 시작" }}</button>
+        </div>
+
+        <br>
+        <h3> Meeting Report </h3>
+        <br>
+        
+        <div class="meeting-report" v-html="meetingContent"></div>
+        
+      </div>
+
+
       <div class="participants">
         <h3>Participants:</h3>
         <ul>
@@ -55,6 +74,8 @@
 
 <script>
 import io from "socket.io-client";
+import AudioRecorder from "../audio/audioRecorder.js"; // 녹음 모듈 불러오기
+import parseSRT from "../audio/parseSRT.js";
 
 export default {
   name: "AudioMeetingApp",
@@ -80,6 +101,13 @@ export default {
       audioAnalyser: null,
       retryAttempts: {},
       maxRetries: 3,
+
+      // 음성녹음 (kiup - test)
+      isRecording: false, // 녹음 상태 관리
+      mediaRecorder: null, // MediaRecorder 인스턴스
+      audioRecorder: null,
+      recordedChunks: [], // 녹음된 데이터
+      meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
     };
   },
   methods: {
@@ -87,10 +115,15 @@ export default {
       try {
         this.joining = true;
         console.log("Joining room:", this.roomId);
+
+        // 아래 두 함수가 끝날때까지 대기
         await this.setupAudioStream();
         await this.setupSignaling();
+
+        //his.audioRecorder = new AudioRecorder(this.socket, this.localStream, this.roomId); // 녹음 인스턴스 생성
         this.joined = true;
         this.connectionStatus = "connected";
+        
       } catch (error) {
         console.error("Failed to join room:", error);
         alert(`Failed to join room: ${error.message}`);
@@ -103,6 +136,7 @@ export default {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         this.audioDevices = devices.filter((device) => device.kind === "audioinput");
+        
 
         const constraints = {
           audio: this.selectedAudioDevice
@@ -112,6 +146,7 @@ export default {
         };
 
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log(`this.localStream : ${this.localStream}`);
 
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const audioSource = this.audioContext.createMediaStreamSource(this.localStream);
@@ -139,12 +174,14 @@ export default {
     },
 
     async setupSignaling() {
-      this.socket = io("http://localhost:3000", {
+      this.socket = io("http://172.30.1.58:3000", {
         transports: ["websocket"],
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       });
+
+      console.log(`this.socket: ${this.socket}`);
 
       return new Promise((resolve, reject) => {
         this.socket.on("connect", () => {
@@ -158,6 +195,33 @@ export default {
           this.connectionStatus = "error";
           reject(new Error(`Connection failed: ${error.message}`));
         });
+
+
+        
+        // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
+        this.socket.on("sync-recording", (isRecording) => {
+          this.isRecording = isRecording;
+
+          console.log(`녹음상태 변화 : ${isRecording}`)
+          //녹음 시작 or 녹음 중지함수를 실행
+          this.checkRecording();
+
+        });
+
+
+        // 서버에서 변환된 텍스트를 받는 부분
+        this.socket.on("return-recording", (response) => {
+          console.log("Received recording file", response);
+          
+          // 텍스트를 줄바꿈으로 구분하여 추가
+          if (this.meetingContent === "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>") {
+            this.meetingContent = ""; // 기본 텍스트 제거
+          }
+          // 기존 텍스트에 변환된 텍스트를 추가 (줄바꿈을 추가하여)
+          this.meetingContent = parseSRT(response.data.clovaResponse);
+          
+        }),
+
 
         // 기존 참가자 목록을 받았을 때
         this.socket.on("existing-participants", async ({ participants }) => {
@@ -185,6 +249,135 @@ export default {
         this.socket.on("user-disconnected", this.handleUserDisconnected);
       });
     },
+
+    // 녹음 시작/중지 처리 함수
+    toggleRecording() {
+      this.isRecording = !this.isRecording;
+
+      // 클라이언트에서 녹음 시작/중지 처리
+      if (this.isRecording) {
+
+        // 녹음 상태를 서버로 전송
+        this.socket.emit("start-recording", this.roomId);
+        console.log("녹음 시작");
+
+      } else {
+
+        // 녹음 상태를 서버로 전송
+        this.socket.emit("stop-recording", this.roomId);
+        console.log("녹음 중지");
+
+      }
+    },
+
+    async checkRecording() {
+        // 클라이언트에서 녹음 시작/중지 처리
+        if (this.isRecording) {
+          // 녹음 시작 함수
+          console.log(`녹음시작 - WebRTC.vue:270`);
+          this.startRecording(); // 녹음 시작
+
+        }else {
+          // 녹음 중지 함수
+          console.log(`녹음중지 - WebRTC.vue:275`);
+          try {
+            const response =await this.stopRecording(); // 응답 대기
+
+            console.log("🎧 서버 응답:", response); // 서버 응답 출력
+          } catch (error) {
+            console.error("🚨 녹음 종료 또는 업로드 실패:", error);
+          }
+        }
+    },
+
+
+    startRecording() {
+    if (this.isRecording) return;
+
+    if (typeof MediaRecorder === "undefined") {
+      console.error("❌ MediaRecorder is not supported in this browser.");
+      return;
+    }
+
+    if (!this.localStream) {
+      console.error("❌ localStream is not initialized.");
+      return;
+    }
+
+    this.isRecording = true;
+    this.recordedChunks = [];
+
+    try {
+      this.mediaRecorder = new MediaRecorder(this.localStream, {
+        mimeType: "audio/webm",
+      });
+    } catch (error) {
+      console.error("Error creating MediaRecorder:", error);
+    }
+
+    this.mediaRecorder.ondataavailable = (event) => {
+      this.recordedChunks.push(event.data);
+    };
+
+    this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "audio-meeting.wav";
+        link.click();
+
+        // 서버로 audio파일을 업로드함
+        this.uploadAudio(blob);
+      };
+
+    // 녹음 상태가 inactive일 때만 시작하도록 수정
+    if (this.mediaRecorder.state === "inactive") {
+      this.mediaRecorder.start();
+      console.log("🎙️ 녹음 시작");
+    } else {
+      console.error("❌ MediaRecorder 상태 오류:", this.mediaRecorder.state);
+      return; // 상태 오류일 경우 함수 종료
+    }
+  },
+
+  stopRecording() {
+    if (!this.isRecording) return;
+
+    if (this.mediaRecorder) {
+        this.mediaRecorder.stop();
+      }
+      this.isRecording = false;
+  },
+
+  async uploadAudio(blob) {
+    return new Promise(async (resolve, reject) => {
+      const formData = new FormData();
+      //formData.append("roomId", this.roomId); // ✅ roomId 추가
+      formData.append("audio", blob, "audio.wav"); // ✅ audio파일 추가
+
+      try {
+        const response = await axios.post(
+          "http://172.30.1.58:3000/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        console.log("서버 응답:", response); // 응답 전체를 출력하여 구조를 확인
+        console.log("클로바 요청 응답: ", response.data.clovaResponse);
+        this.meetingContent = parseSRT(response);
+       
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        reject(error); // 에러 발생 시 reject
+      }
+    });
+  },
+
 
     async createPeerConnection(userId, isInitiator = false) {
       if (this.peerConnections[userId]) {
@@ -450,6 +643,18 @@ export default {
   margin-left: 10px;
   position: relative;
 }
+
+.meeting-report {
+  width: 700px;
+  height: 500px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  overflow-y: auto; /* 내용이 많아지면 스크롤 가능 */
+  font-size: 16px;
+  color: #888; /* 기본 텍스트 희미한 색상 */
+  background-color: #f9f9f9; /* 배경색 */
+}
+
 
 .meter-fill {
   height: 100%;

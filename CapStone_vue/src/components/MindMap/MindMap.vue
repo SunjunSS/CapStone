@@ -363,6 +363,20 @@ export default {
           mouseDragLeave: (e, node) => {
             isNodeDragging.value = false
           },
+          doubleClick: (e, node) => {
+            const textblock = node.findObject("TEXTBLOCK")
+            if (textblock) {
+              textblock.isEditable = true
+              
+              setTimeout(() => {
+                const input = document.querySelector('input[type="text"]')
+                if (input) {
+                  input.focus()
+                  input.setSelectionRange(input.value.length, input.value.length)
+                }
+              }, 0)
+            }
+          }
         },
         new go.Binding("isSelected", "isSelected"),
         $(
@@ -383,6 +397,7 @@ export default {
               fromSpot: go.Spot.RightSide,
               toSpot: go.Spot.LeftSide
             },
+            new go.Binding("fill", "category", (c) => (c === "Root" ? "#FFF612" : "white")),
             new go.Binding("stroke", "isSelected", (s) => (s ? "blue" : "rgba(0, 0, 255, .15)")),
           ),
           $(
@@ -390,9 +405,49 @@ export default {
             {
               margin: 8,
               font: "14px sans-serif",
+              editable: true,
+              textAlign: "center",
+              isMultiline: false,
+              minSize: new go.Size(50, NaN),
+              name: "TEXTBLOCK",
+              textEditor: $(go.HTMLInfo, {
+                show: (textBlock, diagram, tool) => {
+                  const input = document.createElement("input")
+                  input.type = "text"
+                  input.value = textBlock.text
+                  input.style.position = "absolute"
+                  input.style.font = textBlock.font
+                  input.style.textAlign = "center"
+                  input.style.border = "none"
+                  input.style.outline = "none"
+                  input.style.width = "100px"
+                  input.style.backgroundColor = "white"
+                  
+                  input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                      input.blur()
+                    }
+                  })
+                  
+                  input.addEventListener('blur', () => {
+                    tool.acceptText(go.TextEditingTool.LostFocus)
+                  })
+                  
+                  setTimeout(() => {
+                    input.focus()
+                    input.setSelectionRange(input.value.length, input.value.length)
+                  }, 0)
+                  
+                  return input
+                },
+                hide: (textBlock, diagram, tool) => {
+                  return true
+                }
+              })
             },
-            new go.Binding("text", "name"),
+            new go.Binding("text", "name").makeTwoWay()
           )
+
         ),
         $(
           go.Panel,
@@ -403,19 +458,24 @@ export default {
             margin: new go.Margin(0, 0, 0, 15),
             desiredSize: new go.Size(25, 25),
             click: (e, obj) => {
-              addSiblingNode()
+              addChildNode()
               e.handled = true
             },
             cursor: "pointer"
           },
-          new go.Binding("visible", "isSelected"),
+          new go.Binding("visible", "", (node) => {
+            if (!node.isSelected) return false;
+            const nodeData = myDiagram.findNodeForKey(node.key);
+            if (!nodeData) return false;
+            return nodeData.findTreeChildrenNodes().count === 0;
+          }).ofObject(),
           $(
             go.Shape,
             "Circle",
             {
               fill: "#00bfff",
               stroke: null,
-              desiredSize: new go.Size(24, 24)  // width, height 대신 desiredSize 사용
+              desiredSize: new go.Size(24, 24)
             }
           ),
           $(
@@ -439,7 +499,7 @@ export default {
             margin: new go.Margin(15, 0, 0, 0),
             desiredSize: new go.Size(25, 25),
             click: (e, obj) => {
-              addChildNode()
+              addSiblingNode()
               e.handled = true
             },
             cursor: "pointer"
@@ -451,8 +511,7 @@ export default {
             {
               fill: "#00bfff",
               stroke: null,
-              desiredSize: new go.Size(24, 24),  // Circle 크기도 동일하게
-              geometryStretch: go.GraphObject.Uniform  // 비율 유지를 위해 추가
+              desiredSize: new go.Size(24, 24)
             }
           ),
           $(
@@ -468,6 +527,7 @@ export default {
           )
         )
       )
+
 
       myDiagram.linkTemplate =
         $(go.Link, {
@@ -517,6 +577,18 @@ export default {
 
       myDiagram.addDiagramListener("ViewportBoundsChanged", (e) => {
         currentZoom.value = myDiagram.scale
+      })
+
+      // TextBlock 편집 완료 이벤트 처리
+      myDiagram.addDiagramListener("TextEdited", (e) => {
+        const tb = e.subject
+        const node = tb.part
+        
+        if (node && node.data) {
+          if (!tb.text.trim()) {
+            myDiagram.model.setDataProperty(node.data, "name", "새 노드")
+          }
+        }
       })
     }
 
