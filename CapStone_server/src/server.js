@@ -58,44 +58,53 @@ const roomAudioBuffers = {};
 // 클라이언트에서 파일을 업로드하는 API
 app.post("/upload", upload.single("audio"), async (req, res) => {
   const file = req.file;
-  const fileName = req.fileName;
+  const fileName = file.originalname;
   const roomId = req.body.roomId; // formData에서 roomId 받기
   console.log(`음성녹음된 방의 roomId: ${roomId}`);
+  console.log(`임시저장경로 ${tempAudioFolder}`);
+  console.log(`mp3저장경로 ${audioFolder}`);
 
   // roomId에 해당하는 배열이 없다면 새로 생성
   if (!roomAudioBuffers[roomId]) {
     roomAudioBuffers[roomId] = [];
   }
 
+  const inputPath = path.join(tempAudioFolder, file.filename); // 디스크에 저장된 파일 경로
+  const outputPath = path.join(audioFolder, `${Date.now()}.mp3`);
+
   // 받은 음성 데이터를 해당 방의 배열에 저장
-  roomAudioBuffers[roomId].push(file.buffer);
+  roomAudioBuffers[roomId].push(inputPath);
+  console.log(`audio 버퍼값: ${inputPath}`);
+
+  // 클로바 스피치 API 호출
+  const SECRET = process.env.SECRET;
+  const INVOKE_URL = process.env.INVOKE_URL;
+
+  // 요청 설정
+  const requestEntity = {
+    language: "ko-KR",
+    completion: "sync",
+    wordAlignment: true,
+    fullText: true,
+    diarization: { enable: true }, // diarization 객체로 수정
+    noiseFiltering: true,
+    format: "SRT",
+  };
 
   // 1명일 경우
   if (file && rooms[roomId].length === 1) {
     console.log(`File received: ${file.originalname}`);
+    console.log(`File name: ${fileName}`);
+
+    console.log("변환할 파일: ", fileName);
+    console.log("입력 경로 확인: ", inputPath);
+    console.log("Output path for MP3:", outputPath);
 
     let mp3Path;
 
     try {
       // 1. MP3로 변환
-      mp3Path = await convertToMp3(file.buffer, fileName);
-
-      // 2. 클로바 스피치 API 호출
-      const SECRET = process.env.SECRET;
-      const INVOKE_URL = process.env.INVOKE_URL;
-      console.log(`비밀 키 : ${SECRET}`);
-      console.log(`invoke url : ${INVOKE_URL}`);
-
-      // 요청 설정
-      const requestEntity = {
-        language: "ko-KR",
-        completion: "sync",
-        wordAlignment: true,
-        fullText: true,
-        diarization: { enable: true }, // diarization 객체로 수정
-        noiseFiltering: true,
-        format: "SRT",
-      };
+      mp3Path = await convertToMp3(inputPath, outputPath);
 
       // const audioPath = path.join(tempAudioFolder,file.filename)
 
@@ -120,50 +129,78 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
     }
   } else if (roomAudioBuffers[roomId].length === rooms[roomId].length) {
     try {
-
-      // roomAudioBuffers[roomId]가 비어있지 않고 모든 요소가 Buffer인지 확인
-      const validAudioBuffers = roomAudioBuffers[roomId].filter((buffer) =>
-        Buffer.isBuffer(buffer)
+      // 모든 파일 경로가 유효한지 확인
+      const validAudioFiles = roomAudioBuffers[roomId].filter(
+        (audioPath) => fs.existsSync(audioPath) // 파일 경로가 존재하는지 확인
       );
 
-      if (validAudioBuffers.length !== roomAudioBuffers[roomId].length) {
-        
-        console.log(`유효 데이터 : ${validAudioBuffers.length}`);
-        console.log(`받은 데이터 : ${roomAudioBuffers[roomId].length}`)
-        throw new Error(
-          "오디오 데이터에 유효하지 않은 값이 포함되어 있습니다."
-        );
+      // 유효한 파일이 없다면 오류 처리
+      if (validAudioFiles.length !== roomAudioBuffers[roomId].length) {
+        throw new Error("일부 오디오 파일이 존재하지 않습니다.");
       }
 
-      const mixedAudioBuffer = await mixAudio(validAudioBuffers);
-      const mp3OutputPath = await convertToMP3(
-        mixedAudioBuffer,
-        "mixed_audio.wav"
+      const mixedAudioPath = await mixAudio(tempAudioFolder, audioFolder);
+      console.log(`audio믹싱 성공 경로 : ${mixedAudioPath} `);
+
+      const mp3Name = path.join(audioFolder, `${roomId}_${Date.now()}.mp3`);
+      const mixedMP3 = await convertToMp3(mixedAudioPath, mp3Name);
+
+      // 호출
+      const clovaResponse = await callClovaSpeechAPI(
+        mixedMP3,
+        requestEntity,
+        SECRET,
+        INVOKE_URL
       );
+
+      // 응답 반환
+      res.send({
+        message: "File uploaded, mixed, converted, and processed successfully!",
+        clovaResponse,
+      });
+
+      notifyRoomClients(roomId, {
+        message: "File uploaded, mixed, converted, and processed successfully!",
+        clovaResponse,
+      });
+
+
     } catch (error) {
       console.error("Error during audioMix file processing:", error.message);
       res.status(500).send({ message: "Error processing mixing file." });
     }
   } else {
-    res.status(400).send({ message: "No file uploaded." });
+    res.status(400).send({ message: "모든 파일이 올라올 때까지 대기해주세요." });
   }
 });
 
+async function notifyRoomClients(roomId, message) {
+  // 'message'는 SRT 형식의 문자열로 가정
+  io.to(roomId).emit("return-recording", message); // 방에 SRT 형식의 자막 메시지 전송
+}
+
 // MP3 변환 함수
-async function convertToMp3(fileBuffer, fileName) {
+async function convertToMp3(inputPath, outputPath) {
   // audio 폴더가 없는 경우 생성 (비동기 방식으로 생성)
+
+  const originalFormat = path.extname(inputPath); // 파일 확장자 추출
+
   
-  const originalFormat = path.extname(fileName); // 파일 확장자 추출
+  //console.log("변환할 파일: ", fileName);
+  console.log("입력 경로 확인: ", inputPath); // 경로 확인
 
-  const inputPath = path.join(tempAudioFolder, fileName);
-  console.log("변환할 파일: ", fileName);
-
-  const outputPath = path.join(
-    audioFolder,
-    `${Date.now()}.mp3` // 파일 이름에서 확장자 제외하고 .mp3로 설정
-  );
+  // const outputPath = path.join(
+  //   noFileOutputPath,
+  //   `${Date.now()}.mp3` // 파일 이름에서 확장자 제외하고 .mp3로 설정
+  // );
 
   console.log("Output path for MP3:", outputPath);
+
+  // 파일이 존재하는지 확인
+  if (!fs.existsSync(inputPath)) {
+    console.error("입력 파일이 존재하지 않습니다:", inputPath);
+    throw new Error("입력 파일이 존재하지 않습니다.");
+  }
 
   if (originalFormat.toLowerCase() !== ".mp3") {
     // MP3로 변환
@@ -181,10 +218,9 @@ async function convertToMp3(fileBuffer, fileName) {
         .run(); // ffmpeg 명령어 실행
     });
   } else {
-    // 이미 MP3 파일인 경우 바로 저장
-    const mp3Path = path.join(audioFolder, fileName);
+    
     try {
-      await fs.writeFile(mp3Path, fileBuffer); // 파일 비동기 저장
+      await fs.writeFile(outputPath, inputPath); // 파일 비동기 저장
       console.log(`File already in MP3 format: ${mp3Path}`);
       return mp3Path; // 저장된 MP3 파일 경로 반환
     } catch (err) {

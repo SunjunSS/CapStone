@@ -1,72 +1,51 @@
 const ffmpeg = require("fluent-ffmpeg");
 const fs = require("fs");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
 
-/**
- * 여러 개의 음성 파일을 믹싱하여 하나의 8초짜리 오디오 파일로 변환하는 함수
- * @param {Array} audioBuffers - 각 참가자의 음성 데이터 (Buffer 배열)
- * @returns {Promise<string>} - 믹싱된 오디오 파일의 버퍼 반환
- */
-async function mixAudio(audioBuffers) {
+// mixAudio 함수: 주어진 폴더 경로 내의 모든 .wav 파일을 하나로 믹싱
+async function mixAudio(folderPath, outputPath) {
   return new Promise((resolve, reject) => {
-    if (audioBuffers.length === 0) {
-      return reject(new Error("오디오 버퍼가 제공되지 않았습니다."));
-    }
-
-    
-
-    // 임시 폴더 생성 (없으면 생성)
-    const tempDir = path.resolve(__dirname, "../../storage/temp_audio");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    // 입력 파일 경로 저장
-    const inputFiles = [];
-
-    // 음성 데이터를 임시 파일로 저장
-    audioBuffers.forEach((buffer, index) => {
-      const tempFilePath = path.join(tempDir, `audio_${index}_${uuidv4()}.wav`);
-      fs.writeFileSync(tempFilePath, buffer);
-      inputFiles.push(tempFilePath);
-    });
-
-    // 믹싱된 오디오 저장 폴더 경로
-    const mixedDir = path.resolve(__dirname, "../../storage/audio");
-
-    // 믹싱된 오디오의 출력 경로
-    const outputFileName = `mixed_audio_${uuidv4()}.wav`;
-    const outputFilePath = path.join(mixedDir, outputFileName);
-
-    // FFmpeg 믹싱 처리
-    let command = ffmpeg();
-
-    inputFiles.forEach((file) => {
-      command = command.input(file);
-    });
-
-    command
-      .complexFilter("amix=inputs=" + inputFiles.length + ":duration=longest")
-      .output(outputFilePath)
-      .on("end", () => {
-        console.log("✔ 믹싱 완료:", outputFilePath);
-
-        // 믹싱된 오디오 파일을 버퍼로 변환하여 반환
-        fs.readFile(outputFilePath, (err, data) => {
-          if (err) {
-            reject(new Error("믹싱된 오디오 파일을 읽는 중 오류 발생"));
-          } else {
-            resolve(data); // 버퍼 반환
-          }
-        });
-
-      })
-      .on("error", (err) => {
-        console.error("❌ 믹싱 오류:", err);
+    // 폴더 내의 모든 .wav 파일 찾기
+    fs.readdir(folderPath, (err, files) => {
+      if (err) {
+        console.error("Error reading folder:", err);
         reject(err);
-      })
-      .run();
+      }
+
+      // .wav 파일만 필터링
+      const inputPaths = files
+        .filter((file) => path.extname(file).toLowerCase() === ".wav")
+        .map((file) => path.join(folderPath, file));
+
+      // .wav 파일이 없으면 에러
+      if (inputPaths.length === 0) {
+        reject(new Error("No .wav files found in the specified folder."));
+      }
+
+      // ffmpeg를 사용하여 오디오 파일들을 믹싱
+      const command = ffmpeg();
+
+      // 각 오디오 파일을 입력으로 추가
+      inputPaths.forEach((inputPath) => {
+        command.input(inputPath);
+      });
+
+      // 믹싱된 오디오를 outputPath에 저장
+      const outputFileName = `audioMixed${Date.now()}.wav`;
+      const outputFilePath = path.join(outputPath, outputFileName);
+
+      command
+        .audioCodec("pcm_s16le") // 오디오 코덱 설정
+        .on("end", () => {
+          console.log(`Mixing finished. Output file: ${outputFilePath}`);
+          resolve(outputFilePath); // 믹싱된 파일 경로 반환
+        })
+        .on("error", (err) => {
+          console.error("Error during audio mixing:", err);
+          reject(err); // 에러 발생 시 reject
+        })
+        .mergeToFile(outputFilePath); // 믹싱된 오디오를 파일로 저장
+    });
   });
 }
 

@@ -296,7 +296,7 @@ export default {
         this.updateMeetingReport(response.data.clovaResponse);
 
       } catch (error) {
-        console.error("Error uploading file:", error);
+        console.error("Error uploading file:", error.message);
       }
     },
 
@@ -325,6 +325,13 @@ export default {
           this.checkRecording();
 
         });
+
+        this.socket.on("return-recording", (recordingData) => {
+
+            console.log(recordingData.message);
+            this.updateMeetingReport(recordingData.clovaResponse);
+
+        })
 
         this.socket.on("connect_error", (error) => {
           this.connectionStatus = "error";
