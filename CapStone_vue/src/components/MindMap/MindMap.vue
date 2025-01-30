@@ -338,7 +338,12 @@ export default {
         model: $(go.TreeModel),
         "animationManager.isEnabled": true,
         "animationManager.duration": ANIMATION_DURATION,
-        scale: currentZoom.value
+        scale: currentZoom.value,
+        // 텍스트 편집 관련 설정 추가
+        "textEditingTool.starting": go.TextEditingTool.DoubleClick,
+        "textEditingTool.textValidation": (textBlock, oldText, newText) => {
+          return newText.length > 0; // 빈 문자열 방지
+        }
       })
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
@@ -363,20 +368,6 @@ export default {
           mouseDragLeave: (e, node) => {
             isNodeDragging.value = false
           },
-          doubleClick: (e, node) => {
-            const textblock = node.findObject("TEXTBLOCK")
-            if (textblock) {
-              textblock.isEditable = true
-              
-              setTimeout(() => {
-                const input = document.querySelector('input[type="text"]')
-                if (input) {
-                  input.focus()
-                  input.setSelectionRange(input.value.length, input.value.length)
-                }
-              }, 0)
-            }
-          }
         },
         new go.Binding("isSelected", "isSelected"),
         $(
@@ -405,49 +396,13 @@ export default {
             {
               margin: 8,
               font: "14px sans-serif",
-              editable: true,
+              editable: true, // 편집 가능하도록 설정
+              isMultiline: false, // 한 줄로만 편집 가능
               textAlign: "center",
-              isMultiline: false,
-              minSize: new go.Size(50, NaN),
-              name: "TEXTBLOCK",
-              textEditor: $(go.HTMLInfo, {
-                show: (textBlock, diagram, tool) => {
-                  const input = document.createElement("input")
-                  input.type = "text"
-                  input.value = textBlock.text
-                  input.style.position = "absolute"
-                  input.style.font = textBlock.font
-                  input.style.textAlign = "center"
-                  input.style.border = "none"
-                  input.style.outline = "none"
-                  input.style.width = "100px"
-                  input.style.backgroundColor = "white"
-                  
-                  input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                      input.blur()
-                    }
-                  })
-                  
-                  input.addEventListener('blur', () => {
-                    tool.acceptText(go.TextEditingTool.LostFocus)
-                  })
-                  
-                  setTimeout(() => {
-                    input.focus()
-                    input.setSelectionRange(input.value.length, input.value.length)
-                  }, 0)
-                  
-                  return input
-                },
-                hide: (textBlock, diagram, tool) => {
-                  return true
-                }
-              })
+              cursor: "text" // 텍스트 위에서 커서 모양 변경
             },
-            new go.Binding("text", "name").makeTwoWay()
+            new go.Binding("text", "name").makeTwoWay() // 양방향 바인딩 설정
           )
-
         ),
         $(
           go.Panel,
@@ -463,6 +418,7 @@ export default {
             },
             cursor: "pointer"
           },
+          // visible 바인딩 수정 - 선택되었고 자식이 없는 경우에만 표시
           new go.Binding("visible", "", (node) => {
             if (!node.isSelected) return false;
             const nodeData = myDiagram.findNodeForKey(node.key);
@@ -475,7 +431,7 @@ export default {
             {
               fill: "#00bfff",
               stroke: null,
-              desiredSize: new go.Size(24, 24)
+              desiredSize: new go.Size(24, 24)  // width, height 대신 desiredSize 사용
             }
           ),
           $(
@@ -511,7 +467,8 @@ export default {
             {
               fill: "#00bfff",
               stroke: null,
-              desiredSize: new go.Size(24, 24)
+              desiredSize: new go.Size(24, 24),  // Circle 크기도 동일하게
+              geometryStretch: go.GraphObject.Uniform  // 비율 유지를 위해 추가
             }
           ),
           $(
@@ -527,7 +484,6 @@ export default {
           )
         )
       )
-
 
       myDiagram.linkTemplate =
         $(go.Link, {
@@ -577,18 +533,6 @@ export default {
 
       myDiagram.addDiagramListener("ViewportBoundsChanged", (e) => {
         currentZoom.value = myDiagram.scale
-      })
-
-      // TextBlock 편집 완료 이벤트 처리
-      myDiagram.addDiagramListener("TextEdited", (e) => {
-        const tb = e.subject
-        const node = tb.part
-        
-        if (node && node.data) {
-          if (!tb.text.trim()) {
-            myDiagram.model.setDataProperty(node.data, "name", "새 노드")
-          }
-        }
       })
     }
 
@@ -754,4 +698,3 @@ export default {
   background: #45a049;
 }
 </style>
-
