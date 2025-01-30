@@ -2,12 +2,9 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const axios = require("axios");
-const FormData = require("form-data");
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const { mixAudio } = require("./services/audioMix");
-const multer = require("multer"); // multer 패키지 사용
+const { convertToMP3 } = require("./services/convertToMP3");
+const { callClovaSpeechAPI } = require("./services/callClovaSpeech");
 
 const app = express();  
 const server = http.createServer(app);
@@ -18,217 +15,30 @@ const io = new Server(server, {
   },
 });
 
-// CORS 미들웨어 추가
 app.use(cors());
 
-// audio 파일을 저장할 폴더 경로
+// audio 임시, 영구 저장 경로
+const path = require("path");
+const upload = require("./config/upload");
 
 const fs = require("fs");
 const tempAudioFolder = path.join(__dirname, "../storage/temp_audio");
 const audioFolder = path.join(__dirname, "../storage/audio");
 
-// multer 설정: 파일을 디스크에 저장하도록 설정
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, tempAudioFolder); // 파일을 저장할 폴더 지정
-  },
-  filename: (req, file, cb) => {
-    const fileExtension = path.extname(file.originalname); // 파일 확장자 추출
-    const fileName = `${Date.now()}${fileExtension}`; // 고유한 이름으로 설정
-    req.fileName = fileName; // fileName을 req 객체에 저장
-    cb(null, fileName); // 저장할 파일 이름
-  },
-});
-
-const upload = multer({ storage: storage });
-
-// 방 정보를 저장할 객체
+// 방 정보  저장 객체
 const rooms = {};
 
 // 음성 녹음 여부 저장 객체
 const recordingStatus = {}; // { roomId: true/false }
 
-// audio파일을 mp3로 변환하기 위한 변수
-const ffmpeg = require("fluent-ffmpeg");
-
+// 참가자 음성 스트림을 저장할 객체
+const teamStreams = {}; 
 
 // 팀원들의 음성데이터를 저장할 배열 
-const roomAudioBuffers = {}; 
+const roomAudioBuffers = []; 
 
-// 클라이언트에서 파일을 업로드하는 API
-app.post("/upload", upload.single("audio"), async (req, res) => {
-  const file = req.file;
-  const fileName = req.fileName;
-  const roomId = req.body.roomId; // formData에서 roomId 받기
-  console.log(`음성녹음된 방의 roomId: ${roomId}`);
 
-  // roomId에 해당하는 배열이 없다면 새로 생성
-  if (!roomAudioBuffers[roomId]) {
-    roomAudioBuffers[roomId] = [];
-  }
-
-  // 받은 음성 데이터를 해당 방의 배열에 저장
-  roomAudioBuffers[roomId].push(file.buffer);
-
-  // 1명일 경우
-  if (file && rooms[roomId].length === 1) {
-    console.log(`File received: ${file.originalname}`);
-
-    let mp3Path;
-
-    try {
-      // 1. MP3로 변환
-      mp3Path = await convertToMp3(file.buffer, fileName);
-
-      // 2. 클로바 스피치 API 호출
-      const SECRET = process.env.SECRET;
-      const INVOKE_URL = process.env.INVOKE_URL;
-      console.log(`비밀 키 : ${SECRET}`);
-      console.log(`invoke url : ${INVOKE_URL}`);
-
-      // 요청 설정
-      const requestEntity = {
-        language: "ko-KR",
-        completion: "sync",
-        wordAlignment: true,
-        fullText: true,
-        diarization: { enable: true }, // diarization 객체로 수정
-        noiseFiltering: true,
-        format: "SRT",
-      };
-
-      // const audioPath = path.join(tempAudioFolder,file.filename)
-
-      // 호출
-      const clovaResponse = await callClovaSpeechAPI(
-        mp3Path,
-        requestEntity,
-        SECRET,
-        INVOKE_URL
-      );
-
-      console.log("응답 :", clovaResponse);
-
-      // 응답 반환
-      res.send({
-        message: "File uploaded, converted, and processed successfully!",
-        clovaResponse,
-      });
-    } catch (error) {
-      console.error("Error during file processing:", error.message);
-      res.status(500).send({ message: "Error processing file." });
-    }
-  } else if (roomAudioBuffers[roomId].length === rooms[roomId].length) {
-    try {
-
-      // roomAudioBuffers[roomId]가 비어있지 않고 모든 요소가 Buffer인지 확인
-      const validAudioBuffers = roomAudioBuffers[roomId].filter((buffer) =>
-        Buffer.isBuffer(buffer)
-      );
-
-      if (validAudioBuffers.length !== roomAudioBuffers[roomId].length) {
-        
-        console.log(`유효 데이터 : ${validAudioBuffers.length}`);
-        console.log(`받은 데이터 : ${roomAudioBuffers[roomId].length}`)
-        throw new Error(
-          "오디오 데이터에 유효하지 않은 값이 포함되어 있습니다."
-        );
-      }
-
-      const mixedAudioBuffer = await mixAudio(validAudioBuffers);
-      const mp3OutputPath = await convertToMP3(
-        mixedAudioBuffer,
-        "mixed_audio.wav"
-      );
-    } catch (error) {
-      console.error("Error during audioMix file processing:", error.message);
-      res.status(500).send({ message: "Error processing mixing file." });
-    }
-  } else {
-    res.status(400).send({ message: "No file uploaded." });
-  }
-});
-
-// MP3 변환 함수
-async function convertToMp3(fileBuffer, fileName) {
-  // audio 폴더가 없는 경우 생성 (비동기 방식으로 생성)
-  
-  const originalFormat = path.extname(fileName); // 파일 확장자 추출
-
-  const inputPath = path.join(tempAudioFolder, fileName);
-  console.log("변환할 파일: ", fileName);
-
-  const outputPath = path.join(
-    audioFolder,
-    `${Date.now()}.mp3` // 파일 이름에서 확장자 제외하고 .mp3로 설정
-  );
-
-  console.log("Output path for MP3:", outputPath);
-
-  if (originalFormat.toLowerCase() !== ".mp3") {
-    // MP3로 변환
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .output(outputPath) // 출력 파일 경로 지정
-        .on("end", () => {
-          console.log(`File converted to MP3: ${outputPath}`);
-          resolve(outputPath); // 변환된 파일 경로 반환
-        })
-        .on("error", (err) => {
-          console.error("Error converting file to MP3:", err.message);
-          reject(err);
-        })
-        .run(); // ffmpeg 명령어 실행
-    });
-  } else {
-    // 이미 MP3 파일인 경우 바로 저장
-    const mp3Path = path.join(audioFolder, fileName);
-    try {
-      await fs.writeFile(mp3Path, fileBuffer); // 파일 비동기 저장
-      console.log(`File already in MP3 format: ${mp3Path}`);
-      return mp3Path; // 저장된 MP3 파일 경로 반환
-    } catch (err) {
-      console.error("Error saving MP3 file:", err.message);
-      throw err;
-    }
-  }
-}
-
-// 클로바 Speech API 호출 함수
-async function callClovaSpeechAPI(filePath, requestEntity, secret, invokeUrl) {
-  try {
-    // 파일이 존재하는지 확인
-    if (!fs.existsSync(filePath)) {
-      throw new Error("파일이 존재하지 않습니다.");
-    }
-
-    // FormData 구성
-    const formData = new FormData();
-    formData.append("params", JSON.stringify(requestEntity));
-    formData.append("media", fs.createReadStream(filePath));
-
-    console.log("요청 파일 경로: ", filePath);
-
-    // API 호출
-    const response = await axios.post(
-      `${invokeUrl}/recognizer/upload`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-          "X-CLOVASPEECH-API-KEY": secret,
-          Accept: "application/json",
-        },
-      }
-    );
-
-    return response.data; // API 응답 반환
-  } catch (error) {
-    console.error("오류 발생:", error.message);
-    throw error;
-  }
-}
-
+// user가 회의방에 참가할 때 처리
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -499,7 +309,7 @@ io.on("connection", (socket) => {
         // 방이 비었으면 삭제 (방, 음성스트림)
         if (rooms[roomId].length === 0) {
           delete rooms[roomId];
-          delete roomAudioBuffers[roomId];
+          delete teamStreams[roomId];
           console.log(`Room ${roomId} deleted`);
         }
       }
