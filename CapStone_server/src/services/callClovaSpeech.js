@@ -8,8 +8,8 @@
  * @날짜 2025-01-27
  * 
  * @사용법 
- * 1. 모듈 import : const { convertToMP3 } = require('./convertToMP3');
- * 2. 함수 호출 : convertToMP3(inputFilePath, outputFilePath);
+ * 1. 모듈 import : const { callClovaSpeechAPI } = require("./services/callClovaSpeech")
+ * 2. 함수 호출 : callClovaSpeechAPI(filePath, requestEntity, secret, invokeUrl)
  * 
  * @매개변수
  * 1. filePath : 전송할 mp3파일의 경로
@@ -30,7 +30,22 @@
  * 
  */
 
-async function callClovaSpeechAPI(filePath, requestEntity, secret, invokeUrl) {
+
+// 클로바 스피치 API 호출
+const secret = process.env.SECRET;
+const invokeUrl = process.env.INVOKE_URL;
+
+// 요청 설정
+const requestEntity = {
+  language: "ko-KR",
+  completion: "sync",
+  wordAlignment: true,
+  fullText: true,
+  noiseFiltering: true,
+  format: "SRT",
+};       
+
+async function callClovaSpeechAPI(filePath) {
   try {
     // 파일이 존재하는지 확인
     if (!fs.existsSync(filePath)) {
