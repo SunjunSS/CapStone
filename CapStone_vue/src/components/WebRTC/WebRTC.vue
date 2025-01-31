@@ -230,9 +230,10 @@ export default {
     },
 
     updateMeetingReport(content) {
-      if (!content) {
-        // content가 null 또는 undefined인 경우 기본 텍스트 출력
-        this.meetingContent = "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>";
+
+      if (typeof content !== 'string') {
+        console.error("Expected content to be a string, but got:", typeof content);
+        this.meetingContent = "<p style='color: #bbb;'>응답 형식 오류</p>";
         return;
       }
 
@@ -292,8 +293,8 @@ export default {
           },
         });
         console.log(response.data.message);
-        console.log("클로바 요청 응답: ",response.data.clovaResponse);
-        this.updateMeetingReport(response.data.clovaResponse);
+        //console.log("클로바 요청 응답: ",response.data.clovaResponse);
+        //this.updateMeetingReport(response.data.clovaResponse);
 
       } catch (error) {
         console.error("Error uploading file:", error.message);
@@ -328,8 +329,8 @@ export default {
 
         this.socket.on("return-recording", (recordingData) => {
 
-            console.log(recordingData.message);
-            this.updateMeetingReport(recordingData.clovaResponse);
+            console.log(recordingData);
+            this.updateMeetingReport(recordingData);
 
         })
 
