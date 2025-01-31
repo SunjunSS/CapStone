@@ -2,9 +2,9 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const { mixAudio } = require("./services/audioMix");
-const { convertToMP3 } = require("./services/convertToMP3");
-const { callClovaSpeechAPI } = require("./services/callClovaSpeech");
+const { mixAudio } = require("../src/services/audioMix");
+const { convertToMP3 } = require("../src/services/convertToMP3");
+const { callClovaSpeechAPI } = require("../src/services/callClovaSpeech");
 
 const app = express();  
 const server = http.createServer(app);
@@ -19,7 +19,7 @@ app.use(cors());
 
 // audio 임시, 영구 저장 경로
 const path = require("path");
-const upload = require("./config/upload");
+const upload = require("../src/config/upload");
 
 const fs = require("fs");
 const tempAudioFolder = path.join(__dirname, "../storage/temp_audio");

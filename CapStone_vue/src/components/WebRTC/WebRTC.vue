@@ -206,7 +206,7 @@ export default {
       };
 
       this.mediaRecorder.onstop = () => {
-        const blob = new Blob(this.recordedChunks, { type: "audio/webm" });
+        const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;

@@ -2,49 +2,114 @@ const ffmpeg = require("fluent-ffmpeg");
 const fs = require("fs");
 const path = require("path");
 
-// mixAudio 함수: 주어진 폴더 경로 내의 모든 .wav 파일을 하나로 믹싱
-async function mixAudio(folderPath, outputPath) {
-  return new Promise((resolve, reject) => {
-    // 폴더 내의 모든 .wav 파일 찾기
-    fs.readdir(folderPath, (err, files) => {
-      if (err) {
-        console.error("Error reading folder:", err);
-        reject(err);
-      }
+// 설정값: 변환할 샘플 레이트 및 채널 수
+const TARGET_SAMPLE_RATE = 44100; // 44.1kHz
+const TARGET_CHANNELS = 1; // 모노
 
-      // .wav 파일만 필터링
+// 오디오 변환 함수 (샘플 레이트 & 채널 맞추기)
+function convertAudio(inputPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .audioCodec("pcm_s16le")
+      .audioFrequency(TARGET_SAMPLE_RATE) // 샘플 레이트 44100Hz 변환
+      .audioChannels(TARGET_CHANNELS) // 모노 채널 변환
+      .format("wav") // 출력 형식 유지
+      .on("end", () => resolve(outputPath))
+      .on("error", (err) => reject(err))
+      .save(outputPath);
+  });
+}
+
+// 오디오 길이 측정 함수
+function getAudioDuration(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      resolve(metadata.format.duration); // 오디오 길이(초)
+    });
+  });
+}
+
+// mixAudio 함수: 모든 오디오 변환 후 병렬 믹싱
+async function mixAudio(folderPath, outputPath) {
+  return new Promise(async (resolve, reject) => {
+    fs.readdir(folderPath, async (err, files) => {
+      if (err) return reject(err);
+
+      // .wav 파일 필터링
       const inputPaths = files
         .filter((file) => path.extname(file).toLowerCase() === ".wav")
         .map((file) => path.join(folderPath, file));
 
-      // .wav 파일이 없으면 에러
       if (inputPaths.length === 0) {
-        reject(new Error("No .wav files found in the specified folder."));
+        return reject(
+          new Error("No .wav files found in the specified folder.")
+        );
       }
 
-      // ffmpeg를 사용하여 오디오 파일들을 믹싱
-      const command = ffmpeg();
+      try {
+        // 변환된 파일 저장 경로
+        const convertedFiles = await Promise.all(
+          inputPaths.map((file, index) => {
+            const outputFile = path.join(folderPath, `converted_${index}.wav`);
+            console.log(
+              `audioMix.js 55라인  : 변환된 파일 경로: ${outputFile}`
+            );
+            return convertAudio(file, outputFile);
+          })
+        );
 
-      // 각 오디오 파일을 입력으로 추가
-      inputPaths.forEach((inputPath) => {
-        command.input(inputPath);
-      });
+        convertedFiles.forEach((file) => {
+          if (!fs.existsSync(file)) {
+            console.log(`File does not exist: ${file}`);
+          }
+        });
 
-      // 믹싱된 오디오를 outputPath에 저장
-      const outputFileName = `audioMixed${Date.now()}.wav`;
-      const outputFilePath = path.join(outputPath, outputFileName);
+        // 병렬 믹싱 시작
+        const command = ffmpeg();
+        convertedFiles.forEach((file) => command.input(file));
 
-      command
-        .audioCodec("pcm_s16le") // 오디오 코덱 설정
-        .on("end", () => {
-          console.log(`Mixing finished. Output file: ${outputFilePath}`);
-          resolve(outputFilePath); // 믹싱된 파일 경로 반환
-        })
-        .on("error", (err) => {
-          console.error("Error during audio mixing:", err);
-          reject(err); // 에러 발생 시 reject
-        })
-        .mergeToFile(outputFilePath); // 믹싱된 오디오를 파일로 저장
+        convertedFiles.forEach((file) => console.log(file)); // 각 파일 경로 출력
+
+        // 믹싱된 파일 저장 경로 설정
+        const outputFileName = `audioMixed${Date.now()}.wav`;
+        const outputFilePath = path.join(outputPath, outputFileName);
+        console.log(`합성된 음성 저장경로: ${outputFilePath}`);
+
+        // 병렬 믹싱 (amix 필터 적용)
+        command
+          .complexFilter([
+            ...convertedFiles.map(
+              (_, i) =>
+                `[${i}:a]aresample=${TARGET_SAMPLE_RATE},aschannels=${TARGET_CHANNELS}[a${i}]`
+            ),
+            `${convertedFiles.map((_, i) => `[a${i}]`).join("")}amix=inputs=${
+              convertedFiles.length
+            }:duration=longest:dropout_transition=2[mix]`,
+          ])
+          .audioCodec("pcm_s16le")
+          .format("wav")
+          .on("end", () => {
+            console.log(`Mixing finished. Output file: ${outputFilePath}`);
+
+            // 변환된 파일 삭제 (정리)
+            convertedFiles.forEach((file) => {
+              fs.unlink(file, (err) => {
+                if (err) console.error("Error deleting temp file:", file, err);
+                else console.log(`Deleted temp file: ${file}`);
+              });
+            });
+
+            resolve(outputFilePath);
+          })
+          .on("error", (err) => {
+            console.error("Error during mixing:", err);
+            reject(err);
+          })
+          .save(outputFilePath); // 믹싱된 오디오를 파일로 저장
+      } catch (error) {
+        reject(error);
+      }
     });
   });
 }
