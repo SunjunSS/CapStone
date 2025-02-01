@@ -338,12 +338,7 @@ export default {
         model: $(go.TreeModel),
         "animationManager.isEnabled": true,
         "animationManager.duration": ANIMATION_DURATION,
-        scale: currentZoom.value,
-        // 텍스트 편집 관련 설정 추가
-        "textEditingTool.starting": go.TextEditingTool.DoubleClick,
-        "textEditingTool.textValidation": (textBlock, oldText, newText) => {
-          return newText.length > 0; // 빈 문자열 방지
-        }
+        scale: currentZoom.value
       })
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
@@ -355,54 +350,101 @@ export default {
         }
       })
 
-      myDiagram.nodeTemplate = $(
-        go.Node,
-        "Spot",
-        {
-          selectionAdorned: false,
-          resizable: false,
-          layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
-          mouseDragEnter: (e, node) => {
-            isNodeDragging.value = true
-          },
-          mouseDragLeave: (e, node) => {
-            isNodeDragging.value = false
-          },
+      myDiagram.nodeTemplate = $(go.Node, "Spot", {
+        selectionAdorned: false,
+        resizable: false,
+        layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
+        mouseDragEnter: (e, node) => {
+          isNodeDragging.value = true
         },
+        mouseDragLeave: (e, node) => {
+          isNodeDragging.value = false
+        },
+        doubleClick: (e, node) => {
+          const textBlock = node.findObject("NAME_TEXTBLOCK");
+          if (!textBlock) return;
+
+          const originalText = node.data.name || "";
+          const inputField = document.createElement("input");
+
+          const editedText = originalText.startsWith("✎") ? originalText : `✎${originalText}`;
+          myDiagram.model.setDataProperty(node.data, "name", editedText);
+          inputField.value = editedText;
+          inputField.style.position = "absolute";
+          inputField.style.left = `${e.viewPoint.x}px`;
+          inputField.style.top = `${e.viewPoint.y}px`;
+          inputField.style.opacity = 0;
+          inputField.style.border = "none";
+          document.body.appendChild(inputField);
+          inputField.focus();
+
+          inputField.addEventListener("input", (event) => {
+            if (!inputField.value.startsWith("✎")) {
+              inputField.value = `✎${inputField.value.replace(/^✎/, "")}`;
+            }
+            myDiagram.model.setDataProperty(node.data, "name", inputField.value);
+
+            // 노드 크기 변경 후 레이아웃 갱신
+            setTimeout(() => {
+              myDiagram.layout.invalidateLayout();
+              myDiagram.requestUpdate();
+            }, 10);
+          });
+
+          inputField.addEventListener("keydown", (event) => {
+            if (inputField.selectionStart === 1 && (event.key === "Backspace" || event.key === "Delete")) {
+              event.preventDefault();
+            }
+          });
+
+          inputField.addEventListener("blur", () => {
+            const updatedText = inputField.value.replace(/^✎/, "");
+            myDiagram.model.setDataProperty(node.data, "name", updatedText);
+            document.body.removeChild(inputField);
+
+            // 노드 크기 변경 후 레이아웃 갱신
+            setTimeout(() => {
+              myDiagram.layout.invalidateLayout();
+              myDiagram.requestUpdate();
+            }, 10);
+          });
+        }
+      },
         new go.Binding("isSelected", "isSelected"),
-        $(
-          go.Panel,
-          "Auto",
-          {
-            desiredSize: new go.Size(NaN, NaN),
-            minSize: new go.Size(100, 40)
+        $(go.Panel, "Auto", {
+          desiredSize: new go.Size(NaN, NaN),
+          minSize: new go.Size(100, 40)
+        },
+          $(go.Shape, "RoundedRectangle", {
+            fill: "white",
+            strokeWidth: 3,
+            stroke: "rgba(0, 0, 255, .15)",
+            portId: "",
+            fromSpot: go.Spot.RightSide,
+            toSpot: go.Spot.LeftSide
           },
-          $(
-            go.Shape,
-            "RoundedRectangle",
-            {
-              fill: "white",
-              strokeWidth: 3,
-              stroke: "rgba(0, 0, 255, .15)",
-              portId: "",
-              fromSpot: go.Spot.RightSide,
-              toSpot: go.Spot.LeftSide
-            },
             new go.Binding("fill", "category", (c) => (c === "Root" ? "#FFF612" : "white")),
-            new go.Binding("stroke", "isSelected", (s) => (s ? "blue" : "rgba(0, 0, 255, .15)")),
+            new go.Binding("stroke", "isSelected", (s) => (s ? "blue" : "rgba(0, 0, 255, .15)"))
           ),
-          $(
-            go.TextBlock,
-            {
-              margin: 8,
+          $(go.Panel, "Horizontal",  // 수평 패널을 사용하여 두 TextBlock을 나란히 배치
+            { margin: 8 },
+            $(go.TextBlock, {  // 첫 번째 TextBlock은 "*" 표시용
               font: "14px sans-serif",
-              editable: true, // 편집 가능하도록 설정
-              isMultiline: false, // 한 줄로만 편집 가능
-              textAlign: "center",
-              cursor: "text" // 텍스트 위에서 커서 모양 변경
+              stroke: "red",  // 빨간색으로 설정
+              visible: false  // 기본적으로는 숨김
             },
-            new go.Binding("text", "name").makeTwoWay() // 양방향 바인딩 설정
+            new go.Binding("text", "name", name => name && name.startsWith("✎") ? "✎" : ""),
+            new go.Binding("visible", "name", name => name && name.startsWith("✎"))
+          ),
+          $(go.TextBlock, {  // 두 번째 TextBlock은 실제 텍스트용
+            name: "NAME_TEXTBLOCK",
+            font: "14px sans-serif",
+            stroke: "black",
+            visible: true  // 실제 텍스트가 보이도록 설정
+          },
+          new go.Binding("text", "name", name => name ? name.replace(/^✎/, "") : "")
           )
+         )
         ),
         $(
           go.Panel,
