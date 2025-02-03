@@ -17,7 +17,7 @@
           {{ isMuted ? "Unmute" : "Mute" }}
         </button>
 
-        <select v-model="selectedAudioDevice" @change="changeAudioDevice">
+        <select v-model="selectedAudioDevice" @change="changeAudioDevice"   :disabled="isRecording">
           <option
             v-for="device in audioDevices"
             :key="device.deviceId"
@@ -197,6 +197,8 @@ export default {
     // 녹음 시작 메서드
     startRecording() {
       if (!this.localStream) return;
+
+
 
       this.recordedChunks = [];
       this.mediaRecorder = new MediaRecorder(this.localStream);
@@ -547,6 +549,12 @@ export default {
     },
 
     async changeAudioDevice() {
+
+      if (this.isRecording) {
+        alert("현재 녹음 중입니다. 녹음을 중지한 후 오디오 장치를 변경할 수 있습니다.");
+        return;
+      }
+
       if (this.selectedAudioDevice) {
         try {
           if (this.localStream) {

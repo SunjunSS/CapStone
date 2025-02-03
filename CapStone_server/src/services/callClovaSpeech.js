@@ -30,7 +30,10 @@
  * 
  */
 
-
+// fs 호출
+const FormData = require("form-data");
+const axios = require("axios");
+const fs = require("fs");
 // 클로바 스피치 API 호출
 const secret = process.env.SECRET;
 const invokeUrl = process.env.INVOKE_URL;
@@ -42,8 +45,10 @@ const requestEntity = {
   wordAlignment: true,
   fullText: true,
   noiseFiltering: true,
+  diarization: { enable: true }, // diarization 객체로 수정
+  noiseFiltering: true,
   format: "SRT",
-};       
+};    
 
 async function callClovaSpeechAPI(filePath) {
   try {
@@ -51,6 +56,8 @@ async function callClovaSpeechAPI(filePath) {
     if (!fs.existsSync(filePath)) {
       throw new Error("파일이 존재하지 않습니다.");
     }
+
+    console.log(`보낼 로컬 mp3: ${filePath}`);
 
     // FormData 구성
     const formData = new FormData();
@@ -71,6 +78,11 @@ async function callClovaSpeechAPI(filePath) {
         },
       }
     );
+
+    console.log("HTTP 응답 코드:", response.status);
+
+    // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
+    console.log("SRT 변환 결과:\n", response.data);
 
     return response.data; // API 응답 반환
   } catch (error) {

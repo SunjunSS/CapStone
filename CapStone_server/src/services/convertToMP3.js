@@ -33,65 +33,113 @@ const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
 
 
-async function convertToMP3(fileBuffer, fileName) {
-  const tempAudioFolder = path.join(__dirname, "../../storage/temp_audio");
-  const audioFolder = path.join(__dirname, "../../storage/audio");
+// async function convertToMP3(fileBuffer, fileName) {
+//   const tempAudioFolder = path.join(__dirname, "../../storage/temp_audio");
+//   const audioFolder = path.join(__dirname, "../../storage/audio");
 
-  const originalFormat = path.extname(fileName); // 파일 확장자 추출
+//   const originalFormat = path.extname(fileName); // 파일 확장자 추출
 
-  const getFormattedTime = () => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    return `${hours}-${minutes}-${seconds}`;
-  };
+//   const getFormattedTime = () => {
+//     const now = new Date();
+//     const hours = String(now.getHours()).padStart(2, "0");
+//     const minutes = String(now.getMinutes()).padStart(2, "0");
+//     const seconds = String(now.getSeconds()).padStart(2, "0");
+//     return `${hours}-${minutes}-${seconds}`;
+//   };
 
-  const timestamp = getFormattedTime(); // 타임스탬프 한 번만 생성
+//   const timestamp = getFormattedTime(); // 타임스탬프 한 번만 생성
 
-  // # 1. 원본 파일저장 (temp_audio)
-  const tempFileName = `${timestamp}.wav`; // "12-23-10.wav" 형식
-  const tempFilePath = path.join(tempAudioFolder, tempFileName);
+//   // # 1. 원본 파일저장 (temp_audio)
+//   const tempFileName = `${Date.now()}.wav`; // "12-23-10.wav" 형식
+//   const tempFilePath = path.join(tempAudioFolder, tempFileName);
 
 
 
-  try {
-    await fs.promises.writeFile(tempFilePath, fileBuffer); // 임시 파일 저장
-    console.log(`Temp audio file saved: ${tempFilePath}`);
+//   try {
+//     await fs.promises.writeFile(tempFilePath, fileBuffer); // 임시 파일 저장
+//     console.log(`Temp audio file saved: ${tempFilePath}`);
 
-    // 2. MP3 변환 파일 저장 (audio)
-    const outputFileName = `${timestamp}.mp3`; // 변환된 mp3 파일 이름
-    const outputPath = path.join(audioFolder, outputFileName);
-    console.log("Output path for MP3:", outputPath);
+//     // 2. MP3 변환 파일 저장 (audio)
+//     const outputFileName = `${timestamp}.mp3`; // 변환된 mp3 파일 이름
+//     const outputPath = path.join(audioFolder, outputFileName);
+//     console.log("Output path for MP3:", outputPath);
 
-    if (originalFormat.toLowerCase() !== ".mp3") {
-      // MP3로 변환
-      return new Promise((resolve, reject) => {
-        ffmpeg(tempFilePath)
-          .output(outputPath) // 출력 파일 경로 지정
-          .on("end", () => {
-            console.log(`File converted to MP3: ${outputPath}`);
-            resolve(outputPath); // 변환된 파일 경로 반환
-          })
-          .on("error", (err) => {
-            console.error("Error converting file to MP3:", err.message);
-            reject(err);
-          })
-          .run(); // ffmpeg 명령어 실행
-      });
-    } else {
-      // 이미 MP3 파일인 경우 바로 저장
+//     if (originalFormat.toLowerCase() !== ".mp3") {
+//       // MP3로 변환
+//       return new Promise((resolve, reject) => {
+//         ffmpeg(tempFilePath)
+//           .output(outputPath) // 출력 파일 경로 지정
+//           .on("end", () => {
+//             console.log(`File converted to MP3: ${outputPath}`);
+//             resolve(outputPath); // 변환된 파일 경로 반환
+//           })
+//           .on("error", (err) => {
+//             console.error("Error converting file to MP3:", err.message);
+//             reject(err);
+//           })
+//           .run(); // ffmpeg 명령어 실행
+//       });
+//     } else {
+//       // 이미 MP3 파일인 경우 바로 저장
 
-      await fs.promises.writeFile(outputPath, fileBuffer); // 파일 비동기 저장
-      console.log(`File already in MP3 format: ${outputPath}`);
-      return outputPath; // 저장된 MP3 파일 경로 반환
+//       await fs.promises.writeFile(outputPath, fileBuffer); // 파일 비동기 저장
+//       console.log(`File already in MP3 format: ${outputPath}`);
+//       return outputPath; // 저장된 MP3 파일 경로 반환
+//     }
+//   } catch (err) {
+//     console.error("Error saving MP3 file:", err.message);
+//     throw err;
+//   }
+// }
+
+
+async function convertToMP3(inputPath, outputPath) {
+  // audio 폴더가 없는 경우 생성 (비동기 방식으로 생성)
+
+  const originalFormat = path.extname(inputPath); // 파일 확장자 추출
+
+  //console.log("변환할 파일: ", fileName);
+  console.log("입력 경로 확인: ", inputPath); // 경로 확인
+
+  // const outputPath = path.join(
+  //   noFileOutputPath,
+  //   `${Date.now()}.mp3` // 파일 이름에서 확장자 제외하고 .mp3로 설정
+  // );
+
+  console.log("Output path for MP3:", outputPath);
+
+  // 파일이 존재하는지 확인
+  if (!fs.existsSync(inputPath)) {
+    console.error("입력 파일이 존재하지 않습니다:", inputPath);
+    throw new Error("입력 파일이 존재하지 않습니다.");
+  }
+
+  if (originalFormat.toLowerCase() !== ".mp3") {
+    // MP3로 변환
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .output(outputPath) // 출력 파일 경로 지정
+        .on("end", () => {
+          console.log(`File converted to MP3: ${outputPath}`);
+          resolve(outputPath); // 변환된 파일 경로 반환
+        })
+        .on("error", (err) => {
+          console.error("Error converting file to MP3:", err.message);
+          reject(err);
+        })
+        .run(); // ffmpeg 명령어 실행
+    });
+  } else {
+    try {
+      await fs.writeFile(outputPath, inputPath); // 파일 비동기 저장
+      console.log(`File already in MP3 format: ${mp3Path}`);
+      return mp3Path; // 저장된 MP3 파일 경로 반환
+    } catch (err) {
+      console.error("Error saving MP3 file:", err.message);
+      throw err;
     }
-  } catch (err) {
-    console.error("Error saving MP3 file:", err.message);
-    throw err;
   }
 }
-
 
 
 module.exports = {convertToMP3};
