@@ -12,6 +12,26 @@
     <div class="mindmap-container">
       <div ref="diagramDiv" class="mindmap-content"></div>
     </div>
+
+    <!-- 실행복귀/취소 컨트롤 -->
+    <div class="history-controls">
+      <button 
+        @click="undoAction" 
+        class="history-btn"
+        :disabled="!canUndo"
+        :class="{ 'history-btn-enabled': canUndo }"
+      >
+        실행취소
+      </button>
+      <button 
+        @click="redoAction" 
+        class="history-btn"
+        :disabled="!canRedo"
+        :class="{ 'history-btn-enabled': canRedo }"
+      >
+        실행복귀
+      </button>
+    </div>
     
     <div class="zoom-controls">
       <button @click="decreaseZoom" class="zoom-btn">-</button>
@@ -31,11 +51,21 @@
     </div>
 
     <!-- 노드 추가 컨트롤 -->
-    <div v-if="selectedNode" class="add-controls">
-      <button @click="addChildNode" class="add-btn">
+    <div class="add-controls" @keydown="handleKeyDown">
+      <button 
+        @click="addChildNode" 
+        class="add-btn"
+        :class="{ 'add-btn-enabled': selectedNode }"
+        :disabled="!selectedNode"
+      >
         하위레벨 추가
       </button>
-      <button @click="addSiblingNode" class="add-btn">
+      <button 
+        @click="addSiblingNode" 
+        class="add-btn"
+        :class="{ 'add-btn-enabled': selectedNode }"
+        :disabled="!selectedNode"
+      >
         동일레벨 추가
       </button>
     </div>
@@ -43,7 +73,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import * as go from 'gojs'
 
 export default {
@@ -58,6 +88,8 @@ export default {
     const ZOOM_BUTTON_STEP = 0.2
     const ANIMATION_DURATION = 300
     const PAN_ANIMATION_DURATION = 100
+    const canUndo = ref(false)
+    const canRedo = ref(false)
 
     const isDragging = ref(false)
     const isNodeDragging = ref(false)
@@ -68,6 +100,48 @@ export default {
     let zoomAnimationFrame = null
     let panAnimationFrame = null
     let targetPosition = null
+
+    const saveState = () => {
+      if (!myDiagram) return;
+      myDiagram.startTransaction("save state");
+      myDiagram.model.setDataProperty(selectedNode.value, "name", selectedNode.value.name); 
+      myDiagram.commitTransaction("save state");
+      updateUndoRedoState();
+    }
+
+    const updateUndoRedoState = () => {
+      if (!myDiagram) return
+      canUndo.value = myDiagram.undoManager.canUndo()
+      canRedo.value = myDiagram.undoManager.canRedo()
+    }
+
+    const undoAction = () => {
+      if (!myDiagram || !canUndo.value) return
+      myDiagram.undoManager.undo()
+      updateUndoRedoState()
+    }
+
+    const redoAction = () => {
+      if (!myDiagram || !canRedo.value) return
+      myDiagram.undoManager.redo()
+      updateUndoRedoState()
+    }
+
+    const handleKeyDown = (event) => {
+      if (!selectedNode.value || !myDiagram) return;
+      
+      // Tab 키 (하위레벨 추가)
+      if (event.key === "Tab") {
+        event.preventDefault(); // Tab 키 기본 동작 방지 (포커스 이동 방지)
+        addChildNode();
+      }
+      
+      // Shift 키 (동일레벨 추가)
+      if (event.key === "Shift") {
+        event.preventDefault();
+        addSiblingNode();
+      }
+    };
 
     const deleteSelectedNode = () => {
       if (!selectedNode.value || !myDiagram) return
@@ -338,12 +412,7 @@ export default {
         model: $(go.TreeModel),
         "animationManager.isEnabled": true,
         "animationManager.duration": ANIMATION_DURATION,
-        scale: currentZoom.value,
-        // 텍스트 편집 관련 설정 추가
-        "textEditingTool.starting": go.TextEditingTool.DoubleClick,
-        "textEditingTool.textValidation": (textBlock, oldText, newText) => {
-          return newText.length > 0; // 빈 문자열 방지
-        }
+        scale: currentZoom.value
       })
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
@@ -355,53 +424,158 @@ export default {
         }
       })
 
-      myDiagram.nodeTemplate = $(
-        go.Node,
-        "Spot",
-        {
-          selectionAdorned: false,
-          resizable: false,
-          layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
-          mouseDragEnter: (e, node) => {
-            isNodeDragging.value = true
-          },
-          mouseDragLeave: (e, node) => {
-            isNodeDragging.value = false
-          },
+      myDiagram.addDiagramListener("Modified", (e) => {
+        updateUndoRedoState()
+      })
+
+      myDiagram.nodeTemplate = $(go.Node, "Spot", {
+        selectionAdorned: false,
+        resizable: false,
+        layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
+        mouseDragEnter: (e, node) => {
+          isNodeDragging.value = true
         },
+        mouseDragLeave: (e, node) => {
+          isNodeDragging.value = false
+        },
+        doubleClick: (e, node) => {
+          const nodeElement = node.findObject("NAME_TEXTBLOCK");
+          if (!nodeElement) return;
+
+          const nodeBounds = nodeElement.getDocumentBounds();
+          const diagramScale = myDiagram.scale;
+          const editEmoji = "✏️ ";
+
+          const inputField = document.createElement("input");
+          inputField.value = editEmoji + node.data.name; // 이모지 추가
+
+          const diagramPos = myDiagram.position;
+          const inputWidth = 120;
+          const inputHeight = 35;
+
+          const nodeCenterX = (nodeBounds.x + (nodeBounds.width / 2) - diagramPos.x) * diagramScale;
+          const nodeTopY = (nodeBounds.y - diagramPos.y) * diagramScale;
+          const x = nodeCenterX - (inputWidth / 2);
+          const y = nodeTopY - inputHeight - 20;
+
+          inputField.style.position = "absolute";
+          inputField.style.left = `${x}px`;
+          inputField.style.top = `${y}px`;
+          inputField.style.padding = "8px 12px";
+          inputField.style.border = "2px solid #9C6CFE";
+          inputField.style.borderRadius = "6px";
+          inputField.style.fontSize = "14px";
+          inputField.style.fontFamily = "sans-serif";
+          inputField.style.backgroundColor = "white";
+          inputField.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.15)";
+          inputField.style.outline = "none";
+          inputField.style.width = `${inputWidth}px`;
+          inputField.style.minWidth = "80px";
+          inputField.style.maxWidth = `${inputWidth}px`;
+          inputField.style.transition = "all 0.2s ease";
+          inputField.style.zIndex = "9999";
+
+          document.body.appendChild(inputField);
+          inputField.focus();
+
+          // 전체 선택 방지 + 커서를 맨 끝으로 이동
+          setTimeout(() => {
+            inputField.setSelectionRange(inputField.value.length, inputField.value.length);
+          }, 0);
+
+          const originalWidth = node.actualBounds.width;
+          const directChildren = [];
+          const it = node.findTreeChildrenNodes();
+          while (it.next()) {
+            const child = it.value;
+            if (child.data.parent === node.data.key) {
+              directChildren.push(child);
+            }
+          }
+
+          let isBackspacePressed = false;
+
+          inputField.addEventListener("input", () => {
+            // 이모지가 삭제되지 않도록 처리
+            if (!inputField.value.startsWith(editEmoji)) {
+              inputField.value = editEmoji + inputField.value.replace(editEmoji, "");
+              inputField.setSelectionRange(editEmoji.length, inputField.value.length);
+            }
+          });
+
+          inputField.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              inputField.blur();
+            }
+
+            // 백스페이스가 눌렸을 때 텍스트가 비어있으면 아무것도 지워지지 않도록
+            if (event.key === "Backspace" && inputField.value === editEmoji) {
+              event.preventDefault(); // 아무것도 지워지지 않도록
+            }
+          });
+
+          inputField.addEventListener("blur", () => {
+            myDiagram.startTransaction("update node and layout");
+            const wasSelected = node.data.isSelected;
+            myDiagram.model.setDataProperty(node.data, "isSelected", !wasSelected);
+
+            const updatedText = inputField.value.replace(editEmoji, "").trim();
+            myDiagram.model.setDataProperty(node.data, "name", updatedText);
+
+            const newWidth = node.actualBounds.width;
+            if (newWidth !== originalWidth) {
+              const widthDifference = newWidth - originalWidth;
+              directChildren.forEach(childNode => {
+                const currentPos = childNode.position;
+                const updatedLocation = new go.Point(
+                  currentPos.x + widthDifference,
+                  currentPos.y
+                );
+                myDiagram.model.setDataProperty(childNode.data, "loc", go.Point.stringify(updatedLocation));
+              });
+            }
+            myDiagram.layoutDiagram(true);
+            myDiagram.commitTransaction("update node and layout");
+
+            document.body.removeChild(inputField);
+            updateUndoRedoState();
+          });
+        }
+      },
         new go.Binding("isSelected", "isSelected"),
-        $(
-          go.Panel,
-          "Auto",
-          {
-            desiredSize: new go.Size(NaN, NaN),
-            minSize: new go.Size(100, 40)
+        $(go.Panel, "Auto", {
+          desiredSize: new go.Size(NaN, NaN),
+          minSize: new go.Size(100, 40)
+        },
+          $(go.Shape, "RoundedRectangle", {
+            fill: "white",
+            strokeWidth: 3,
+            stroke: "rgba(0, 0, 255, .15)",
+            portId: "",
+            fromSpot: go.Spot.RightSide,
+            toSpot: go.Spot.LeftSide
           },
-          $(
-            go.Shape,
-            "RoundedRectangle",
-            {
-              fill: "white",
-              strokeWidth: 3,
-              stroke: "rgba(0, 0, 255, .15)",
-              portId: "",
-              fromSpot: go.Spot.RightSide,
-              toSpot: go.Spot.LeftSide
-            },
             new go.Binding("fill", "category", (c) => (c === "Root" ? "#FFF612" : "white")),
-            new go.Binding("stroke", "isSelected", (s) => (s ? "blue" : "rgba(0, 0, 255, .15)")),
+            new go.Binding("stroke", "isSelected", (s) => (s ? "blue" : "rgba(0, 0, 255, .15)"))
           ),
-          $(
-            go.TextBlock,
-            {
-              margin: 8,
+          $(go.Panel, "Horizontal",
+            { margin: 8 },
+            $(go.TextBlock, {
               font: "14px sans-serif",
-              editable: true, // 편집 가능하도록 설정
-              isMultiline: false, // 한 줄로만 편집 가능
-              textAlign: "center",
-              cursor: "text" // 텍스트 위에서 커서 모양 변경
+              stroke: "red",
+              visible: false
             },
-            new go.Binding("text", "name").makeTwoWay() // 양방향 바인딩 설정
+              new go.Binding("text", "name", name => name && name.startsWith("*") ? "✎" : ""),
+              new go.Binding("visible", "name", name => name && name.startsWith("*"))
+            ),
+            $(go.TextBlock, {
+              name: "NAME_TEXTBLOCK",
+              font: "14px sans-serif",
+              stroke: "black"
+            },
+              new go.Binding("text", "name", name => name ? name.replace(/^\*/, "") : "")
+            )
           )
         ),
         $(
@@ -418,70 +592,12 @@ export default {
             },
             cursor: "pointer"
           },
-          // visible 바인딩 수정 - 선택되었고 자식이 없는 경우에만 표시
           new go.Binding("visible", "", (node) => {
             if (!node.isSelected) return false;
             const nodeData = myDiagram.findNodeForKey(node.key);
             if (!nodeData) return false;
             return nodeData.findTreeChildrenNodes().count === 0;
           }).ofObject(),
-          $(
-            go.Shape,
-            "Circle",
-            {
-              fill: "#00bfff",
-              stroke: null,
-              desiredSize: new go.Size(24, 24)  // width, height 대신 desiredSize 사용
-            }
-          ),
-          $(
-            go.TextBlock,
-            "+",
-            {
-              font: "bold 16px sans-serif",
-              stroke: "white",
-              textAlign: "center",
-              verticalAlignment: go.Spot.Center,
-              alignmentFocus: go.Spot.Center
-            }
-          )
-        ),
-        $(
-          go.Panel,
-          "Spot",
-          {
-            alignment: go.Spot.Bottom,
-            alignmentFocus: go.Spot.Top,
-            margin: new go.Margin(15, 0, 0, 0),
-            desiredSize: new go.Size(25, 25),
-            click: (e, obj) => {
-              addSiblingNode()
-              e.handled = true
-            },
-            cursor: "pointer"
-          },
-          new go.Binding("visible", "isSelected"),
-          $(
-            go.Shape,
-            "Circle",
-            {
-              fill: "#00bfff",
-              stroke: null,
-              desiredSize: new go.Size(24, 24),  // Circle 크기도 동일하게
-              geometryStretch: go.GraphObject.Uniform  // 비율 유지를 위해 추가
-            }
-          ),
-          $(
-            go.TextBlock,
-            "+",
-            {
-              font: "bold 16px sans-serif",
-              stroke: "white",
-              textAlign: "center",
-              verticalAlignment: go.Spot.Center,
-              alignmentFocus: go.Spot.Center
-            }
-          )
         )
       )
 
@@ -538,6 +654,17 @@ export default {
 
     onMounted(() => {
       initDiagram()
+
+      // diagramDiv에 keydown 이벤트 리스너 추가
+      if (diagramDiv.value) {
+        diagramDiv.value.addEventListener('keydown', handleKeyDown);
+      }
+    })
+
+    onBeforeUnmount(() => {
+      if (diagramDiv.value) {
+        diagramDiv.value.removeEventListener('keydown', handleKeyDown);
+      }
     })
 
     return {
@@ -555,7 +682,11 @@ export default {
       stopTouch,
       deleteSelectedNode,
       addChildNode,
-      addSiblingNode
+      addSiblingNode,
+      canUndo,
+      canRedo,
+      undoAction,
+      redoAction
     }
   }
 }
@@ -686,15 +817,58 @@ export default {
 .add-btn {
   padding: 8px 16px;
   border: none;
-  background: #4CAF50;
-  color: white;
+  background: #d3d3d3; /* disabled 상태의 기본 색상 */
+  color: #666;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: not-allowed;
   font-size: 14px;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-.add-btn:hover {
+.add-btn-enabled {
+  background: #9C6CFE;
+  color: white;
+  cursor: pointer;
+}
+
+.add-btn-enabled:hover {
+  background: #8A5BEA;;
+}
+
+.history-controls {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  padding: 5px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.history-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #d3d3d3;
+  color: #666;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.history-btn-enabled {
+  background: #4CAF50;
+  color: white;
+  cursor: pointer;
+}
+
+.history-btn-enabled:hover {
   background: #45a049;
 }
 </style>
+

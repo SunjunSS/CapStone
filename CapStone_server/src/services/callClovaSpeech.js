@@ -46,7 +46,6 @@ const requestEntity = {
   fullText: true,
   noiseFiltering: true,
   diarization: { enable: true }, // diarization 객체로 수정
-  noiseFiltering: true,
   format: "SRT",
 };    
 

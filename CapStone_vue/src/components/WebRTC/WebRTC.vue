@@ -73,6 +73,7 @@
 <script>
 import io from "socket.io-client";
 import axios from "axios";
+import { updateMeetingReport } from "../audio/updateMeetingReport";
 
 
 
@@ -197,8 +198,6 @@ export default {
     // 녹음 시작 메서드
     startRecording() {
       if (!this.localStream) return;
-
-
 
       this.recordedChunks = [];
       this.mediaRecorder = new MediaRecorder(this.localStream);
@@ -332,7 +331,7 @@ export default {
         this.socket.on("return-recording", (recordingData) => {
 
             console.log(recordingData);
-            this.updateMeetingReport(recordingData);
+            updateMeetingReport(rceordingData);
 
         })
 

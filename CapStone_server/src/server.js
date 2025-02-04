@@ -10,6 +10,7 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const { mixAudio } = require("./services/audioMix");
 const multer = require("multer"); // multer 패키지 사용
 const { callClovaSpeechAPI } = require("./services/callClovaSpeech");
+const { askOpenAI } = require("./services/callOpenAI");
 
 const app = express();  
 const server = http.createServer(app);
@@ -102,8 +103,10 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
       );
 
       console.log("server.js / 120줄 / 응답 :", clovaResponse);
+      const openAIResponse = await askOpenAI(clovaResponse);
 
-      notifyRoomClients(roomId, clovaResponse);
+
+      notifyRoomClients(roomId, openAIResponse);
 
       // 응답 반환
       res.send({
@@ -134,6 +137,9 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
 
       // 호출
       const clovaResponse = await callClovaSpeechAPI(mixedMP3);
+      const openAIResponse = await askOpenAI(clovaResponse);
+
+      console.log(`OpenAI 응답: ${openAIResponse}`);
 
       notifyRoomClients(roomId, clovaResponse);
 

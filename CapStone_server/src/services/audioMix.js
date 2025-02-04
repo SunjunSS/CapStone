@@ -78,15 +78,6 @@ async function mixAudio(folderPath, outputPath) {
 
         // 병렬 믹싱 (amix 필터 적용)
         command
-          // .complexFilter([
-          //   ...convertedFiles.map(
-          //     (_, i) =>
-          //       `[${i}:a]aresample=${TARGET_SAMPLE_RATE},aschannels=${TARGET_CHANNELS}[a${i}]`
-          //   ),
-          //   `${convertedFiles.map((_, i) => `[a${i}]`).join("")}amix=inputs=${
-          //     convertedFiles.length
-          //   }:duration=longest:dropout_transition=2[mix]`,
-          // ])
           .complexFilter('amerge')
           .audioCodec("pcm_s16le")
           .format("wav")
@@ -95,7 +86,7 @@ async function mixAudio(folderPath, outputPath) {
 
             // 변환된 파일 삭제 (정리)
             convertedFiles.forEach((file) => {
-              fs.unlink(file, (err) => {
+              fs.promises.unlink(file, (err) => {
                 if (err) console.error("Error deleting temp file:", file, err);
                 else console.log(`Deleted temp file: ${file}`);
               });
