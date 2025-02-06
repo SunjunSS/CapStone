@@ -79,6 +79,7 @@ import {
   loadMindmapFromServer,
   serverError,
   saveMindmapToServer,
+  deleteMindmapNodes,
 } from "@/services/nodeService";
 
 export default {
@@ -151,31 +152,45 @@ export default {
       }
     };
 
-    const deleteSelectedNode = () => {
+    const deleteSelectedNode = async () => {
       if (!selectedNode.value || !myDiagram) return;
 
       myDiagram.startTransaction("delete node");
 
       const node = myDiagram.findNodeForKey(selectedNode.value.key);
-      if (node) {
-        // 삭제할 노드들을 수집
-        const nodesToDelete = new Set();
-        const collectDescendants = (node) => {
-          nodesToDelete.add(node.data);
-          node.findTreeChildrenNodes().each((child) => {
-            collectDescendants(child);
-          });
-        };
-        collectDescendants(node);
-
-        // GoJS의 내장 메서드를 사용하여 노드 삭제
-        nodesToDelete.forEach((nodeData) => {
-          myDiagram.model.removeNodeData(nodeData);
-        });
+      if (!node) {
+        myDiagram.commitTransaction("delete node");
+        return;
       }
 
+      // 🔥 삭제할 노드 리스트 수집
+      const nodesToDelete = new Set();
+      const collectDescendants = (node) => {
+        nodesToDelete.add(node.data);
+        node.findTreeChildrenNodes().each((child) => {
+          collectDescendants(child);
+        });
+      };
+      collectDescendants(node);
+
+      // 🗑️ GoJS 모델에서 삭제
+      nodesToDelete.forEach((nodeData) => {
+        myDiagram.model.removeNodeData(nodeData);
+      });
+
       myDiagram.commitTransaction("delete node");
-      selectedNode.value = null;
+
+      console.log("🗑️ 삭제된 노드 목록:", [...nodesToDelete]);
+
+      // ✅ 서버에 삭제 요청 보내기
+      const success = await deleteMindmapNodes([...nodesToDelete]);
+
+      if (success) {
+        console.log("✅ 서버에서 삭제 완료");
+        selectedNode.value = null; // 삭제 후 선택된 노드 초기화
+      } else {
+        console.error("❌ 서버 삭제 실패: 프론트에서 롤백할 수도 있음");
+      }
     };
 
     const animateZoom = (startZoom, targetZoom, startTime, duration) => {
@@ -375,7 +390,7 @@ export default {
     const addChildNode = async () => {
       if (!myDiagram) return;
 
-      const parentKey = selectedNode.value ? selectedNode.value.key : null;
+      const parentKey = selectedNode.value ? selectedNode.value.key : 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
       const newNode = {
         key: newKey,
@@ -400,7 +415,7 @@ export default {
       // ✅ async 추가
       if (!selectedNode.value || !myDiagram) return;
 
-      const parentKey = selectedNode.value.parent || null;
+      const parentKey = selectedNode.value.parent || 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
       const newNode = {
         key: newKey,
@@ -655,8 +670,8 @@ export default {
               fromSpot: go.Spot.RightSide,
               toSpot: go.Spot.LeftSide,
             },
-            new go.Binding("fill", "category", (c) =>
-              c === "Root" ? "#FFF612" : "white"
+            new go.Binding("fill", "parent", (p) =>
+              p === 0 ? "#FFF612" : "white"
             ),
             new go.Binding("stroke", "isSelected", (s) =>
               s ? "blue" : "rgba(0, 0, 255, .15)"
