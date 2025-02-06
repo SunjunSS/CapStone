@@ -11,6 +11,10 @@ const openai = new OpenAI({
 async function askOpenAI(prompt) {
   try {
     // 프롬프트 정의
+
+    if(!prompt)
+      return;
+
     const finalPrompt = `
       이 음성 텍스트는 회의 중 기록된 대화입니다. 
       아래 내용을 기준으로 텍스트를 자연스럽게 수정하고, 요약 및 회의록을 작성해주세요.

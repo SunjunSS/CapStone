@@ -2,11 +2,12 @@
 
 export function updateMeetingReport(content) {
 
+  let report = "";
 
   if (typeof content !== "string") {
     console.error("Expected content to be a string, but got:", typeof content);
-    this.meetingContent = "<p style='color: #bbb;'>응답 형식 오류</p>";
-    return;
+    report  = "<p style='color: #bbb;'>응답 형식 오류</p>";
+    return report;
   }
 
   try {
@@ -37,7 +38,7 @@ export function updateMeetingReport(content) {
       if (block.index) formattedContent.push(block); // 마지막 블록 추가
 
       // ** SRT HTML 변환 **
-      this.meetingContent = formattedContent
+      report  += formattedContent
         .map(
           (block) => `
             <p><strong>${block.index}번 음성</strong> (${block.time})</p>
@@ -45,23 +46,28 @@ export function updateMeetingReport(content) {
           `
         )
         .join("");
+
+        
     } else {
-      this.meetingContent = "<p style='color: #bbb;'>SRT 데이터 없음</p>";
+      report  += "<p style='color: #bbb;'>SRT 데이터 없음</p>";
+      
     }
 
     // ** 회의록 HTML 변환 **
     if (reportText) {
-      this.meetingContent += `
+      report  += `
         <h3>📌 회의록</h3>
         <pre>${reportText}</pre>
       `;
     } else {
-      this.meetingContent += "<p style='color: #bbb;'>회의록 데이터 없음</p>";
+      report  += "<p style='color: #bbb;'>회의록 데이터 없음</p>";
     }
   } catch (error) {
     console.error("Error parsing response:", error);
-    this.meetingContent = "<p style='color: #bbb;'>파싱 중 오류 발생</p>";
+    report  += "<p style='color: #bbb;'>파싱 중 오류 발생</p>";
   }
+
+  return report;
 };
 
 export default updateMeetingReport;

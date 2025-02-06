@@ -84,14 +84,6 @@ async function mixAudio(folderPath, outputPath) {
           .on("end", () => {
             console.log(`Mixing finished. Output file: ${outputFilePath}`);
 
-            // 변환된 파일 삭제 (정리)
-            convertedFiles.forEach((file) => {
-              fs.promises.unlink(file, (err) => {
-                if (err) console.error("Error deleting temp file:", file, err);
-                else console.log(`Deleted temp file: ${file}`);
-              });
-            });
-
             resolve(outputFilePath);
           })
           .on("error", (err) => {

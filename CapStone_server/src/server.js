@@ -11,6 +11,7 @@ const { mixAudio } = require("./services/audioMix");
 const multer = require("multer"); // multer 패키지 사용
 const { callClovaSpeechAPI } = require("./services/callClovaSpeech");
 const { askOpenAI } = require("./services/callOpenAI");
+const { deleteFiles } = require("./services/deleteFiles");
 
 const app = express();  
 const server = http.createServer(app);
@@ -29,6 +30,7 @@ app.use(cors());
 const fs = require("fs");
 const tempAudioFolder = path.join(__dirname, "../storage/temp_audio");
 const audioFolder = path.join(__dirname, "../storage/audio");
+
 
 // multer 설정: 파일을 디스크에 저장하도록 설정
 const storage = multer.diskStorage({
@@ -50,9 +52,6 @@ const rooms = {};
 
 // 음성 녹음 여부 저장 객체
 const recordingStatus = {}; // { roomId: true/false }
-
-// audio파일을 mp3로 변환하기 위한 변수
-const ffmpeg = require("fluent-ffmpeg");
 
 
 // 팀원들의 음성데이터를 저장할 배열 
@@ -132,11 +131,15 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
       const mixedAudioPath = await mixAudio(tempAudioFolder, audioFolder);
       console.log(`audio믹싱 성공 경로 : ${mixedAudioPath} `);
 
-      const mp3Name = path.join(audioFolder, `${roomId}_${Date.now()}.mp3`);
+      // deleteFiles 호출 시 배열을 파일 경로만 추출하여 넘기기
+      deleteFiles(roomAudioBuffers[roomId].map((obj) => obj.path));
+
+      const mp3Name = path.join(audioFolder, `${roomId}${Date.now()}.mp3`);
       const mixedMP3 = await convertToMP3(mixedAudioPath, mp3Name);
 
       // 호출
       const clovaResponse = await callClovaSpeechAPI(mixedMP3);
+
       const openAIResponse = await askOpenAI(clovaResponse);
 
       console.log(`OpenAI 응답: ${openAIResponse}`);
@@ -148,7 +151,7 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
         message: "File uploaded, mixed, converted, and processed successfully!",
       });
     } catch (error) {
-      console.error("Error during audioMix file processing:", error.message);
+      console.error("Error during file processing:", error.message);
       res.status(500).send({ message: "Error processing mixing file." });
     }
   } else {

@@ -331,7 +331,10 @@ export default {
         this.socket.on("return-recording", (recordingData) => {
 
             console.log(recordingData);
-            updateMeetingReport(rceordingData);
+            const report = updateMeetingReport(recordingData);
+
+            console.log(`파싱된 응답값: ${report}`);
+            this.meetingContent = report;
 
         })
 

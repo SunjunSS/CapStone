@@ -31,9 +31,12 @@
  */
 
 // fs 호출
+require("dotenv").config();
 const FormData = require("form-data");
 const axios = require("axios");
 const fs = require("fs");
+
+
 // 클로바 스피치 API 호출
 const secret = process.env.SECRET;
 const invokeUrl = process.env.INVOKE_URL;
@@ -51,12 +54,22 @@ const requestEntity = {
 
 async function callClovaSpeechAPI(filePath) {
   try {
+
+    console.log(`filePath -------- ${filePath}`);
+
     // 파일이 존재하는지 확인
     if (!fs.existsSync(filePath)) {
       throw new Error("파일이 존재하지 않습니다.");
     }
 
-    console.log(`보낼 로컬 mp3: ${filePath}`);
+    console.log(`filePath -------- ${filePath}`);
+
+
+    if (!invokeUrl) {
+      console.log("INVOKE_URL:", invokeUrl);
+      console.error("INVOKE_URL 환경 변수가 설정되지 않았습니다.");
+      return;
+    }
 
     // FormData 구성
     const formData = new FormData();
@@ -82,6 +95,7 @@ async function callClovaSpeechAPI(filePath) {
 
     // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
     console.log("SRT 변환 결과:\n", response.data);
+    console.log("SRT 변환 결과:\n", response);
 
     return response.data; // API 응답 반환
   } catch (error) {
