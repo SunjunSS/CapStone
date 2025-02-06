@@ -27,10 +27,12 @@ app.use(express.json());
 app.use(cors());
 
 // audio 파일을 저장할 폴더 경로
-
 const fs = require("fs");
 const tempAudioFolder = path.join(__dirname, "../storage/temp_audio");
 const audioFolder = path.join(__dirname, "../storage/audio");
+
+//mindmap API routes
+app.use(express.json());
 const mindmapRoutes = require("./routes/mindmapRoutes");
 app.use("/api/mindmap", mindmapRoutes);
 
