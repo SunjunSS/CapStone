@@ -101,6 +101,83 @@ export default {
     let panAnimationFrame = null
     let targetPosition = null
 
+    // 서버 통신 관련 상태 추가
+    const isSaving = ref(false)
+    const lastSaveTime = ref(null)
+    const serverError = ref(null)
+
+    // 서버에 마인드맵 데이터 저장
+    const saveMindmapToServer = async () => {
+      if (!myDiagram || isSaving.value) return
+
+      try {
+        isSaving.value = true
+        serverError.value = null
+
+        const nodes = myDiagram.model.nodeDataArray
+        console.log('서버로 전송할 데이터:', nodes) // 전송 데이터 확인
+
+        const response = await fetch('http://localhost:3000/api/mindmap/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ nodes })
+        })
+
+        const data = await response.json()
+        console.log('서버 응답:', data) // 서버 응답 확인
+
+        if (!data.success) {
+          throw new Error(data.message)
+        }
+
+        lastSaveTime.value = new Date()
+      } catch (error) {
+        console.error('마인드맵 저장 중 오류 발생:', error)
+        serverError.value = error.message
+      } finally {
+        isSaving.value = false
+      }
+    }
+
+     // 서버에서 마인드맵 데이터 로드
+    const loadMindmapFromServer = async () => {
+      try {
+        serverError.value = null
+        
+        const response = await fetch('http://localhost:3000/api/mindmap')
+        const data = await response.json()
+        
+        if (!data.success) {
+          throw new Error(data.message)
+        }
+        
+        // 서버에서 받은 데이터가 있는 경우에만 모델 업데이트
+        if (data.data && data.data.length > 0) {
+          myDiagram.model = new go.TreeModel(data.data)
+          console.log('서버에서 로드된 데이터:', data.data)
+        } else {
+          console.log('서버에 저장된 데이터가 없습니다.')
+        }
+      } catch (error) {
+        console.error('마인드맵 로드 중 오류 발생:', error)
+        serverError.value = error.message
+      }
+    }
+
+    // 자동 저장 설정 (노드 변경 시)
+    const setupAutoSave = () => {
+      if (!myDiagram) return
+
+      myDiagram.addModelChangedListener((e) => {
+        if (e.isTransactionFinished) {
+          // 변경사항이 있을 때마다 서버에 저장
+          saveMindmapToServer()
+        }
+      })
+    }
+
     const saveState = () => {
       if (!myDiagram) return;
       myDiagram.startTransaction("save state");
@@ -128,15 +205,19 @@ export default {
     }
 
     const handleKeyDown = (event) => {
+      // F5 키는 기본 동작 허용
+      if (event.key === "F5") {
+        return true;
+      }
+      
+      // 나머지 키 이벤트 처리
       if (!selectedNode.value || !myDiagram) return;
       
-      // Tab 키 (하위레벨 추가)
       if (event.key === "Tab") {
-        event.preventDefault(); // Tab 키 기본 동작 방지 (포커스 이동 방지)
+        event.preventDefault();
         addChildNode();
       }
       
-      // Shift 키 (동일레벨 추가)
       if (event.key === "Shift") {
         event.preventDefault();
         addSiblingNode();
@@ -150,22 +231,20 @@ export default {
       
       const node = myDiagram.findNodeForKey(selectedNode.value.key)
       if (node) {
+        // 삭제할 노드들을 수집
         const nodesToDelete = new Set()
-        
         const collectDescendants = (node) => {
-          nodesToDelete.add(node.data.key)
+          nodesToDelete.add(node.data)
           node.findTreeChildrenNodes().each(child => {
             collectDescendants(child)
           })
         }
-        
         collectDescendants(node)
         
-        const nodeDataArray = myDiagram.model.nodeDataArray.filter(node => 
-          !nodesToDelete.has(node.key)
-        )
-        
-        myDiagram.model.nodeDataArray = nodeDataArray
+        // GoJS의 내장 메서드를 사용하여 노드 삭제
+        nodesToDelete.forEach(nodeData => {
+          myDiagram.model.removeNodeData(nodeData)
+        })
       }
       
       myDiagram.commitTransaction("delete node")
@@ -393,13 +472,40 @@ export default {
     const initDiagram = () => {
       const $ = go.GraphObject.make
 
+      // CommandHandler를 확장하여 키보드 네비게이션을 비활성화
+      class CustomCommandHandler extends go.CommandHandler {
+        doKeyDown(e) {
+
+          // F5 키의 경우 이벤트를 그대로 전파
+          if (e.key === 'F5') {
+            return true;
+          }
+          // 다른 키보드 이벤트는 기존대로 처리
+          return;
+        }
+
+        // Ctrl+C, Ctrl+V 비활성화
+        canCopySelection() {
+          return false;
+        }
+        
+        // Ctrl+클릭으로 인한 복사 비활성화
+        canStartCopySelection(e) {
+          return false;
+        }
+      }
+
       myDiagram = $(go.Diagram, diagramDiv.value, {
         initialContentAlignment: go.Spot.Center,
         "undoManager.isEnabled": true,
         allowMove: true,
         allowHorizontalScroll: true,
         allowVerticalScroll: true,
+        allowCopy: false,  // 복사 기능 비활성화
+        allowClipboard: false,  // 클립보드 기능 비활성화
         scrollMode: go.Diagram.InfiniteScroll,
+        // 커스텀 CommandHandler 설정
+        commandHandler: new CustomCommandHandler(),
         layout: $(go.TreeLayout, {
           angle: 0,
           nodeSpacing: 50,
@@ -414,6 +520,9 @@ export default {
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value
       })
+
+      // 서버에서 초기 데이터 로드
+      loadMindmapFromServer()
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
         const part = e.subject.part
@@ -446,11 +555,19 @@ export default {
           const diagramScale = myDiagram.scale;
           const editEmoji = "✏️ ";
 
+          // 노드의 전체 너비를 가져옵니다
+          const nodePanel = node.findObject("NODE_PANEL");
+          const nodePanelWidth = nodePanel.actualBounds.width;
+          
+          // 최소 너비 설정
+          const minWidth = 80;
+          // 노드의 너비에 패딩을 추가하여 입력 필드의 너비 계산
+          const inputWidth = Math.max(minWidth, nodePanelWidth + 30); // 24px는 좌우 패딩
+
           const inputField = document.createElement("input");
-          inputField.value = editEmoji + node.data.name; // 이모지 추가
+          inputField.value = editEmoji + node.data.name;
 
           const diagramPos = myDiagram.position;
-          const inputWidth = 120;
           const inputHeight = 35;
 
           const nodeCenterX = (nodeBounds.x + (nodeBounds.width / 2) - diagramPos.x) * diagramScale;
@@ -470,8 +587,8 @@ export default {
           inputField.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.15)";
           inputField.style.outline = "none";
           inputField.style.width = `${inputWidth}px`;
-          inputField.style.minWidth = "80px";
-          inputField.style.maxWidth = `${inputWidth}px`;
+          inputField.style.minWidth = `${minWidth}px`;
+          inputField.style.maxWidth = "none"; // 최대 너비 제한 제거
           inputField.style.transition = "all 0.2s ease";
           inputField.style.zIndex = "9999";
 
@@ -545,6 +662,7 @@ export default {
       },
         new go.Binding("isSelected", "isSelected"),
         $(go.Panel, "Auto", {
+          name: "NODE_PANEL", 
           desiredSize: new go.Size(NaN, NaN),
           minSize: new go.Size(100, 40)
         },
@@ -629,6 +747,9 @@ export default {
 
       myDiagram.model = new go.TreeModel(nodeDataArray)
 
+      // 자동 저장 설정
+      setupAutoSave()
+
       myDiagram.addDiagramListener("ChangedSelection", (e) => {
         const node = myDiagram.selection.first()
         
@@ -665,6 +786,8 @@ export default {
       if (diagramDiv.value) {
         diagramDiv.value.removeEventListener('keydown', handleKeyDown);
       }
+      // 컴포넌트가 언마운트되기 전 마지막으로 저장
+      saveMindmapToServer()
     })
 
     return {
@@ -686,7 +809,10 @@ export default {
       canUndo,
       canRedo,
       undoAction,
-      redoAction
+      redoAction,
+      isSaving,
+      lastSaveTime,
+      serverError
     }
   }
 }
@@ -870,5 +996,9 @@ export default {
 .history-btn-enabled:hover {
   background: #45a049;
 }
-</style>
 
+.mindmap-wrapper:focus {
+  outline: none;
+  box-shadow: 0 0 2px 2px rgba(0, 0, 255, 0.2);
+}
+</style>
