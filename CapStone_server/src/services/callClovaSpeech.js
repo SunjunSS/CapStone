@@ -48,7 +48,7 @@ const requestEntity = {
   wordAlignment: true,
   fullText: true,
   noiseFiltering: true,
-  diarization: { enable: true }, // diarization 객체로 수정
+  diarization: { enable: true }, 
   format: "SRT",
 };    
 
@@ -71,10 +71,13 @@ async function callClovaSpeechAPI(filePath) {
       return;
     }
 
+    // const SRT = "SRT";
+
     // FormData 구성
     const formData = new FormData();
     formData.append("params", JSON.stringify(requestEntity));
     formData.append("media", fs.createReadStream(filePath));
+    // formData.append("format", SRT);
 
     console.log("요청 파일 경로: ", filePath);
 
@@ -95,7 +98,8 @@ async function callClovaSpeechAPI(filePath) {
 
     // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
     console.log("SRT 변환 결과:\n", response.data);
-    console.log("SRT 변환 결과:\n", response);
+    console.log("끝 --------------------------");
+    // console.log("SRT 변환 결과:\n", response);
 
     return response.data; // API 응답 반환
   } catch (error) {

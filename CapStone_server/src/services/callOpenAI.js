@@ -5,7 +5,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // .env 파일에 API 키 저장 필요
+  apiKey: process.env.OPENAI_API_KEY // .env 파일에 API 키 저장 필요
 });
 
 async function askOpenAI(prompt) {

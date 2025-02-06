@@ -1,0 +1,155 @@
+import { ref } from "vue";
+import * as go from "gojs";
+
+const isSaving = ref(false);
+const lastSaveTime = ref(null);
+const serverError = ref(null);
+
+/**
+ * 서버에서 마인드맵 데이터를 불러오는 함수
+ * @param {go.Diagram} myDiagram - gojs 다이어그램 객체
+ */
+export const loadMindmapFromServer = async (myDiagram) => {
+  try {
+    serverError.value = null;
+
+    const response = await fetch("http://localhost:3000/api/mindmap");
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    if (data.data && data.data.length > 0) {
+      myDiagram.model = new go.TreeModel(data.data);
+      console.log("🟢 서버에서 로드된 데이터:", data.data);
+    } else {
+      console.log("⚠️ 서버에 저장된 데이터가 없습니다.");
+    }
+  } catch (error) {
+    console.error("❌ 마인드맵 로드 중 오류 발생:", error);
+    serverError.value = error.message;
+  }
+};
+
+/**
+ * 마인드맵 데이터를 서버에 저장하는 함수 (새로운 노드 추가)
+ * @param {Array} addedNodes - 추가할 노드 리스트
+ * @returns {boolean} 성공 여부
+ */
+export const saveMindmapToServer = async (addedNodes) => {
+  if (!addedNodes || addedNodes.length === 0 || isSaving.value) {
+    console.warn("🚨 서버로 보낼 새로운 노드가 없습니다.");
+    return false;
+  }
+
+  try {
+    isSaving.value = true;
+    serverError.value = null;
+
+    const payload = { addedNodes: JSON.parse(JSON.stringify(addedNodes)) };
+
+    console.log("🚀 서버로 전송할 데이터:", payload);
+
+    const response = await fetch("http://localhost:3000/api/mindmap/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    console.log("🟢 서버 응답:", data);
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    lastSaveTime.value = new Date();
+    return true; // ✅ 성공 여부 반환
+  } catch (error) {
+    console.error("❌ 마인드맵 저장 중 오류 발생:", error);
+    serverError.value = error.message;
+    return false;
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+/**
+ * 특정 노드를 삭제하는 API 요청
+ * @param {Array} deletedNodes - 삭제할 노드 리스트
+ * @returns {boolean} 성공 여부
+ */
+export const deleteMindmapNodes = async (deletedNodes) => {
+  if (!deletedNodes || deletedNodes.length === 0) {
+    console.warn("🚨 삭제할 노드가 없습니다.");
+    return false;
+  }
+
+  try {
+    console.log("🗑️ 삭제할 데이터:", deletedNodes);
+
+    const response = await fetch("http://localhost:3000/api/mindmap/delete", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ deletedNodes }),
+    });
+
+    const data = await response.json();
+    console.log("🟢 삭제 요청 응답:", data);
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("❌ 노드 삭제 중 오류 발생:", error);
+    serverError.value = error.message;
+    return false;
+  }
+};
+
+/**
+ * 특정 노드 정보를 수정하는 API 요청
+ * @param {Object} updatedNode - 수정할 노드 정보
+ * @returns {boolean} 성공 여부
+ */
+export const updateMindmapNode = async (updatedNode) => {
+  if (!updatedNode || !updatedNode.key) {
+    console.warn("🚨 수정할 노드 데이터가 없습니다.");
+    return false;
+  }
+
+  try {
+    console.log("✏️ 수정 요청 데이터:", updatedNode);
+
+    const response = await fetch("http://localhost:3000/api/mindmap/update", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ updatedNode }),
+    });
+
+    const data = await response.json();
+    console.log("🟢 수정 요청 응답:", data);
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("❌ 노드 수정 중 오류 발생:", error);
+    serverError.value = error.message;
+    return false;
+  }
+};
+
+// 상태 값도 필요하면 export
+export { isSaving, lastSaveTime, serverError };

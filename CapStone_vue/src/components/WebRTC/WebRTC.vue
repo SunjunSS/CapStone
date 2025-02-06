@@ -74,6 +74,7 @@
 import io from "socket.io-client";
 import axios from "axios";
 import { updateMeetingReport } from "../audio/updateMeetingReport";
+import  uploadAudio  from "../audio/uploadAudio"
 
 
 
@@ -215,7 +216,7 @@ export default {
         link.click();
 
         // 서버로 audio파일을 업로드함
-        this.uploadAudio(blob);
+        uploadAudio(blob, this.roomId);
       };
 
       this.mediaRecorder.start();
@@ -282,25 +283,25 @@ export default {
     },
 
     // WebM 파일을 서버로 전송하는 함수
-    async uploadAudio(blob) {
-      const formData = new FormData();
-      formData.append("audio", blob, "audio.wav");
-      formData.append("roomId", this.roomId); // roomId 추가
+    // async uploadAudio(blob) {
+    //   const formData = new FormData();
+    //   formData.append("audio", blob, "audio.wav");
+    //   formData.append("roomId", this.roomId); // roomId 추가
 
-      try {
-        const response = await axios.post("http://localhost:3000/upload", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        console.log(response.data.message);
-        //console.log("클로바 요청 응답: ",response.data.clovaResponse);
-        //this.updateMeetingReport(response.data.clovaResponse);
+    //   try {
+    //     const response = await axios.post("http://localhost:3000/upload", formData, {
+    //       headers: {
+    //         "Content-Type": "multipart/form-data",
+    //       },
+    //     });
+    //     console.log(response.data.message);
+    //     //console.log("클로바 요청 응답: ",response.data.clovaResponse);
+    //     //this.updateMeetingReport(response.data.clovaResponse);
 
-      } catch (error) {
-        console.error("Error uploading file:", error.message);
-      }
-    },
+    //   } catch (error) {
+    //     console.error("Error uploading file:", error.message);
+    //   }
+    // },
 
     async setupSignaling() {
       this.socket = io("http://localhost:3000", {
