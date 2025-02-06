@@ -63,8 +63,8 @@
       <button
         @click="addSiblingNode"
         class="add-btn"
-        :class="{ 'add-btn-enabled': selectedNode }"
-        :disabled="!selectedNode"
+        :class="{ 'add-btn-enabled': canAddSibling }"
+        :disabled="!canAddSibling"
       >
         동일레벨 추가
       </button>
@@ -73,7 +73,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import * as go from "gojs";
 import {
   loadMindmapFromServer,
@@ -113,6 +113,17 @@ export default {
     const serverError = ref(null);
 
     const addedNodes = ref([]); // 새로 추가된 노드 저장
+
+    // canAddSibling computed 속성 추가
+    const canAddSibling = computed(() => {
+      // 선택된 노드가 없으면 false
+      if (!selectedNode.value) return false;
+
+      // key가 1인 첫 번째 노드면 false
+      if (selectedNode.value.key === 1) return false;
+
+      return true;
+    });
 
     const updateUndoRedoState = () => {
       if (!myDiagram) return;
@@ -413,6 +424,8 @@ export default {
 
     const addSiblingNode = async () => {
       // ✅ async 추가
+      // canAddSibling이 false면 early return
+      if (!canAddSibling.value) return;
       if (!selectedNode.value || !myDiagram) return;
 
       const parentKey = selectedNode.value.parent || 0;
@@ -792,6 +805,7 @@ export default {
       diagramDiv,
       currentZoom,
       selectedNode,
+      canAddSibling,
       increaseZoom,
       decreaseZoom,
       startDrag,
