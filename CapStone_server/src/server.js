@@ -13,7 +13,7 @@ const { callClovaSpeechAPI } = require("./services/callClovaSpeech");
 const { askOpenAI } = require("./services/callOpenAI");
 const { deleteFiles } = require("./services/deleteFiles");
 
-const app = express();  
+const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -22,6 +22,7 @@ const io = new Server(server, {
   },
 });
 
+app.use(express.json());
 // CORS 미들웨어 추가
 app.use(cors());
 
@@ -30,7 +31,8 @@ app.use(cors());
 const fs = require("fs");
 const tempAudioFolder = path.join(__dirname, "../storage/temp_audio");
 const audioFolder = path.join(__dirname, "../storage/audio");
-
+const mindmapRoutes = require("./routes/mindmapRoutes");
+app.use("/api/mindmap", mindmapRoutes);
 
 // multer 설정: 파일을 디스크에 저장하도록 설정
 const storage = multer.diskStorage({
@@ -53,9 +55,8 @@ const rooms = {};
 // 음성 녹음 여부 저장 객체
 const recordingStatus = {}; // { roomId: true/false }
 
-
-// 팀원들의 음성데이터를 저장할 배열 
-const roomAudioBuffers = {}; 
+// 팀원들의 음성데이터를 저장할 배열
+const roomAudioBuffers = {};
 
 // 클라이언트에서 파일을 업로드하는 API
 app.post("/upload", upload.single("audio"), async (req, res) => {
@@ -78,7 +79,6 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
   roomAudioBuffers[roomId].push(inputPath);
   console.log(`audio 버퍼값: ${inputPath}`);
 
-
   // 1명일 경우
   if (file && rooms[roomId].length === 1) {
     console.log(`File received: ${file.originalname}`);
@@ -94,16 +94,12 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
       // 1. MP3로 변환
       mp3Path = await convertToMP3(inputPath, outputPath);
 
-
       console.log(`변환된 mp3 경로: ${mp3Path}`);
       // 호출
-      const clovaResponse = await callClovaSpeechAPI(
-        mp3Path
-      );
+      const clovaResponse = await callClovaSpeechAPI(mp3Path);
 
       console.log("server.js / 120줄 / 응답 :", clovaResponse);
       const openAIResponse = await askOpenAI(clovaResponse);
-
 
       notifyRoomClients(roomId, openAIResponse);
 
@@ -155,7 +151,9 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
       res.status(500).send({ message: "Error processing mixing file." });
     }
   } else {
-    res.status(400).send({ message: "모든 파일이 올라올 때까지 대기해주세요." });
+    res
+      .status(400)
+      .send({ message: "모든 파일이 올라올 때까지 대기해주세요." });
   }
 });
 
@@ -163,8 +161,6 @@ async function notifyRoomClients(roomId, message) {
   // 'message'는 SRT 형식의 문자열로 가정
   io.to(roomId).emit("return-recording", message); // 방에 SRT 형식의 자막 메시지 전송
 }
-
-
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -219,8 +215,6 @@ io.on("connection", (socket) => {
     // 시작 시 audio초기화
     roomAudioBuffers[roomId] = [];
   });
-
-    
 
   // 녹음 중지 처리
   socket.on("stop-recording", (roomId) => {
