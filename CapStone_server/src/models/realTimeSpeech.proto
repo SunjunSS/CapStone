@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package clova.speech;
+
+// 실시간 음성 인식을 위한 서비스 정의
+service SpeechService {
+    // 실시간 음성 스트리밍 처리
+    rpc RealTimeStreaming (stream AudioRequest) returns (stream AudioResponse);
+}
+
+// 요청 메시지 정의 (음성 데이터)
+message AudioRequest {
+    bytes audio_data = 1; // 음성 데이터 (실시간 스트리밍)
+    string config = 2; // 설정 정보 (예: 언어 모델, 인식 옵션 등)
+}
+
+// 응답 메시지 정의 (음성 인식 결과)
+message AudioResponse {
+    string transcript = 1; // 음성 인식 결과 텍스트
+    bool is_final = 2; // 최종 인식 결과 여부
+}

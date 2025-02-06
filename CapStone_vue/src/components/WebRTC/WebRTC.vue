@@ -17,19 +17,42 @@
           {{ isMuted ? "Unmute" : "Mute" }}
         </button>
 
-        <select v-model="selectedAudioDevice" @change="changeAudioDevice">
+        <select
+          v-model="selectedAudioDevice"
+          @change="changeAudioDevice"
+          :disabled="isRecording"
+        >
           <option
             v-for="device in audioDevices"
             :key="device.deviceId"
             :value="device.deviceId"
           >
-            {{ device.label || `Audio Device ${device.deviceId.substr(0, 5)}...` }}
+            {{
+              device.label || `Audio Device ${device.deviceId.substr(0, 5)}...`
+            }}
           </option>
         </select>
 
         <div class="audio-meter">
           <div class="meter-fill" :style="{ width: `${audioLevel}%` }"></div>
         </div>
+      </div>
+
+      <div>
+        <br />
+        <h3>Recording</h3>
+        <br />
+        <div class="clovaSpeech">
+          <button @click="toggleRecording">
+            {{ isRecording ? "음성녹음 중지" : "음성녹음 시작" }}
+          </button>
+        </div>
+
+        <br />
+        <h3>Meeting Report</h3>
+        <br />
+
+        <div class="meeting-report" v-html="meetingContent"></div>
       </div>
 
       <div class="participants">
@@ -41,7 +64,9 @@
             :class="{ speaking: speakingParticipants[id] }"
           >
             {{ id }} {{ currentUserId && id === currentUserId ? "(You)" : "" }}
-            <span v-if="speakingParticipants[id]" class="speaking-indicator">🎤</span>
+            <span v-if="speakingParticipants[id]" class="speaking-indicator"
+              >🎤</span
+            >
           </li>
         </ul>
       </div>
@@ -55,6 +80,9 @@
 
 <script>
 import io from "socket.io-client";
+import axios from "axios";
+import { updateMeetingReport } from "../audio/updateMeetingReport";
+import uploadAudio from "../audio/uploadAudio";
 
 export default {
   name: "AudioMeetingApp",
@@ -80,6 +108,10 @@ export default {
       audioAnalyser: null,
       retryAttempts: {},
       maxRetries: 3,
+      isRecording: false, // 녹음 상태 관리
+      mediaRecorder: null, // MediaRecorder 인스턴스
+      recordedChunks: [], // 녹음된 데이터
+      meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
     };
   },
   methods: {
@@ -102,7 +134,9 @@ export default {
     async setupAudioStream() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        this.audioDevices = devices.filter((device) => device.kind === "audioinput");
+        this.audioDevices = devices.filter(
+          (device) => device.kind === "audioinput"
+        );
 
         const constraints = {
           audio: this.selectedAudioDevice
@@ -111,10 +145,15 @@ export default {
           video: false,
         };
 
-        this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        this.localStream = await navigator.mediaDevices.getUserMedia(
+          constraints
+        );
 
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const audioSource = this.audioContext.createMediaStreamSource(this.localStream);
+        this.audioContext = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        const audioSource = this.audioContext.createMediaStreamSource(
+          this.localStream
+        );
         this.audioAnalyser = this.audioContext.createAnalyser();
         audioSource.connect(this.audioAnalyser);
 
@@ -138,6 +177,145 @@ export default {
       monitor();
     },
 
+    // 음성 녹음 시작
+    // 녹음 시작/중지 토글 메서드
+    toggleRecording() {
+      this.isRecording = !this.isRecording;
+
+      if (this.isRecording) {
+        //this.startRecording();
+        this.socket.emit("start-recording", this.roomId);
+        console.log("녹음 시작");
+      } else {
+        //this.stopRecording();
+        this.socket.emit("stop-recording", this.roomId);
+        console.log("녹음 중지");
+      }
+    },
+
+    async checkRecording() {
+      // 클라이언트에서 녹음 시작/중지 처리
+      if (this.isRecording) {
+        // 녹음 시작 함수
+        console.log(`녹음시작 - WebRTC.vue:270`);
+        this.startRecording(); // 녹음 시작
+      } else {
+        // 녹음 중지 함수
+        console.log(`녹음중지 - WebRTC.vue:275`);
+        this.stopRecording();
+      }
+    },
+
+    // 녹음 시작 메서드
+    startRecording() {
+      if (!this.localStream) return;
+
+      this.recordedChunks = [];
+      this.mediaRecorder = new MediaRecorder(this.localStream);
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        this.recordedChunks.push(event.data);
+      };
+
+      this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "audio-meeting.wav";
+        link.click();
+
+        // 서버로 audio파일을 업로드함
+        uploadAudio(blob, this.roomId);
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording = true;
+    },
+
+    // 녹음 중지 메서드
+    stopRecording() {
+      if (this.mediaRecorder) {
+        this.mediaRecorder.stop();
+      }
+      this.isRecording = false;
+    },
+
+    updateMeetingReport(content) {
+      if (typeof content !== "string") {
+        console.error(
+          "Expected content to be a string, but got:",
+          typeof content
+        );
+        this.meetingContent = "<p style='color: #bbb;'>응답 형식 오류</p>";
+        return;
+      }
+
+      try {
+        // SRT 데이터를 줄 단위로 분리
+        const lines = content.trim().split("\n");
+        const formattedContent = [];
+        let block = { index: null, time: null, text: "" };
+
+        lines.forEach((line) => {
+          if (/^\d+$/.test(line)) {
+            // 번호 라인
+            if (block.index) {
+              // 이전 블록이 있다면 저장
+              formattedContent.push(block);
+            }
+            block = { index: line, time: null, text: "" };
+          } else if (line.includes("-->")) {
+            // 시간 정보 라인
+            block.time = line.replace(",", ".");
+          } else if (line.trim()) {
+            // 텍스트 라인
+            block.text += `${line.trim()} `;
+          }
+        });
+
+        // 마지막 블록 추가
+        if (block.index) {
+          formattedContent.push(block);
+        }
+
+        // HTML로 변환
+        this.meetingContent = formattedContent
+          .map(
+            (block) => `
+            <p><strong>${block.index}번 음성</strong> (${block.time})</p>
+            <p>${block.text.trim()}</p>
+          `
+          )
+          .join("");
+      } catch (error) {
+        console.error("Error parsing SRT data:", error);
+        this.meetingContent =
+          "<p style='color: #bbb;'>파싱 중 오류가 발생했습니다.</p>";
+      }
+    },
+
+    // WebM 파일을 서버로 전송하는 함수
+    // async uploadAudio(blob) {
+    //   const formData = new FormData();
+    //   formData.append("audio", blob, "audio.wav");
+    //   formData.append("roomId", this.roomId); // roomId 추가
+
+    //   try {
+    //     const response = await axios.post("http://localhost:3000/upload", formData, {
+    //       headers: {
+    //         "Content-Type": "multipart/form-data",
+    //       },
+    //     });
+    //     console.log(response.data.message);
+    //     //console.log("클로바 요청 응답: ",response.data.clovaResponse);
+    //     //this.updateMeetingReport(response.data.clovaResponse);
+
+    //   } catch (error) {
+    //     console.error("Error uploading file:", error.message);
+    //   }
+    // },
+
     async setupSignaling() {
       this.socket = io("http://localhost:3000", {
         transports: ["websocket"],
@@ -152,6 +330,23 @@ export default {
           this.currentUserId = this.socket.id;
           this.socket.emit("join-room", this.roomId);
           resolve();
+        });
+
+        // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
+        this.socket.on("sync-recording", (isRecording) => {
+          this.isRecording = isRecording;
+
+          console.log(`녹음상태 변화 : ${isRecording}`);
+          //녹음 시작 or 녹음 중지함수를 실행
+          this.checkRecording();
+        });
+
+        this.socket.on("return-recording", (recordingData) => {
+          console.log(recordingData);
+          const report = updateMeetingReport(recordingData);
+
+          console.log(`파싱된 응답값: ${report}`);
+          this.meetingContent = report;
         });
 
         this.socket.on("connect_error", (error) => {
@@ -221,7 +416,7 @@ export default {
         if (event.streams && event.streams[0]) {
           const remoteStream = event.streams[0];
           this.remoteStreams[userId] = remoteStream;
-          
+
           const audio = new Audio();
           audio.srcObject = remoteStream;
           audio.autoplay = true;
@@ -260,17 +455,23 @@ export default {
       };
 
       peerConnection.onconnectionstatechange = () => {
-        console.log(`Connection state with ${userId}:`, peerConnection.connectionState);
+        console.log(
+          `Connection state with ${userId}:`,
+          peerConnection.connectionState
+        );
         if (peerConnection.connectionState === "failed") {
           this.handlePeerConnectionFailure(userId);
-          
+
           if (!this.retryAttempts[userId]) {
             this.retryAttempts[userId] = 0;
           }
-          
+
           if (this.retryAttempts[userId] < this.maxRetries) {
             this.retryAttempts[userId]++;
-            setTimeout(() => this.createPeerConnection(userId, isInitiator), 1000);
+            setTimeout(
+              () => this.createPeerConnection(userId, isInitiator),
+              1000
+            );
           } else {
             delete this.retryAttempts[userId];
           }
@@ -302,33 +503,41 @@ export default {
     async handleSignal({ senderId, signal }) {
       try {
         let peerConnection = this.peerConnections[senderId];
-        
+
         if (!peerConnection) {
           peerConnection = await this.createPeerConnection(senderId, false);
         }
 
         if (signal.type === "candidate" && signal.candidate) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          await peerConnection.addIceCandidate(
+            new RTCIceCandidate(signal.candidate)
+          );
         } else if (signal.type === "offer") {
           if (peerConnection.signalingState !== "stable") {
             await Promise.all([
               peerConnection.setLocalDescription({ type: "rollback" }),
-              peerConnection.setRemoteDescription(new RTCSessionDescription(signal))
+              peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal)
+              ),
             ]);
           } else {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(signal)
+            );
           }
-          
+
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
-          
+
           this.socket.emit("signal", {
             targetId: senderId,
             signal: answer,
           });
         } else if (signal.type === "answer") {
           if (peerConnection.signalingState === "have-local-offer") {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(signal)
+            );
           }
         }
       } catch (error) {
@@ -343,7 +552,7 @@ export default {
         delete this.peerConnections[userId];
       }
       if (this.remoteStreams[userId]) {
-        this.remoteStreams[userId].getTracks().forEach(track => track.stop());
+        this.remoteStreams[userId].getTracks().forEach((track) => track.stop());
         delete this.remoteStreams[userId];
       }
       if (this.audioElements[userId]) {
@@ -354,39 +563,49 @@ export default {
 
     handleUserDisconnected(userId) {
       this.handlePeerConnectionFailure(userId);
-      this.participants = this.participants.filter(id => id !== userId);
+      this.participants = this.participants.filter((id) => id !== userId);
     },
 
     async toggleMute() {
       this.isMuted = !this.isMuted;
-      this.localStream.getAudioTracks().forEach(track => {
+      this.localStream.getAudioTracks().forEach((track) => {
         track.enabled = !this.isMuted;
       });
     },
 
     async changeAudioDevice() {
+      if (this.isRecording) {
+        alert(
+          "현재 녹음 중입니다. 녹음을 중지한 후 오디오 장치를 변경할 수 있습니다."
+        );
+        return;
+      }
+
       if (this.selectedAudioDevice) {
         try {
           if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
+            this.localStream.getTracks().forEach((track) => track.stop());
           }
 
           const newStream = await navigator.mediaDevices.getUserMedia({
             audio: { deviceId: { exact: this.selectedAudioDevice } },
-            video: false
+            video: false,
           });
 
-          Object.values(this.peerConnections).forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track.kind === "audio");
+          Object.values(this.peerConnections).forEach((pc) => {
+            const sender = pc
+              .getSenders()
+              .find((s) => s.track.kind === "audio");
             if (sender) {
               sender.replaceTrack(newStream.getAudioTracks()[0]);
             }
           });
 
           this.localStream = newStream;
-          
+
           if (this.audioContext) {
-            const audioSource = this.audioContext.createMediaStreamSource(newStream);
+            const audioSource =
+              this.audioContext.createMediaStreamSource(newStream);
             audioSource.connect(this.audioAnalyser);
           }
         } catch (error) {
@@ -397,32 +616,32 @@ export default {
     },
 
     async reconnect() {
-      Object.keys(this.peerConnections).forEach(userId => {
+      Object.keys(this.peerConnections).forEach((userId) => {
         this.handlePeerConnectionFailure(userId);
       });
-      
+
       this.joined = false;
       this.connectionStatus = "disconnected";
       await this.joinRoom();
-    }
+    },
   },
   beforeDestroy() {
     if (this.socket) {
       this.socket.disconnect();
     }
-    
+
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream.getTracks().forEach((track) => track.stop());
     }
-    
-    Object.keys(this.peerConnections).forEach(userId => {
+
+    Object.keys(this.peerConnections).forEach((userId) => {
       this.handlePeerConnectionFailure(userId);
     });
-    
+
     if (this.audioContext) {
       this.audioContext.close();
     }
-  }
+  },
 };
 </script>
 
@@ -457,6 +676,17 @@ export default {
   border-radius: 5px;
 }
 
+.meeting-report {
+  width: 700px;
+  height: 500px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  overflow-y: auto; /* 내용이 많아지면 스크롤 가능 */
+  font-size: 16px;
+  color: #888; /* 기본 텍스트 희미한 색상 */
+  background-color: #f9f9f9; /* 배경색 */
+}
+
 .participants {
   margin-top: 30px;
 }
@@ -484,7 +714,7 @@ input {
 
 button {
   padding: 10px 15px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   cursor: pointer;
