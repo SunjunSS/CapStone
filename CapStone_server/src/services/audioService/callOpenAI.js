@@ -1,3 +1,7 @@
+/**
+ * OpenAI API를 사용하여 OpenAI GPT-3 API를 호출합니다.
+ *
+ */
 const OpenAI = require("openai");
 const dotenv = require("dotenv");
 
@@ -5,15 +9,14 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY // .env 파일에 API 키 저장 필요
+  apiKey: process.env.OPENAI_API_KEY, // .env 파일에 API 키 저장 필요
 });
 
 async function askOpenAI(prompt) {
   try {
     // 프롬프트 정의
 
-    if(!prompt)
-      return;
+    if (!prompt) return;
 
     const finalPrompt = `
       이 음성 텍스트는 회의 중 기록된 대화입니다. 
@@ -66,5 +69,3 @@ async function askOpenAI(prompt) {
 }
 
 module.exports = { askOpenAI };
-
-

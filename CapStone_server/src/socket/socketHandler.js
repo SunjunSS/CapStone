@@ -2,7 +2,6 @@
  * 음성 채팅방 관리 파일일
  *
  */
-
 const rooms = {};
 const roomAudioBuffers = {};
 const recordingStatus = {};

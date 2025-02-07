@@ -1,3 +1,7 @@
+/**
+ * 음성 채팅 서비스
+ *
+ */
 const path = require("path");
 const fs = require("fs");
 const { convertToMP3 } = require("./convertToMP3");
