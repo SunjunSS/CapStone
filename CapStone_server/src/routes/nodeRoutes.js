@@ -1,6 +1,7 @@
 const express = require("express");
-const router = express.Router();
 const nodeController = require("../controllers/nodeController");
+
+const router = express.Router();
 
 // REST API 라우트 등록
 router.post("/save", nodeController.addNodes);
