@@ -41,6 +41,8 @@ const fs = require("fs");
 const secret = process.env.SECRET;
 const invokeUrl = process.env.INVOKE_URL;
 
+//const media = "WAV";
+
 // 요청 설정
 const requestEntity = {
   language: "ko-KR",
@@ -98,6 +100,7 @@ async function callClovaSpeechAPI(filePath) {
 
     // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
     console.log("SRT 변환 결과:\n", response.data);
+    console.log("SRT 변환 결과:\n", response);
     console.log("끝 --------------------------");
     // console.log("SRT 변환 결과:\n", response);
 

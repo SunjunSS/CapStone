@@ -47,6 +47,16 @@ async function mixAudio(folderPath, outputPath) {
         );
       }
 
+      if (inputPaths.length === 1) {
+
+        const outputFile = path.join(folderPath, `converted_${index}.wav`);
+        console.log(`audioMix.js 55라인  : 변환된 파일 경로: ${outputFile}`);
+
+        return convertAudio(inputPaths[0], outputFile);
+      }
+
+
+      
       try {
         // 변환된 파일 저장 경로
         const convertedFiles = await Promise.all(
@@ -58,6 +68,8 @@ async function mixAudio(folderPath, outputPath) {
             return convertAudio(file, outputFile);
           })
         );
+
+        
 
         convertedFiles.forEach((file) => {
           if (!fs.existsSync(file)) {

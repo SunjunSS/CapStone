@@ -88,24 +88,24 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
     console.log("입력 경로 확인: ", inputPath);
     console.log("Output path for MP3:", outputPath);
 
-    let mp3Path;
+    // let mp3Path;
 
     try {
-      // 1. MP3로 변환
-      mp3Path = await convertToMP3(inputPath, outputPath);
+      // // 1. MP3로 변환
+      // mp3Path = await convertToMP3(inputPath, outputPath);
 
+      const convertedFile = mixAudio(tempAudioFolder, audioFolder);
 
-      console.log(`변환된 mp3 경로: ${mp3Path}`);
       // 호출
       const clovaResponse = await callClovaSpeechAPI(
-        mp3Path
+        convertedFile
       );
 
       console.log("server.js / 120줄 / 응답 :", clovaResponse);
-      const openAIResponse = await askOpenAI(clovaResponse);
+      //const openAIResponse = await askOpenAI(clovaResponse);
 
 
-      notifyRoomClients(roomId, openAIResponse);
+      notifyRoomClients(roomId, clovaResponse);
 
       // 응답 반환
       res.send({

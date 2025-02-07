@@ -1,32 +1,32 @@
-/**
- * @파일명 convertToMP3.js
- * 
- * @함수정보 
- *  audio파일을 mp3파일로 변환해주는 함수
- * 
- * @날짜 2025-01-27
- * 
- * @사용법 
- * 1. 모듈 import : const { convertToMP3 } = require('./convertToMP3');
- * 2. 함수 호출 : convertToMP3(inputFilePath, outputFilePath);
- * 
- * @매개변수
- * 1. fileBuffer : 파일 데이터를 나타내는 변수 (이미 mp3일 경우 저장 경로에 저장할 데이터)
- * 2. fileName : 확장자를 포함한 파일의 이름
- * 
- * @사용예시
- * const { convertToMP3 } = require('./convertToMP3');
- * convertToMP3('./input.wav', './output.mp3')
- *   .then(() => console.log('Conversion successful!'))
- *   .catch(err => console.error('Error during conversion:', err));
- * 
- * @설치해야할것
- * - ffmpeg: Ensure ffmpeg is installed and accessible via the command line.
- * 
- * @메모
- * - The function supports popular audio formats like WAV and OGG.
- * - Error handling included for file not found or unsupported formats.
- */
+// /**
+//  * @파일명 convertToMP3.js
+//  * 
+//  * @함수정보 
+//  *  audio파일을 mp3파일로 변환해주는 함수
+//  * 
+//  * @날짜 2025-01-27
+//  * 
+//  * @사용법 
+//  * 1. 모듈 import : const { convertToMP3 } = require('./convertToMP3');
+//  * 2. 함수 호출 : convertToMP3(inputFilePath, outputFilePath);
+//  * 
+//  * @매개변수
+//  * 1. fileBuffer : 파일 데이터를 나타내는 변수 (이미 mp3일 경우 저장 경로에 저장할 데이터)
+//  * 2. fileName : 확장자를 포함한 파일의 이름
+//  * 
+//  * @사용예시
+//  * const { convertToMP3 } = require('./convertToMP3');
+//  * convertToMP3('./input.wav', './output.mp3')
+//  *   .then(() => console.log('Conversion successful!'))
+//  *   .catch(err => console.error('Error during conversion:', err));
+//  * 
+//  * @설치해야할것
+//  * - ffmpeg: Ensure ffmpeg is installed and accessible via the command line.
+//  * 
+//  * @메모
+//  * - The function supports popular audio formats like WAV and OGG.
+//  * - Error handling included for file not found or unsupported formats.
+//  */
 
 const fs = require("fs");
 const path = require("path");
