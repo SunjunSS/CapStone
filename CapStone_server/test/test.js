@@ -1,14 +1,10 @@
 
-const { callClovaSpeechAPI } = require('../src/services/callClovaSpeech');
-const { convertToMP3 } = require('../src/services/convertToMP3');
-const { askOpenAI } = require('../src/services/callOpenAI');
-const { askClovaX } = require('../src/services/callClovaStudioX');
-const { ClovaX } = require('../src/services/callX');
+const { callClovaSpeechAPI } = require('../src/services/audioService/callClovaSpeech');
+// const { convertToMP3 } = require('../src/services/convertToMP3');
+// const { askOpenAI } = require('../src/services/callOpenAI');
+// const { askClovaX } = require('../src/services/callClovaStudioX');
+const { ClovaX } = require('../src/services/audioService/callX');
 
-// const mp3 = convertToMP3(
-//   "../storage/audio/audioMixed1738682376246.wav",
-//   "../storage/audio/audioMixedMP3.mp3"
-// );
 const path = require("path");
 
 const filePath = path.join(
@@ -18,25 +14,16 @@ const filePath = path.join(
   "CapStone_server",
   "storage",
   "audio",
-  "1738839122439.mp3"
+  "1738923695368.mp3"
 );
 
 // ✅ async function을 만들고 그 안에서 await 사용
 async function main() {
   try {
-    // const response = await callClovaSpeechAPI(filePath);
-    //console.log(`response: ${response}`);
 
-    // 노드 없는 형태.
-    // const responseAI = await askOpenAI(response);
-    // console.log(`AI: ${responseAI}`);
-
-    //console.log(response);
-
-    // const clovaXResponse = await askClovaX(response);
-    // console.log(`X: ${clovaXResponse}`);
-
-
+    const speechResponse = await callClovaSpeechAPI(filePath);
+    console.log(`텍스트 전환 응답: ${speechResponse}`);
+   
     const mindmapData = [
       { key: 1, name: "캡스톤 마인드맵 탐색", parent: 0, isSelected: false },
       { key: 2, name: "퍼블릭시트", parent: 1, isSelected: false },
@@ -49,23 +36,77 @@ async function main() {
       { key: 9, name: "마인드맵 생성 트직 구현", parent: 4, isSelected: false },
     ];
 
-    const response = `1
-    00:00:00,000 --> 00:00:01,470
-    A: 내가 이거 그냥 알아볼게.
+    const request = 
+      {"messages": [
+        {
+          "role": "system",
+          "content": `
+          사용자가 제공하는 음성 텍스트는 회의 중 기록된 대화입니다. 또한 사용자가 제공하는 마인드맵 노드는 회의 중 작성된 노드입니다.
 
-    2
-    00:00:01,470 --> 00:00:09,620
-    B: 네. 안녕하세요. 지금 DB 설정 중입니다. DB 설정 중이고요. 의존성 체 
-    크해 주는 중입니다. 감사합니다.
+          ### 📝 **목표**
+          - **음성 텍스트를 분석하여 회의의 목적을 파악**하세요.
+          - **회의 목적과 기존 마인드맵을 기반으로 추가할 만한 노드를 최대 3개 추천**하세요.
 
-    3
-    00:00:09,620 --> 00:00:12,370
-    A: 네. 감사합니다.
+          ### **📌 작업 내용**
+          1. **음성 텍스트를 자연스럽게 수정한 SRT 파일을 반환하세요.**
+          2. **SRT 파일을 기반으로 회의록을 작성하세요:**
+            - **회의 목적**
+            - **주요 주제**
+            - **다음 할 일**
+            - **요약**
+            - **키워드**
+          3. **새로운 노드를 최대 3개 추천하세요.**
+            - 회의의 목적을 고려하여 가장 적합한 노드를 추천하세요.
+            - 기존 마인드맵 구조를 유지하면서 적절한 parent 값을 설정하세요.
 
-    위의 텍스트에서 키워드를 최대 4개까지 추출해줘 
-    `
+          ### **📌 응답 형식**
+          \`\`\`json
+          {
+            "srt": "<SRT 내용>",
 
-    const AIres = await ClovaX(response); 
+            "minutes": {
+              "회의 목적": "[회의의 핵심 목적]",
+              "주요 주제": [
+                "[내용]"
+              ],
+              "다음 할 일": [
+                "[내용]"
+              ],
+              "요약": "[간단한 요약 내용]",
+              "키워드": ["키워드1", "키워드2", "키워드3"]
+            },
+
+            "newNodes": [
+              { "key": 10, "name": "새로운 노드 1", "parent": 2, "isSelected": false },
+              { "key": 11, "name": "새로운 노드 2", "parent": 3, "isSelected": false },
+              { "key": 12, "name": "새로운 노드 3", "parent": 4, "isSelected": false }
+            ]
+          }
+          \`\`\`
+          `
+        },
+        {
+          "role": "user",
+          "content": `
+          우리팀의 회의 내용을 알려줄게, 음성 텍스트와 마인드맵 노드 데이터를 보낼게.
+          시스템에 정해진 대로 응답을 반환해줘!
+
+          #### **음성 텍스트**
+          ${speechResponse}
+
+          #### **마인드맵 노드**
+          ${JSON.stringify(mindmapData, null, 2)}
+          `
+        },
+        
+      ],
+      "maxTokens": 2048,
+    };
+
+
+    
+
+    const AIres = await ClovaX(request); 
 
     console.log(`x응답: ${AIres.data.result.message.content}`);
 

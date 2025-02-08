@@ -7,12 +7,10 @@ const API_KEY = process.env.CLOVA_API_KEY; // .env 파일에서 API 키를 가�
 
 const modelName = 'HCX-003';
 
-async function ClovaX(texts) {
+async function ClovaX(request) {
   try {
-    const finalPrompt = texts;
-    const requestBody = {
-      messages: [{ role: "user", content: finalPrompt }],
-    };
+    
+    const requestBody = request;
 
     const response = await axios.post(`${BASE_URL}/${modelName}`, requestBody, {
       headers: {
