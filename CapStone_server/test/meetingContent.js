@@ -1,4 +1,4 @@
-export default function thisMeetingContent(content) {
+function thisMeetingContent02(content) {
   let report = "";
 
   if (typeof content !== "string") {
@@ -27,8 +27,6 @@ export default function thisMeetingContent(content) {
 
     // ** SRT 내용 그대로 출력 **
     if (srtText) {
-
-
       // SRT 내용의 시간을 소수점 없이 표시
       const cleanedSrtText = srtText.replace(
         /(\d{2}:\d{2}:\d{2}),\d{3}/g,
@@ -79,5 +77,8 @@ export default function thisMeetingContent(content) {
 
   return report;
 }
- 
 
+
+
+
+module.exports = thisMeetingContent02;
