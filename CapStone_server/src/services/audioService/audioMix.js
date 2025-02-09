@@ -50,8 +50,6 @@ async function mixAudio(folderPath, outputPath) {
       if (inputPaths.length === 1) {
 
         const outputFile = path.join(folderPath, `converted_${index}.wav`);
-        console.log(`audioMix.js 55라인  : 변환된 파일 경로: ${outputFile}`);
-
         return convertAudio(inputPaths[0], outputFile);
       }
 
@@ -62,9 +60,6 @@ async function mixAudio(folderPath, outputPath) {
         const convertedFiles = await Promise.all(
           inputPaths.map((file, index) => {
             const outputFile = path.join(folderPath, `converted_${index}.wav`);
-            console.log(
-              `audioMix.js 55라인  : 변환된 파일 경로: ${outputFile}`
-            );
             return convertAudio(file, outputFile);
           })
         );
@@ -86,7 +81,7 @@ async function mixAudio(folderPath, outputPath) {
         // 믹싱된 파일 저장 경로 설정
         const outputFileName = `audioMixed${Date.now()}.wav`;
         const outputFilePath = path.join(outputPath, outputFileName);
-        console.log(`합성된 음성 저장경로: ${outputFilePath}`);
+        
 
         // 병렬 믹싱 (amix 필터 적용)
         command

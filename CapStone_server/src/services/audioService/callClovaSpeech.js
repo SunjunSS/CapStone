@@ -57,7 +57,7 @@ const requestEntity = {
 async function callClovaSpeechAPI(filePath) {
   try {
 
-    console.log(`filePath -------- ${filePath}`);
+    
 
     // 파일이 존재하는지 확인
     if (!fs.existsSync(filePath)) {
@@ -81,8 +81,7 @@ async function callClovaSpeechAPI(filePath) {
     formData.append("media", fs.createReadStream(filePath));
     // formData.append("format", SRT);
 
-    console.log("요청 파일 경로: ", filePath);
-
+    
     // API 호출
     const response = await axios.post(
       `${invokeUrl}/recognizer/upload`,
@@ -100,7 +99,6 @@ async function callClovaSpeechAPI(filePath) {
 
     // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
     console.log("SRT 변환 결과:\n", response.data);
-    console.log("SRT 변환 결과:\n", response);
     console.log("끝 --------------------------");
     // console.log("SRT 변환 결과:\n", response);
 
