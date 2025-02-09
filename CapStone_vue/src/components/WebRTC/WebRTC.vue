@@ -142,6 +142,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import { updateMeetingReport } from "../audio/updateMeetingReport";
 import uploadAudio from "../audio/uploadAudio";
+import { thisMeetingContent } from "../audio/meetingContent";
 
 export default {
   name: "AudioMeetingApp",
@@ -425,7 +426,7 @@ export default {
 
         this.socket.on("return-recording", (recordingData) => {
           console.log(recordingData);
-          const report = updateMeetingReport(recordingData);
+          const report = thisMeetingContent(recordingData);
 
           console.log(`파싱된 응답값: ${report}`);
           this.meetingContent = report;

@@ -94,18 +94,35 @@ app.post("/upload", upload.single("audio"), async (req, res) => {
       // 1. MP3로 변환
       mp3Path = await convertToMP3(inputPath, outputPath);
 
-
       console.log(`변환된 mp3 경로: ${mp3Path}`);
       // 호출
-      const clovaResponse = await callClovaSpeechAPI(
-        mp3Path
-      );
+      const clovaResponse = await callClovaSpeechAPI(mp3Path);
 
-      console.log("server.js / 120줄 / 응답 :", clovaResponse);
+      // console.log("server.js / 120줄 / 응답 :", clovaResponse);
+      // const openAIResponse = await askOpenAI(clovaResponse);
+
+      // notifyRoomClients(roomId, openAIResponse);
+
       const openAIResponse = await askOpenAI(clovaResponse);
 
+      // 객체를 문자열로 변환
+      let parsedResponse = "";
 
-      notifyRoomClients(roomId, openAIResponse);
+      if (typeof openAIResponse === "object") {
+        if (openAIResponse.content) {
+          // content 필드만 추출
+          parsedResponse = openAIResponse.content;
+        } else {
+          // JSON 전체를 문자열로 변환
+          parsedResponse = JSON.stringify(openAIResponse);
+        }
+      } else {
+        // 이미 문자열이라면 그대로 사용
+        parsedResponse = openAIResponse;
+      }
+
+      // 문자열 형태로 클라이언트에 전달
+      notifyRoomClients(roomId, parsedResponse);
 
       // 응답 반환
       res.send({
