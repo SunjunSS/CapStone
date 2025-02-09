@@ -81,8 +81,8 @@
 
       <div class="audio-controls">
         <button @click="toggleMute" class="control-button">
-          <v-icon v-if="isMuted" icon="mdi-volume-high"></v-icon>
-          <v-icon v-else icon="mdi-volume-off"></v-icon>
+          <v-icon v-if="isMuted" icon="mdi-volume-off"></v-icon>
+          <v-icon v-else icon="mdi-volume-high"></v-icon>
         </button>
 
         <select
@@ -181,7 +181,7 @@ export default {
         await this.setupAudioStream();
         await this.setupSignaling();
         this.joined = true;
-        this.connectionStatus = "connected";
+        this.connectionStatus = "Connected";
       } catch (error) {
         console.error("Failed to join room:", error);
         alert(`Failed to join room: ${error.message}`);
@@ -408,7 +408,7 @@ export default {
 
       return new Promise((resolve, reject) => {
         this.socket.on("connect", () => {
-          this.connectionStatus = "connected";
+          this.connectionStatus = "Connected";
           this.currentUserId = this.socket.id;
           this.socket.emit("join-room", this.roomId);
           resolve();
@@ -432,7 +432,7 @@ export default {
         });
 
         this.socket.on("connect_error", (error) => {
-          this.connectionStatus = "error";
+          this.connectionStatus = "Error";
           reject(new Error(`Connection failed: ${error.message}`));
         });
 
@@ -665,6 +665,9 @@ export default {
 
       if (this.selectedAudioDevice) {
         try {
+          // 현재 음소거 상태 저장
+          const currentMuteState = this.isMuted;
+
           if (this.localStream) {
             this.localStream.getTracks().forEach((track) => track.stop());
           }
@@ -673,6 +676,14 @@ export default {
             audio: { deviceId: { exact: this.selectedAudioDevice } },
             video: false,
           });
+
+          // 새 스트림에 음소거 상태 적용
+          newStream.getAudioTracks().forEach((track) => {
+            track.enabled = !currentMuteState;
+          });
+
+          // isMuted 상태 업데이트
+          this.isMuted = currentMuteState;
 
           Object.values(this.peerConnections).forEach((pc) => {
             const sender = pc
@@ -685,10 +696,19 @@ export default {
 
           this.localStream = newStream;
 
+          // 오디오 컨텍스트 및 분석기 업데이트
           if (this.audioContext) {
+            // 기존 연결 해제
+            this.audioContext.close();
+
+            // 새로운 오디오 컨텍스트 및 분석기 생성
+            this.audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
             const audioSource =
               this.audioContext.createMediaStreamSource(newStream);
+            this.audioAnalyser = this.audioContext.createAnalyser();
             audioSource.connect(this.audioAnalyser);
+            this.startAudioLevelMonitoring();
           }
         } catch (error) {
           console.error("Error changing audio device:", error);
@@ -703,7 +723,7 @@ export default {
       });
 
       this.joined = false;
-      this.connectionStatus = "disconnected";
+      this.connectionStatus = "Disconnected";
       await this.joinRoom();
     },
   },
@@ -730,10 +750,37 @@ export default {
 <style scoped>
 #app {
   font-family: "Noto Sans KR", sans-serif;
-  height: 100vh;
+  min-height: 100vh; /* height: 100vh를 min-height로 변경 */
   margin: 0;
   padding: 0;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  background: white;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  width: 60px;
+}
+
+.sidebar-collapsed {
+  width: 60px;
+}
+
+.sidebar-content {
+  width: 400px;
+  height: 100%;
+  min-width: 400px;
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-collapsed .sidebar-content {
+  transform: translateX(-340px);
 }
 
 /* 로그인 화면 스타일 */
@@ -750,8 +797,9 @@ export default {
   padding: 40px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px;
+  width: 300px;
+  max-width: none;
+  flex-shrink: 0;
   text-align: center;
 }
 
@@ -840,7 +888,9 @@ export default {
 
 /* 회의실 화면 스타일 */
 .meeting-container {
-  max-width: 1200px;
+  width: 330px;
+  max-width: none;
+  flex-shrink: 0;
   margin: 20px auto;
   padding: 24px;
   background: white;
@@ -880,17 +930,17 @@ export default {
   font-weight: 500;
 }
 
-.connected {
+.Connected {
   background: #27ae60;
   color: white;
 }
 
-.disconnected {
+.Disconnected {
   background: #e74c3c;
   color: white;
 }
 
-.error {
+.Error {
   background: #f1c40f;
   color: white;
 }
@@ -914,11 +964,14 @@ export default {
 }
 
 .audio-controls {
+  width: 300px;
+  max-width: none;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #f8f9fa;
+  background: #f6f6f6;
   border-radius: 12px;
 }
 
@@ -944,7 +997,7 @@ export default {
   padding: 10px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .audio-meter {
@@ -970,8 +1023,11 @@ export default {
 .recording-section,
 .report-section,
 .participants-section {
+  width: 300px;
+  max-width: none;
+  flex-shrink: 0;
   padding: 20px;
-  background: #f8f9fa;
+  background: #f6f6f6;
   border-radius: 10px;
 }
 
@@ -987,7 +1043,7 @@ export default {
 }
 
 .recording-button {
-  padding: 15px 30px;
+  padding: 11px 30px;
   background: #e74c3c;
   color: white;
   border: none;
@@ -1015,15 +1071,20 @@ export default {
 }
 
 .participants-section {
-  min-height: 200px;
+  width: 300px;
+  max-width: none;
+  flex-shrink: 0;
+  padding: 20px;
+  background: #f6f6f6;
+  border-radius: 10px;
+  min-height: 100px;
+  height: auto;
 }
 
 .participants-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .participant-item {
@@ -1080,57 +1141,6 @@ export default {
   }
 }
 
-/* 반응형 스타일 */
-@media (max-width: 1024px) {
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-controls {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .audio-controls {
-    flex: 1 1 300px;
-  }
-
-  .recording-section {
-    flex: 1 1 300px;
-  }
-}
-
-@media (max-width: 768px) {
-  .meeting-container {
-    margin: 0;
-    border-radius: 0;
-    padding: 16px;
-  }
-
-  .meeting-header {
-    flex-direction: column;
-    gap: 15px;
-    text-align: center;
-  }
-
-  .main-controls {
-    flex-direction: column;
-  }
-
-  .audio-controls,
-  .recording-section {
-    flex: none;
-  }
-
-  .features {
-    grid-template-columns: 1fr;
-  }
-
-  .device-select {
-    width: 100%;
-  }
-}
-
 .icon-wrapper {
   position: relative;
   display: inline-block;
@@ -1142,7 +1152,7 @@ export default {
   right: 2px;
   width: 12px;
   height: 12px;
-  background-color: #22c55e; /* 초록색 */
+  background-color: #22c55e;
   border-radius: 50%;
   border: 2px solid white;
 }

@@ -132,7 +132,7 @@ export default {
 
     const addedNodes = ref([]); // 새로 추가된 노드 저장
 
-    const sidebarOpen = ref(true);
+    const sidebarOpen = ref(false);
 
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
@@ -941,7 +941,8 @@ export default {
 
 .zoom-controls {
   position: fixed;
-  left: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 20px;
   background: white;
   padding: 5px;
@@ -1092,5 +1093,19 @@ export default {
 .mindmap-wrapper:focus {
   outline: none;
   box-shadow: 0 0 2px 2px rgba(0, 0, 255, 0.2);
+}
+
+.sidebar-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  /* 스크롤바 숨기기를 위한 CSS 추가 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Webkit (Chrome, Safari, Opera) 브라우저용 스크롤바 숨기기 */
+.sidebar-content::-webkit-scrollbar {
+  display: none;
 }
 </style>
