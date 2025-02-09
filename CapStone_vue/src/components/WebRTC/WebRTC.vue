@@ -148,7 +148,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import { updateMeetingReport } from "../audio/updateMeetingReport";
 import uploadAudio from "../audio/uploadAudio";
-import { thisMeetingContent } from "../audio/meetingContent";
+import thisMeetingContent from "../audio/meetingContent";
 
 export default {
   name: "AudioMeetingApp",
