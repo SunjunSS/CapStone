@@ -27,9 +27,15 @@ export default function thisMeetingContent(content) {
 
     // ** SRT 내용 그대로 출력 **
     if (srtText) {
+      // SRT 내용의 시간을 소수점 없이 표시
+      const cleanedSrtText = srtText.replace(
+        /(\d{2}:\d{2}:\d{2}),\d{3}/g,
+        "$1"
+      );
+
       report += `
         <h3>📌 대화내용 (SRT)</h3>
-        <p style="white-space: pre-wrap; word-wrap: break-word;">${srtText.replace(
+        <p style="white-space: pre-wrap; word-wrap: break-word;">${cleanedSrtText.replace(
           /\n/g,
           "<br>"
         )}</p> 
@@ -42,6 +48,7 @@ export default function thisMeetingContent(content) {
     if (reportText) {
       report += `
         <h3>📌 회의록</h3>
+        <br>
         <p style="white-space: pre-wrap; word-wrap: break-word;">${reportText.replace(
           /\n/g,
           "<br>"
