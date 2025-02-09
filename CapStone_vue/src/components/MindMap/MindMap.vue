@@ -1,79 +1,94 @@
 <template>
-  <div
-    class="mindmap-wrapper"
-    @mousedown="startDrag"
-    @mouseup="stopDrag"
-    @mousemove="dragMove"
-    @mouseleave="stopDrag"
-    @touchstart="startTouch"
-    @touchmove="touchMove"
-    @touchend="stopTouch"
-  >
-    <div class="mindmap-container">
-      <div ref="diagramDiv" class="mindmap-content"></div>
+  <div class="app-container">
+    <!-- Sidebar for WebRTC -->
+    <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
+      <div class="sidebar-toggle" @click="toggleSidebar">
+        {{ sidebarOpen ? "◀" : "▶" }}
+      </div>
+      <div class="sidebar-content" v-show="sidebarOpen">
+        <WebRTC />
+      </div>
     </div>
 
-    <!-- 실행복귀/취소 컨트롤 -->
-    <div class="history-controls">
-      <button
-        @click="undoAction"
-        class="history-btn"
-        :disabled="!canUndo"
-        :class="{ 'history-btn-enabled': canUndo }"
+    <!-- Main MindMap Content -->
+    <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
+      <div
+        class="mindmap-wrapper"
+        @mousedown="startDrag"
+        @mouseup="stopDrag"
+        @mousemove="dragMove"
+        @mouseleave="stopDrag"
+        @touchstart="startTouch"
+        @touchmove="touchMove"
+        @touchend="stopTouch"
       >
-        실행취소
-      </button>
-      <button
-        @click="redoAction"
-        class="history-btn"
-        :disabled="!canRedo"
-        :class="{ 'history-btn-enabled': canRedo }"
-      >
-        실행복귀
-      </button>
-    </div>
+        <div class="mindmap-container">
+          <div ref="diagramDiv" class="mindmap-content"></div>
+        </div>
 
-    <div class="zoom-controls">
-      <button @click="decreaseZoom" class="zoom-btn">-</button>
-      <span class="zoom-level">{{ Math.round(currentZoom * 100) }}%</span>
-      <button @click="increaseZoom" class="zoom-btn">+</button>
-    </div>
+        <!-- Original MindMap controls -->
+        <div class="history-controls">
+          <button
+            @click="undoAction"
+            class="history-btn"
+            :disabled="!canUndo"
+            :class="{ 'history-btn-enabled': canUndo }"
+          >
+            실행취소
+          </button>
+          <button
+            @click="redoAction"
+            class="history-btn"
+            :disabled="!canRedo"
+            :class="{ 'history-btn-enabled': canRedo }"
+          >
+            실행복귀
+          </button>
+        </div>
 
-    <div class="delete-control">
-      <button
-        @click="deleteSelectedNode"
-        class="delete-btn"
-        :class="{ 'delete-btn-enabled': selectedNode }"
-        :disabled="!selectedNode"
-      >
-        Delete Node
-      </button>
-    </div>
+        <div class="zoom-controls">
+          <button @click="decreaseZoom" class="zoom-btn">-</button>
+          <span class="zoom-level">{{ Math.round(currentZoom * 100) }}%</span>
+          <button @click="increaseZoom" class="zoom-btn">+</button>
+        </div>
 
-    <!-- 노드 추가 컨트롤 -->
-    <div class="add-controls" @keydown="handleKeyDown">
-      <button
-        @click="addChildNode"
-        class="add-btn"
-        :class="{ 'add-btn-enabled': selectedNode }"
-        :disabled="!selectedNode"
-      >
-        하위레벨 추가
-      </button>
-      <button
-        @click="addSiblingNode"
-        class="add-btn"
-        :class="{ 'add-btn-enabled': canAddSibling }"
-        :disabled="!canAddSibling"
-      >
-        동일레벨 추가
-      </button>
+        <div class="delete-control">
+          <button
+            @click="deleteSelectedNode"
+            class="delete-btn"
+            :class="{ 'delete-btn-enabled': selectedNode }"
+            :disabled="!selectedNode"
+          >
+            Delete Node
+          </button>
+        </div>
+
+        <div class="add-controls" @keydown="handleKeyDown">
+          <button
+            @click="addChildNode"
+            class="add-btn"
+            :class="{ 'add-btn-enabled': selectedNode }"
+            :disabled="!selectedNode"
+          >
+            하위레벨 추가
+          </button>
+          <button
+            @click="addSiblingNode"
+            class="add-btn"
+            :class="{ 'add-btn-enabled': canAddSibling }"
+            :disabled="!canAddSibling"
+          >
+            동일레벨 추가
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import WebRTC from "..//WebRTC/WebRTC.vue";
 import * as go from "gojs";
 import {
   loadMindmapFromServer,
@@ -84,6 +99,9 @@ import {
 } from "@/services/nodeService";
 
 export default {
+  components: {
+    WebRTC,
+  },
   setup() {
     const diagramDiv = ref(null);
     let myDiagram = null;
@@ -114,6 +132,12 @@ export default {
     const serverError = ref(null);
 
     const addedNodes = ref([]); // 새로 추가된 노드 저장
+
+    const sidebarOpen = ref(false);
+
+    const toggleSidebar = () => {
+      sidebarOpen.value = !sidebarOpen.value;
+    };
 
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
@@ -810,6 +834,8 @@ export default {
     });
 
     return {
+      sidebarOpen,
+      toggleSidebar,
       diagramDiv,
       currentZoom,
       selectedNode,
@@ -839,6 +865,60 @@ export default {
 </script>
 
 <style scoped>
+.app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  position: relative;
+  width: 400px;
+  height: 100vh;
+  background-color: white;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
+  z-index: 1000;
+}
+
+.sidebar-collapsed {
+  width: 30px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 60px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-left: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.main-expanded {
+  margin-left: -370px;
+}
+
 .mindmap-wrapper {
   position: fixed;
   top: 0;
@@ -869,7 +949,8 @@ export default {
 
 .zoom-controls {
   position: fixed;
-  left: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 20px;
   background: white;
   padding: 5px;
@@ -1020,5 +1101,19 @@ export default {
 .mindmap-wrapper:focus {
   outline: none;
   box-shadow: 0 0 2px 2px rgba(0, 0, 255, 0.2);
+}
+
+.sidebar-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  /* 스크롤바 숨기기를 위한 CSS 추가 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Webkit (Chrome, Safari, Opera) 브라우저용 스크롤바 숨기기 */
+.sidebar-content::-webkit-scrollbar {
+  display: none;
 }
 </style>
