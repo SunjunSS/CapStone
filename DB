@@ -1,0 +1,51 @@
+-- 새로운 데이터베이스 생성
+CREATE DATABASE capstone
+  CHARACTER SET = 'utf8mb4'
+  COLLATE = 'utf8mb4_unicode_ci';
+
+-- 생성된 데이터베이스 사용
+USE capstone;
+
+-- 노드 테이블: 각 노드의 기본 정보를 저장
+CREATE TABLE nodes (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,                 -- 노드 제목
+    content TEXT,                                -- 노드 내용
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    background_color VARCHAR(7),                -- 노드 배경색 (hex 코드)
+    text_color VARCHAR(7),                      -- 텍스트 색상 (hex 코드)
+    parent_id BIGINT,                          -- 상위 노드 ID
+    root_id BIGINT,                            -- 최상위 노드 ID
+    depth INT DEFAULT 0,                        -- 노드의 깊이 레벨
+    path TEXT,                                  -- 루트에서 현재 노드까지의 경로 (예: /1/4/22/)
+    is_expanded BOOLEAN DEFAULT true,           -- 노드 확장/축소 상태
+    sort_order INT DEFAULT 0,                   -- 같은 레벨에서의 정렬 순서
+    
+    FOREIGN KEY (parent_id) REFERENCES nodes(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (root_id) REFERENCES nodes(id)
+        ON DELETE CASCADE
+);
+
+-- 노드 계층 관계를 저장하는 테이블 (조상-자손 관계의 캐시)
+CREATE TABLE node_hierarchy (
+    ancestor_id BIGINT NOT NULL,
+    descendant_id BIGINT NOT NULL,
+    distance INT NOT NULL,  -- 두 노드 간의 거리 (직계 부모-자식은 1, 조부모-손자는 2, 등)
+    
+    PRIMARY KEY (ancestor_id, descendant_id),
+    FOREIGN KEY (ancestor_id) REFERENCES nodes(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (descendant_id) REFERENCES nodes(id)
+        ON DELETE CASCADE
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_nodes_parent_id ON nodes(parent_id);
+CREATE INDEX idx_nodes_root_id ON nodes(root_id);
+CREATE INDEX idx_nodes_path ON nodes(path);
+CREATE INDEX idx_nodes_title ON nodes(title);
+CREATE INDEX idx_node_hierarchy_ancestor ON node_hierarchy(ancestor_id);
+CREATE INDEX idx_node_hierarchy_descendant ON node_hierarchy(descendant_id);
+CREATE INDEX idx_node_hierarchy_distance ON node_hierarchy(distance);

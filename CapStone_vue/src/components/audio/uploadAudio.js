@@ -1,32 +1,35 @@
 import axios from "axios";
 
-
-// WebM 파일을 서버로 전송하는 함수 / POST방식으로 한번에 데이터 파일을 보낼 때 사용함.
 export default function uploadAudio(blob, roomId) {
-    return new Promise(async (resolve, reject) => {
-      const formData = new FormData();
-      formData.append("roomId", roomId); // ✅ roomId 추가
-      formData.append("audio", blob, "audio.wav"); // ✅ audio파일 추가
+  return new Promise(async (resolve, reject) => {
+    if (!blob || !roomId) {
+      console.error("❌ Missing audio blob or roomId");
+      return reject("Missing audio blob or roomId");
+    }
 
-      try {
-        const response = await axios.post(
-          "http://localhost:3000/upload",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+    const formData = new FormData();
+    formData.append("roomId", roomId);
+    formData.append(
+      "audio",
+      new File([blob], "audio.wav", { type: "audio/wav" })
+    );
 
-        console.log("클로바 요청 응답: ", response.data.clovaResponse);
+    try {
+      const response = await axios.post(
+        "http://localhost:3000/api/audio/upload", // ✅ API URL 수정
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-        resolve(response); // 성공하면 resolve로 response 반환
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        reject(error); // 에러 발생 시 reject
-      }
-    });
-  }
-
-  //module.exports = {uploadAudio};
+      console.log("✅ 업로드 성공! 클로바 응답:", response.data.clovaResponse);
+      resolve(response);
+    } catch (error) {
+      console.error("❌ 업로드 오류:", error);
+      reject(error);
+    }
+  });
+}
