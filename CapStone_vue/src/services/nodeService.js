@@ -6,7 +6,7 @@ const isSaving = ref(false);
 const lastSaveTime = ref(null);
 const serverError = ref(null);
 
-const API_BASE_URL = "http://localhost:3000/api/mindmap";
+const API_BASE_URL = "http://13.125.88.168:3000/api/mindmap";
 
 /**
  * 서버에서 마인드맵 데이터를 불러오는 함수

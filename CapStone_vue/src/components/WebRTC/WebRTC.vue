@@ -418,7 +418,7 @@ export default {
     // },
 
     async setupSignaling() {
-      this.socket = io("http://localhost:3000", {
+      this.socket = io("http://13.125.88.168:3000", {
         transports: ["websocket"],
         reconnection: true,
         reconnectionAttempts: 5,
