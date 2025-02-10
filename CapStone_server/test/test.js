@@ -108,7 +108,7 @@ async function main() {
 
     const AIres = await ClovaX(request); 
 
-    console.log(`x응답: ${AIres.data.result.message.content}`);
+    // console.log(`x응답: ${AIres.data.result.message.content}`);
 
   } catch (error) {
     console.error("Error:", error);
