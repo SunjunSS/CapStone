@@ -47,8 +47,14 @@
       <div class="meeting-header">
         <h2 class="room-title">Room: {{ roomId }}</h2>
         <div class="connection-info">
-          <span class="status-badge" :class="connectionStatus">
-            {{ connectionStatus }}
+          <span
+            class="status-badge"
+            :class="connectionStatus"
+            @click="leaveRoom()"
+            style="cursor: pointer"
+          >
+            <span class="status-text">{{ connectionStatus }}</span>
+            <v-icon class="status-icon" icon="mdi-phone-off"></v-icon>
           </span>
         </div>
       </div>
@@ -179,6 +185,7 @@ export default {
       try {
         this.joining = true;
         console.log("Joining room:", this.roomId);
+        this.isMuted = false;
         await this.setupAudioStream();
         await this.setupSignaling();
         this.joined = true;
@@ -738,6 +745,43 @@ export default {
       this.connectionStatus = "Disconnected";
       await this.joinRoom();
     },
+
+    leaveRoom() {
+      // 모든 미디어 트랙 중지
+      if (this.localStream) {
+        this.localStream.getTracks().forEach((track) => track.stop());
+      }
+
+      // 모든 피어 연결 종료
+      Object.keys(this.peerConnections).forEach((userId) => {
+        this.handlePeerConnectionFailure(userId);
+      });
+
+      // 녹음 중이라면 중지
+      if (this.isRecording) {
+        this.stopRecording();
+      }
+
+      // 소켓 연결 종료
+      if (this.socket) {
+        this.socket.emit("leave-room", this.roomId);
+        this.socket.disconnect();
+      }
+
+      // 오디오 컨텍스트 종료
+      if (this.audioContext) {
+        this.audioContext.close();
+      }
+
+      // 상태 초기화
+      this.joined = false;
+      this.connectionStatus = "Disconnected";
+      this.participants = [];
+      this.peerConnections = {};
+      this.remoteStreams = {};
+      this.audioElements = {};
+      this.roomId = "";
+    },
   },
   beforeDestroy() {
     if (this.socket) {
@@ -900,7 +944,7 @@ export default {
 
 /* 회의실 화면 스타일 */
 .meeting-container {
-  width: 330px;
+  width: 360px;
   max-width: none;
   flex-shrink: 0;
   margin: 20px auto;
@@ -1010,6 +1054,13 @@ export default {
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 11px;
+  transition: all 0.3s ease;
+  outline: none;
+  background-color: white;
+}
+
+.device-select:hover {
+  border-color: #ababab;
 }
 
 .audio-meter {
@@ -1167,5 +1218,52 @@ export default {
   background-color: #22c55e;
   border-radius: 50%;
   border: 2px solid white;
+}
+
+.status-badge {
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-text {
+  display: inline-block;
+  transition: opacity 0.3s ease;
+}
+
+.status-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.status-badge:hover .status-text {
+  opacity: 0;
+}
+
+.status-badge:hover .status-icon {
+  opacity: 1;
+}
+
+.status-badge:hover {
+  transform: scale(1.05);
+}
+
+.Connected:hover {
+  background: #219a52;
+}
+
+.Disconnected:hover {
+  background: #c0392b;
+}
+
+.Error:hover {
+  background: #d4ac0d;
 }
 </style>
