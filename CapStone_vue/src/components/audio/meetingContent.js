@@ -1,4 +1,8 @@
 export default function thisMeetingContent(content) {
+
+
+
+
   let report = "";
 
   if (typeof content !== "string") {
@@ -13,7 +17,8 @@ export default function thisMeetingContent(content) {
       .replace(/\n/g, "<br>")
       .replace(/---/g, "")
       .replace(/"/g, "")
-      .replace(/###/g, "");
+      .replace(/###/g, "")
+      .replace(/\\/g,"");
 
     // SRT 파일, 회의록, 키워드 추출
     const srtMatch = formattedText.match(/SRT 파일:\s*([\s\S]+?)회의록:/);

@@ -443,10 +443,25 @@ export default {
         });
 
         this.socket.on("return-recording", (recordingData) => {
-          console.log(recordingData);
-          const report = thisMeetingContent(recordingData);
+          console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
 
-          console.log(`파싱된 응답값: ${report}`);
+          // Object 타입인지 확인 후 문자열로 변환
+          let processedData;
+          if (typeof recordingData === "object") {
+            try {
+              processedData = JSON.stringify(recordingData, null, 2); // JSON 포맷 변환
+            } catch (error) {
+              console.error("❌ JSON 변환 오류:", error);
+              processedData = "[오류] 데이터를 변환할 수 없습니다.";
+            }
+          } else {
+            processedData = recordingData; // 기존 문자열 그대로 유지
+          }
+
+          // 회의록 업데이트
+          const report = thisMeetingContent(processedData);
+
+          console.log("🟢 변환된 응답값:", report);
           this.meetingContent = report;
         });
 

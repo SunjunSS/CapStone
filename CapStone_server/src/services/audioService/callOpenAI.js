@@ -71,7 +71,7 @@ async function askOpenAI(prompt) {
 
     console.log("OpenAI 응답:", response.choices[0].message.content);
 
-    return response;
+    return response.choices[0].message.content;
   } catch (error) {
     console.error("오류 발생:", error);
   }
