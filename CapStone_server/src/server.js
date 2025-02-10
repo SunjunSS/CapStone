@@ -20,9 +20,10 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ API 라우트 설정
+// ✅ API 라우트 설정 (io 전달)
+const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
 app.use("/api/mindmap", require("./routes/nodeRoutes"));
-app.use("/api/audio", require("./routes/audioRoutes"));
+app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);

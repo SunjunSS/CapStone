@@ -41,6 +41,8 @@ const fs = require("fs");
 const secret = process.env.SECRET;
 const invokeUrl = process.env.INVOKE_URL;
 
+//const media = "WAV";
+
 // 요청 설정
 const requestEntity = {
   language: "ko-KR",
@@ -55,7 +57,7 @@ const requestEntity = {
 async function callClovaSpeechAPI(filePath) {
   try {
 
-    console.log(`filePath -------- ${filePath}`);
+    
 
     // 파일이 존재하는지 확인
     if (!fs.existsSync(filePath)) {
@@ -79,8 +81,7 @@ async function callClovaSpeechAPI(filePath) {
     formData.append("media", fs.createReadStream(filePath));
     // formData.append("format", SRT);
 
-    console.log("요청 파일 경로: ", filePath);
-
+    
     // API 호출
     const response = await axios.post(
       `${invokeUrl}/recognizer/upload`,
