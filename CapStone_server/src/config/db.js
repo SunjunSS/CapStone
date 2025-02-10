@@ -1,10 +1,11 @@
 const mysql = require("mysql2");
 
 const connection = mysql.createConnection({
-  host: "localhost",
+  host: "database-capstone.cxw71dyvtgd2.ap-northeast-2.rds.amazonaws.com",
   user: "root",
-  password: "1234",
+  password: "00000000",
   database: "capstone",
+  port: 3306,
 });
 
 connection.connect((err) => {
