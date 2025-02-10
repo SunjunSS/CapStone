@@ -78,8 +78,6 @@ module.exports = (io) => {
         );
 
        
-        
-
         io.to(roomId).emit("return-recording", {
           openAIResponse,
         });

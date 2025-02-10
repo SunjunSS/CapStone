@@ -1,8 +1,6 @@
 export default function thisMeetingContent(content) {
 
 
-
-
   let report = "";
 
   if (typeof content !== "string") {
