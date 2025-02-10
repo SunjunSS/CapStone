@@ -95,6 +95,7 @@ import {
   serverError,
   saveMindmapToServer,
   deleteMindmapNodes,
+  updateMindmapNode,
 } from "@/services/nodeService";
 
 export default {
@@ -649,7 +650,7 @@ export default {
               }
             });
 
-            inputField.addEventListener("blur", () => {
+            inputField.addEventListener("blur", async () => {
               myDiagram.startTransaction("update node and layout");
               const wasSelected = node.data.isSelected;
               myDiagram.model.setDataProperty(
@@ -684,6 +685,13 @@ export default {
 
               document.body.removeChild(inputField);
               updateUndoRedoState();
+              // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
+              const success = await updateMindmapNode(node.data);
+              if (success) {
+                console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
+              } else {
+                console.error("❌ 서버에 노드 이름 업데이트 실패");
+              }
             });
           },
         },

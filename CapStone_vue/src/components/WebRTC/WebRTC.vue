@@ -307,8 +307,14 @@ export default {
         this.recordedChunks.push(event.data);
       };
 
-      this.mediaRecorder.onstop = () => {
+      this.mediaRecorder.onstop = async () => {
+        if (this.recordedChunks.length === 0) {
+          console.error("❌ 녹음 데이터가 없습니다.");
+          return;
+        }
+
         const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
+        console.log("🎤 녹음 데이터 준비 완료, 업로드 시작...");
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -316,7 +322,12 @@ export default {
         link.click();
 
         // 서버로 audio파일을 업로드함
-        uploadAudio(blob, this.roomId);
+        try {
+          await uploadAudio(blob, this.roomId);
+          console.log("✅ 업로드 성공!");
+        } catch (error) {
+          console.error("❌ 업로드 실패:", error.message);
+        }
       };
 
       this.mediaRecorder.start();

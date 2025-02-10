@@ -1,9 +1,12 @@
 import { ref } from "vue";
 import * as go from "gojs";
+import axios from "axios"; // 📌 axios 추가
 
 const isSaving = ref(false);
 const lastSaveTime = ref(null);
 const serverError = ref(null);
+
+const API_BASE_URL = "http://localhost:3000/api/mindmap";
 
 /**
  * 서버에서 마인드맵 데이터를 불러오는 함수
@@ -13,8 +16,8 @@ export const loadMindmapFromServer = async (myDiagram) => {
   try {
     serverError.value = null;
 
-    const response = await fetch("http://localhost:3000/api/mindmap");
-    const data = await response.json();
+    const response = await axios.get(API_BASE_URL);
+    const data = response.data;
 
     if (!data.success) {
       throw new Error(data.message);
@@ -47,23 +50,14 @@ export const saveMindmapToServer = async (addedNodes) => {
     isSaving.value = true;
     serverError.value = null;
 
-    const payload = { addedNodes: JSON.parse(JSON.stringify(addedNodes)) };
+    console.log("🚀 서버로 전송할 데이터:", addedNodes);
 
-    console.log("🚀 서버로 전송할 데이터:", payload);
+    const response = await axios.post(`${API_BASE_URL}/save`, { addedNodes });
 
-    const response = await fetch("http://localhost:3000/api/mindmap/save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    console.log("🟢 서버 응답:", response.data);
 
-    const data = await response.json();
-    console.log("🟢 서버 응답:", data);
-
-    if (!data.success) {
-      throw new Error(data.message);
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
 
     lastSaveTime.value = new Date();
@@ -91,19 +85,14 @@ export const deleteMindmapNodes = async (deletedNodes) => {
   try {
     console.log("🗑️ 삭제할 데이터:", deletedNodes);
 
-    const response = await fetch("http://localhost:3000/api/mindmap/delete", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ deletedNodes }),
+    const response = await axios.delete(`${API_BASE_URL}/delete`, {
+      data: { deletedNodes },
     });
 
-    const data = await response.json();
-    console.log("🟢 삭제 요청 응답:", data);
+    console.log("🟢 삭제 요청 응답:", response.data);
 
-    if (!data.success) {
-      throw new Error(data.message);
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
 
     return true;
@@ -128,19 +117,14 @@ export const updateMindmapNode = async (updatedNode) => {
   try {
     console.log("✏️ 수정 요청 데이터:", updatedNode);
 
-    const response = await fetch("http://localhost:3000/api/mindmap/update", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ updatedNode }),
+    const response = await axios.patch(`${API_BASE_URL}/update`, {
+      updatedNode,
     });
 
-    const data = await response.json();
-    console.log("🟢 수정 요청 응답:", data);
+    console.log("🟢 수정 요청 응답:", response.data);
 
-    if (!data.success) {
-      throw new Error(data.message);
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
 
     return true;

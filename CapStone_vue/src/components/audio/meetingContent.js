@@ -32,7 +32,6 @@ export default function thisMeetingContent(content) {
         /(\d{2}:\d{2}:\d{2}),\d{3}/g,
         "$1"
       );
-
       report += `
         <h3>📌 대화내용 (SRT)</h3>
         <p style="white-space: pre-wrap; word-wrap: break-word;">${cleanedSrtText.replace(
