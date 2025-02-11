@@ -11,8 +11,10 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
     // 방 참가 처리
-    socket.on("join-room", (roomId) => {
+    socket.on("join-room", ({ roomId, userId }) => {
       socket.join(roomId);
+      socket.userId = userId; // 사용자 ID를 socket에 저장
+
       // 방이 없으면 생성
       if (!rooms[roomId]) {
         rooms[roomId] = [];
@@ -27,15 +29,15 @@ module.exports = (io) => {
       });
       // 기존 참가자들에게 새로운 참가자를 알림
       socket.to(roomId).emit("new-participant", {
-        participantId: socket.id,
+        participantId: userId,
       });
       // 참가자 목록에 추가
-      rooms[roomId].push(socket.id);
+      rooms[roomId].push(userId);
       // 방 참가자 목록 업데이트 브로드캐스트
       io.to(roomId).emit("room-update", {
         participants: rooms[roomId],
       });
-      console.log(`User ${socket.id} joined room ${roomId}`);
+      console.log(`User ${userId} joined room ${roomId}`);
       console.log(`Room ${roomId} participants:`, rooms[roomId]);
     });
     // 녹음 시작 상태 수신
@@ -55,6 +57,19 @@ module.exports = (io) => {
       recordingStatus[roomId] = false;
       io.to(roomId).emit("sync-recording", false); // 클라이언트 동기화
     });
+
+    // 마우스 이동 정보 전달
+    // socket.on("mouse-move", ({ roomId,userId, x, y }) => {
+
+    //   console.log(`USER: ${userId}, X: ${x}, Y: ${y}`);
+
+    //   socket.to(roomId).emit("update-mouse", {
+    //       userId: socket.userId,
+    //       x,y,
+    //       nickname: `${roomId + socket.userId}`,
+    //     });
+    // });
+
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
       try {
