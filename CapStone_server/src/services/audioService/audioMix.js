@@ -51,6 +51,7 @@ async function mixAudio(folderPath, outputPath) {
 
         const outputFile = path.join(folderPath, `converted_${index}.wav`);
         return convertAudio(inputPaths[0], outputFile);
+        
       }
 
 
@@ -85,7 +86,16 @@ async function mixAudio(folderPath, outputPath) {
 
         // 병렬 믹싱 (amix 필터 적용)
         command
-          .complexFilter('amerge')
+          .complexFilter([
+            {
+              filter: "amix",
+              options: {
+                inputs: convertedFiles.length, // 입력 오디오 개수 지정
+                duration: "longest", // 가장 긴 오디오 기준으로 믹싱
+                dropout_transition: 2, // 짧은 소리의 끊김 방지
+              },
+            },
+          ])
           .audioCodec("pcm_s16le")
           .format("wav")
           .on("end", () => {
