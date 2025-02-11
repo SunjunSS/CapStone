@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainHome from './components/MindMap/MindMap.vue'
 import WeBRTC from './components/WebRTC/WebRTC.vue'
+import MouseTracking from './components/WebRTC/mouseTracking.vue'
 
 const routes = [
   {
@@ -11,6 +12,10 @@ const routes = [
     path: '/RTC',
     component: WeBRTC
   },
+  {
+    path: '/Mouse',
+    component: MouseTracking
+  }
 ]
 
 const router = createRouter({

@@ -315,11 +315,7 @@ export default {
 
         const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
         console.log("🎤 녹음 데이터 준비 완료, 업로드 시작...");
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "audio-meeting.wav";
-        link.click();
+        
 
         // 서버로 audio파일을 업로드함
         try {
@@ -342,95 +338,55 @@ export default {
       this.isRecording = false;
     },
 
-    updateMeetingReport(content) {
-      if (typeof content !== "string") {
-        console.error(
-          "Expected content to be a string, but got:",
-          typeof content
-        );
-        this.meetingContent = "<p style='color: #bbb;'>응답 형식 오류</p>";
-        return;
+
+    updateMousePosition(userId, x, y, nickname) {
+      let cursor = document.getElementById(`cursor-${userId}`);
+      if (!cursor) {
+        cursor = document.createElement("div");
+        cursor.id = `cursor-${userId}`;
+        cursor.classList.add("mouse-cursor");
+        cursor.innerHTML = `<span class="cursor-label">${nickname}</span>`;
+        document.body.appendChild(cursor);
       }
-
-      try {
-        // SRT 데이터를 줄 단위로 분리
-        const lines = content.trim().split("\n");
-        const formattedContent = [];
-        let block = { index: null, time: null, text: "" };
-
-        lines.forEach((line) => {
-          if (/^\d+$/.test(line)) {
-            // 번호 라인
-            if (block.index) {
-              // 이전 블록이 있다면 저장
-              formattedContent.push(block);
-            }
-            block = { index: line, time: null, text: "" };
-          } else if (line.includes("-->")) {
-            // 시간 정보 라인
-            block.time = line.replace(",", ".");
-          } else if (line.trim()) {
-            // 텍스트 라인
-            block.text += `${line.trim()} `;
-          }
-        });
-
-        // 마지막 블록 추가
-        if (block.index) {
-          formattedContent.push(block);
-        }
-
-        // HTML로 변환
-        this.meetingContent = formattedContent
-          .map(
-            (block) => `
-            <p><strong>${block.index}번 음성</strong> (${block.time})</p>
-            <p>${block.text.trim()}</p>
-          `
-          )
-          .join("");
-      } catch (error) {
-        console.error("Error parsing SRT data:", error);
-        this.meetingContent =
-          "<p style='color: #bbb;'>파싱 중 오류가 발생했습니다.</p>";
-      }
+      cursor.style.left = `${x}px`;
+      cursor.style.top = `${y}px`;
     },
 
-    // WebM 파일을 서버로 전송하는 함수
-    // async uploadAudio(blob) {
-    //   const formData = new FormData();
-    //   formData.append("audio", blob, "audio.wav");
-    //   formData.append("roomId", this.roomId); // roomId 추가
-
-    //   try {
-    //     const response = await axios.post("http://localhost:3000/upload", formData, {
-    //       headers: {
-    //         "Content-Type": "multipart/form-data",
-    //       },
-    //     });
-    //     console.log(response.data.message);
-    //     //console.log("클로바 요청 응답: ",response.data.clovaResponse);
-    //     //this.updateMeetingReport(response.data.clovaResponse);
-
-    //   } catch (error) {
-    //     console.error("Error uploading file:", error.message);
-    //   }
-    // },
-
     async setupSignaling() {
-      this.socket = io("http://13.125.88.168:3000", {
+      const API_BASE_URL = `http://13.125.88.168:3000`;
+      this.socket = io("http://localhost:3000", {
         transports: ["websocket"],
         reconnection: true,
+
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       });
 
       return new Promise((resolve, reject) => {
+
+        const customId = Math.random().toString(36).substring(2, 7); // 4~5글자 ID 생성
+
         this.socket.on("connect", () => {
           this.connectionStatus = "Connected";
-          this.currentUserId = this.socket.id;
-          this.socket.emit("join-room", this.roomId);
+          this.currentUserId = customId;
+          this.socket.emit("join-room", { roomId: this.roomId, userId: this.currentUserId });
           resolve();
+        });
+
+
+        // 마우스 위치 업데이트 수신
+        this.socket.on("update-mouse", ({ userId, x, y, nickname }) => {
+          this.updateMousePosition(userId, x, y, nickname);
+        });
+
+        window.addEventListener("mousemove", (event) => {
+          // console.log(`마우스 이동 감지: X=${event.clientX}, Y=${event.clientY}`);
+          this.socket.emit("mouse-move", {
+            roomId: this.roomId,
+            userId: this.currentUserId,
+            x: event.clientX,
+            y: event.clientY,
+          });
         });
 
         // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
@@ -980,6 +936,27 @@ export default {
   margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 2px solid #f0f0f0;
+}
+
+.mouse-cursor {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  background-color: red;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 0.05s linear;
+}
+
+.cursor-label {
+  position: absolute;
+  top: -20px;
+  left: 5px;
+  background-color: black;
+  color: white;
+  padding: 2px 5px;
+  border-radius: 5px;
+  font-size: 12px;
 }
 
 .room-title {
