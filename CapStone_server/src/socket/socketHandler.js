@@ -59,16 +59,16 @@ module.exports = (io) => {
     });
 
     // 마우스 이동 정보 전달
-    socket.on("mouse-move", ({ roomId,userId, x, y }) => {
+    // socket.on("mouse-move", ({ roomId,userId, x, y }) => {
 
-      console.log(`USER: ${userId}, X: ${x}, Y: ${y}`);
+    //   console.log(`USER: ${userId}, X: ${x}, Y: ${y}`);
 
-      socket.to(roomId).emit("update-mouse", {
-          userId: socket.userId,
-          x,y,
-          nickname: `${roomId + socket.userId}`,
-        });
-    });
+    //   socket.to(roomId).emit("update-mouse", {
+    //       userId: socket.userId,
+    //       x,y,
+    //       nickname: `${roomId + socket.userId}`,
+    //     });
+    // });
 
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
