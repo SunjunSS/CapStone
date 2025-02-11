@@ -375,19 +375,19 @@ export default {
 
 
         // 마우스 위치 업데이트 수신
-        this.socket.on("update-mouse", ({ userId, x, y, nickname }) => {
-          this.updateMousePosition(userId, x, y, nickname);
-        });
+        // this.socket.on("update-mouse", ({ userId, x, y, nickname }) => {
+        //   this.updateMousePosition(userId, x, y, nickname);
+        // });
 
-        window.addEventListener("mousemove", (event) => {
-          // console.log(`마우스 이동 감지: X=${event.clientX}, Y=${event.clientY}`);
-          this.socket.emit("mouse-move", {
-            roomId: this.roomId,
-            userId: this.currentUserId,
-            x: event.clientX,
-            y: event.clientY,
-          });
-        });
+        // window.addEventListener("mousemove", (event) => {
+        //   // console.log(`마우스 이동 감지: X=${event.clientX}, Y=${event.clientY}`);
+        //   this.socket.emit("mouse-move", {
+        //     roomId: this.roomId,
+        //     userId: this.currentUserId,
+        //     x: event.clientX,
+        //     y: event.clientY,
+        //   });
+        // });
 
         // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
         this.socket.on("sync-recording", (isRecording) => {
