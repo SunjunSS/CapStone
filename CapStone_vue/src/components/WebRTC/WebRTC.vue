@@ -364,11 +364,11 @@ export default {
 
       return new Promise((resolve, reject) => {
 
-        const customId = Math.random().toString(36).substring(2, 7); // 4~5글자 ID 생성
+        //  const customId = Math.random().toString(36).substring(2, 7); // 4~5글자 ID 생성
 
         this.socket.on("connect", () => {
           this.connectionStatus = "Connected";
-          this.currentUserId = customId;
+          this.currentUserId = this.socket.id;
           this.socket.emit("join-room", { roomId: this.roomId, userId: this.currentUserId });
           resolve();
         });

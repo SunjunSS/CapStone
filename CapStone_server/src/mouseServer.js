@@ -33,7 +33,6 @@ io.on("connection", (socket) => {
       console.error(`🚨 x 또는 y 값이 없습니다! userId: ${userId}`);
       return;
     }
-    console.log(`mouse moved- x: ${x}, y: ${y}`);
     socket.to(roomId).emit("update-mouse", { userId, x, y });
   });
 
