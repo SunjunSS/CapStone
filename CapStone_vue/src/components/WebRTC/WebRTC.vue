@@ -379,10 +379,11 @@ export default {
           this.updateMousePosition(userId, x, y, nickname);
         });
 
-        // 마우스 이동 이벤트 감지
         window.addEventListener("mousemove", (event) => {
+          // console.log(`마우스 이동 감지: X=${event.clientX}, Y=${event.clientY}`);
           this.socket.emit("mouse-move", {
             roomId: this.roomId,
+            userId: this.currentUserId,
             x: event.clientX,
             y: event.clientY,
           });
