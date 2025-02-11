@@ -15,8 +15,9 @@ export default function uploadAudio(blob, roomId) {
     );
 
     try {
+       const API_BASE_URL = `http://13.125.88.168:3000`;
       const response = await axios.post(
-        "http://13.125.88.168:3000/api/audio/upload", // ✅ API URL 수정
+        "http://localhost:3000/api/audio/upload", // ✅ API URL 수정
         formData,
         {
           headers: {
