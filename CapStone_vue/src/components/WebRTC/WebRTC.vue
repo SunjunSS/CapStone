@@ -141,7 +141,6 @@
       </button>
     </div>
   </div>
-
 </template>
 
 <script>
@@ -338,11 +337,10 @@ export default {
       this.isRecording = false;
     },
 
-  
-
     async setupSignaling() {
-      const API_BASE_URL = `http://13.125.88.168:3000`;
-      this.socket = io("http://54.180.32.202:3000", {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
+
+      this.socket = io(`${API_BASE_URL}`, {
         transports: ["websocket"],
         reconnection: true,
 
@@ -362,8 +360,6 @@ export default {
           });
           resolve();
         });
-
-      
 
         // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
         this.socket.on("sync-recording", (isRecording) => {
@@ -425,7 +421,7 @@ export default {
         });
 
         this.socket.on("signal", this.handleSignal);
-        this.socket.on("user-disconnected",  this.handleUserDisconnected);
+        this.socket.on("user-disconnected", this.handleUserDisconnected);
       });
     },
 

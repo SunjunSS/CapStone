@@ -22,21 +22,23 @@ export default {
       userId: "",
       roomId: "room-1", // 특정 방 ID (필요시 동적으로 설정 가능)
       room: [],
-      cursors: {} // 다른 사용자들의 마우스 위치 저장
+      cursors: {}, // 다른 사용자들의 마우스 위치 저장
     };
   },
   mounted() {
     // 소켓 초기화
-    const API_BASE_URL = `http://54.180.153.199:3000`;
-    this.socket = io("http://54.180.32.202:3000", { transports: ["websocket"] });
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
+    this.socket = io(`${API_BASE_URL}`, {
+      transports: ["websocket"],
+    });
 
     // 랜덤 ID 생성 (4~5글자)
     this.userId = Math.random().toString(36).substring(2, 7);
-    
+
     // 서버에 참가 알림
     this.socket.emit("join-room", { roomId: this.roomId, userId: this.userId });
 
-    this.socket.on("room-update", ({room}) => {
+    this.socket.on("room-update", ({ room }) => {
       this.room = room;
     });
 
@@ -52,7 +54,7 @@ export default {
 
     // 다른 사용자들의 마우스 위치 업데이트
     this.socket.on("update-mouse", ({ userId, x, y }) => {
-      this.cursors[userId] = {x,y};
+      this.cursors[userId] = { x, y };
     });
 
     // 사용자 퇴장 시 마우스 표시 제거
@@ -66,9 +68,12 @@ export default {
   },
   beforeDestroy() {
     // 사용자가 나갈 때 서버에 알림
-    this.socket.emit("leave-room", { roomId: this.roomId, userId: this.userId });
+    this.socket.emit("leave-room", {
+      roomId: this.roomId,
+      userId: this.userId,
+    });
     this.socket.disconnect();
-  }
+  },
 };
 </script>
 
@@ -107,10 +112,8 @@ export default {
   border-radius: 50%; /* 원형으로 만들기 */
 }
 
-
 .finger-cursor {
   font-size: 100px; /* 손가락 크기 */
   color: red; /* 손가락 색상 */
 }
 </style>
-
