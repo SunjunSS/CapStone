@@ -84,12 +84,8 @@ export default {
   background-color: transparent;
   position: relative;
 }
-.mouse-tracking-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background-color: transparent; /* 투명 배경 */
-}
+
+
 
 .mouse-tracking-layer {
   position: fixed;
@@ -98,7 +94,7 @@ export default {
   width: 100vw;
   height: 100vh;
   pointer-events: none; /* 클릭 방해 X */
-  z-index: 9999; /* 최상위 레이어 */
+  z-index: 998; /* 최상위 레이어 */
 }
 
 .cursor {
@@ -110,6 +106,7 @@ export default {
   background-color: none;
   font-size: 20px;
   border-radius: 50%; /* 원형으로 만들기 */
+  z-index: 999;
 }
 
 .finger-cursor {

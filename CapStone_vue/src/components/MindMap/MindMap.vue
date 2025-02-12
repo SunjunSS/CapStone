@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
 
-     <mouseTracking class="mouse-tracking-layer" />
+     
 
     <!-- Sidebar for WebRTC -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
@@ -15,6 +15,8 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
+
+      <mouseTracking class="mouse-tracking-layer" />
 
       <div
         class="mindmap-wrapper"
