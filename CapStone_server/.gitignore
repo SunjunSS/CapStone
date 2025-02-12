@@ -2,3 +2,6 @@
 /test/
 /storage/audio/*
 /storage/temp_audio/*
+
+!storage/audio/.gitkeep
+!storage/temp_audio/.gitkeep

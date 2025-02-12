@@ -352,7 +352,7 @@ export default {
 
     async setupSignaling() {
       const API_BASE_URL = `http://13.125.88.168:3000`;
-      this.socket = io("http://localhost:3000", {
+      this.socket = io("http://54.180.32.202:3000", {
         transports: ["websocket"],
         reconnection: true,
 

@@ -1,59 +1,40 @@
-const fs = require("fs");
+const fs = require("fs").promises;
+const path = require("path");
 
 /**
- * 파일 경로 배열을 받아 모든 파일을 삭제하는 함수
- * @param {string[] | string | object[]} filePaths - 삭제할 파일 경로 배열 (객체도 지원)
+ * 특정 폴더 내 모든 파일을 삭제하는 함수 (비동기 처리)
+ * @param {string} folderPath - 삭제할 폴더 경로
  */
-function deleteFiles(filePaths) {
-  if (!filePaths) {
-    console.error("❌ 삭제할 파일 경로가 없습니다.");
-    return;
-  }
+async function deleteFiles(folderPath) {
+  try {
+    // 폴더 존재 여부 확인
+    await fs.access(folderPath);
 
-  // 단일 경로 문자열이면 배열로 변환
-  if (!Array.isArray(filePaths)) {
-    filePaths = [filePaths];
-  }
+    // 폴더 내 파일 목록 가져오기
+    const files = await fs.readdir(folderPath);
+    // 삭제할 파일 필터링 (.gitkeep 제외)
+    const filesToDelete = files.filter((file) => file !== ".gitkeep");
 
-  // 배열이 비어 있다면 삭제할 파일이 없음
-  if (filePaths.length === 0) {
-    console.log("❌ 삭제할 파일이 없습니다.");
-    return;
-  }
-
-  // 파일 삭제 처리
-  filePaths.forEach((filePath) => {
-    // 객체일 경우 적절한 속성을 추출
-    if (typeof filePath === "object") {
-      if (filePath.path) {
-        filePath = filePath.path;
-      } else if (filePath.file) {
-        filePath = filePath.file;
-      } else {
-        console.error(`❌ 잘못된 파일 경로 형식: ${JSON.stringify(filePath)}`);
-        return;
-      }
-    }
-
-    // 최종적으로 문자열이 아닐 경우 오류 처리
-    if (typeof filePath !== "string") {
-      console.error(
-        `❌ 파일 경로가 문자열이 아닙니다: ${JSON.stringify(filePath)}`
-      );
+    if (filesToDelete.length === 0) {
+      console.log(`ℹ️ 폴더가 이미 비어 있습니다: ${folderPath}`);
       return;
     }
 
-    // 파일 삭제 실행
-    fs.unlink(filePath, (err) => {
-      console.log(`삭제할 wav 파일 경로: ${filePath}`);
-
-      if (err) {
-        console.error(`❌ 파일 삭제 오류: ${filePath} - ${err.message}`);
-      } else {
+    // 순차적으로 파일 삭제
+    for (const file of filesToDelete) {
+      const filePath = path.join(folderPath, file);
+      try {
+        await fs.unlink(filePath);
         console.log(`✅ 삭제된 파일: ${filePath}`);
+      } catch (err) {
+        console.error(`❌ 파일 삭제 오류: ${filePath} - ${err.message}`);
       }
-    });
-  });
+    }
+
+    console.log(`✅ 모든 파일 삭제 완료: ${folderPath}`);
+  } catch (err) {
+    console.error(`❌ 폴더 접근 오류: ${folderPath} - ${err.message}`);
+  }
 }
 
 module.exports = { deleteFiles };

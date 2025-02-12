@@ -34,6 +34,7 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
 
 exports.processAudioFile = async (mp3Path) => {
   try {
+    deleteFiles(tempAudioFolder);
     const clovaResponse = await callClovaSpeechAPI(mp3Path);
     const openAIResponse = await askOpenAI(clovaResponse);
     return { clovaResponse, openAIResponse };
