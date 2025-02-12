@@ -141,12 +141,24 @@
       </button>
     </div>
   </div>
+
+  <div class="mouse-tracking-container">
+    <!-- 다른 사용자들의 마우스를 손가락 모양으로 표시 -->
+    <div
+      v-for="(cursor, userId) in cursors"
+      :key="userId"
+      class="cursor"
+      :style="{ left: cursor.x + 'px', top: cursor.y + 'px' }"
+    >
+      👆
+    </div>
+  </div>
 </template>
 
 <script>
 import io from "socket.io-client";
 import axios from "axios";
-import { updateMeetingReport } from "../audio/updateMeetingReport";
+//import { updateMeetingReport } from "../audio/updateMeetingReport";
 import uploadAudio from "../audio/uploadAudio";
 import thisMeetingContent from "../audio/meetingContent";
 
@@ -178,6 +190,7 @@ export default {
       mediaRecorder: null, // MediaRecorder 인스턴스
       recordedChunks: [], // 녹음된 데이터
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
+      cursors: {} // 다른 사용자들의 마우스 위치 저장
     };
   },
   methods: {
@@ -373,20 +386,30 @@ export default {
           resolve();
         });
 
-        // 마우스 위치 업데이트 수신
-        // this.socket.on("update-mouse", ({ userId, x, y, nickname }) => {
-        //   this.updateMousePosition(userId, x, y, nickname);
+        // 마우스 이동 이벤트 감지 후 서버로 전송
+        window.addEventListener("mousemove", (event) => {
+          this.socket.emit("mouse-move", {
+            roomId: this.roomId,
+            userId: this.userId,
+            x: event.clientX,
+            y: event.clientY,
+          });
+        });
+
+        // 다른 사용자들의 마우스 위치 업데이트
+        this.socket.on("update-mouse", ({ userId, x, y }) => {
+          this.cursors[userId] = {x,y};
+        });
+
+        // 사용자 퇴장 시 마우스 표시 제거
+        // this.socket.on("user-disconnected", (userId) => {
+        //   if (this.cursors[userId]) {
+        //     const updatedCursors = { ...this.cursors };
+        //     delete updatedCursors[userId];
+        //     this.cursors = updatedCursors; // 반응성을 유지하기 위해 새 객체 할당
+        //   }
         // });
 
-        // window.addEventListener("mousemove", (event) => {
-        //   // console.log(`마우스 이동 감지: X=${event.clientX}, Y=${event.clientY}`);
-        //   this.socket.emit("mouse-move", {
-        //     roomId: this.roomId,
-        //     userId: this.currentUserId,
-        //     x: event.clientX,
-        //     y: event.clientY,
-        //   });
-        // });
 
         // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
         this.socket.on("sync-recording", (isRecording) => {
@@ -448,7 +471,7 @@ export default {
         });
 
         this.socket.on("signal", this.handleSignal);
-        this.socket.on("user-disconnected", this.handleUserDisconnected);
+        this.socket.on("user-disconnected", (userId) =>  this.handleUserDisconnected(userId));
       });
     },
 
@@ -622,6 +645,13 @@ export default {
         this.peerConnections[userId].close();
         delete this.peerConnections[userId];
       }
+
+    if (this.cursors[userId]) {
+          const updatedCursors = { ...this.cursors };
+          delete updatedCursors[userId];
+          this.cursors = updatedCursors; // 반응성을 유지하기 위해 새 객체 할당
+      }
+
       if (this.remoteStreams[userId]) {
         this.remoteStreams[userId].getTracks().forEach((track) => track.stop());
         delete this.remoteStreams[userId];
@@ -784,6 +814,23 @@ export default {
   margin: 0;
   padding: 0;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.mouse-tracking-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.cursor {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  pointer-events: none; /* 클릭 이벤트가 발생하지 않도록 설정 */
+  transform: translate(-50%, -50%); /* 커서가 정확히 마우스 위치에 놓이도록 */
+  background-color: none;
+  font-size: 20px;
+  border-radius: 50%; /* 원형으로 만들기 */
 }
 
 .sidebar {

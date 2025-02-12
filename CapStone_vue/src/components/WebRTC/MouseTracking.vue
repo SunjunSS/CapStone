@@ -28,7 +28,7 @@ export default {
   mounted() {
     // 소켓 초기화
     const API_BASE_URL = `http://54.180.153.199:3000`;
-    this.socket = io("http://localhost:3000", { transports: ["websocket"] });
+    this.socket = io("http://54.180.32.202:3000", { transports: ["websocket"] });
 
     // 랜덤 ID 생성 (4~5글자)
     this.userId = Math.random().toString(36).substring(2, 7);
