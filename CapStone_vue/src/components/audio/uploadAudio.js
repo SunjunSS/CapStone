@@ -15,9 +15,9 @@ export default function uploadAudio(blob, roomId) {
     );
 
     try {
-       const API_BASE_URL = `http://13.125.88.168:3000`;
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
       const response = await axios.post(
-        "http://54.180.32.202:3000/api/audio/upload", // ✅ API URL 수정
+        `http://${API_BASE_URL}/api/audio/upload`, // ✅ API URL 수정
         formData,
         {
           headers: {

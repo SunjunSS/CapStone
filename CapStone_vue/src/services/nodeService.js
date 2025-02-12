@@ -2,16 +2,13 @@ import { ref } from "vue";
 import * as go from "gojs";
 import axios from "axios"; // 📌 axios 추가
 
-
 const isSaving = ref(false);
 const lastSaveTime = ref(null);
 const serverError = ref(null);
 
-
-
-// const API_BASE_URL = `http://13.125.88.168:3000/api/mindmap`;
-const API_BASE_URL = `http://54.180.32.202:3000/api/mindmap`;
-console.log("ip주소값:",API_BASE_URL);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
+const API_MINDMAP_URL = `${API_BASE_URL}/api/mindmap`;
+console.log("마인드맵 api 주소값:", API_MINDMAP_URL);
 /**
  * 서버에서 마인드맵 데이터를 불러오는 함수
  * @param {go.Diagram} myDiagram - gojs 다이어그램 객체
@@ -20,7 +17,7 @@ export const loadMindmapFromServer = async (myDiagram) => {
   try {
     serverError.value = null;
 
-    const response = await axios.get(API_BASE_URL);
+    const response = await axios.get(API_MINDMAP_URL);
     const data = response.data;
 
     if (!data.success) {
@@ -56,7 +53,9 @@ export const saveMindmapToServer = async (addedNodes) => {
 
     console.log("🚀 서버로 전송할 데이터:", addedNodes);
 
-    const response = await axios.post(`${API_BASE_URL}/save`, { addedNodes });
+    const response = await axios.post(`${API_MINDMAP_URL}/save`, {
+      addedNodes,
+    });
 
     console.log("🟢 서버 응답:", response.data);
 
@@ -89,7 +88,7 @@ export const deleteMindmapNodes = async (deletedNodes) => {
   try {
     console.log("🗑️ 삭제할 데이터:", deletedNodes);
 
-    const response = await axios.delete(`${API_BASE_URL}/delete`, {
+    const response = await axios.delete(`${API_MINDMAP_URL}/delete`, {
       data: { deletedNodes },
     });
 
@@ -121,7 +120,7 @@ export const updateMindmapNode = async (updatedNode) => {
   try {
     console.log("✏️ 수정 요청 데이터:", updatedNode);
 
-    const response = await axios.patch(`${API_BASE_URL}/update`, {
+    const response = await axios.patch(`${API_MINDMAP_URL}/update`, {
       updatedNode,
     });
 
