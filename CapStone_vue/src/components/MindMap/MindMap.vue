@@ -1,5 +1,8 @@
 <template>
   <div class="app-container">
+
+     <mouseTracking class="mouse-tracking-layer" />
+
     <!-- Sidebar for WebRTC -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
       <div class="sidebar-toggle" @click="toggleSidebar">
@@ -12,6 +15,7 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
+
       <div
         class="mindmap-wrapper"
         @mousedown="startDrag"
@@ -89,6 +93,7 @@
 <script>
 import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import WebRTC from "..//WebRTC/WebRTC.vue";
+import mouseTracking from "../WebRTC/mouseTracking.vue";
 import * as go from "gojs";
 import {
   loadMindmapFromServer,
@@ -101,6 +106,7 @@ import {
 export default {
   components: {
     WebRTC,
+    mouseTracking
   },
   setup() {
     const diagramDiv = ref(null);

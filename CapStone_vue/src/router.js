@@ -10,7 +10,7 @@ const routes = [
   },
   {
     path: '/RTC',
-    component: WeBRTC
+    component: WeBRTC,
   },
   {
     path: '/Mouse',

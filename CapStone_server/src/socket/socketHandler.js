@@ -65,16 +65,17 @@ module.exports = (io) => {
         console.error(`🚨 x 또는 y 값이 없습니다! userId: ${userId}`);
         return;
       }
+      console.log(`mouse moved- x: ${x}, y: ${y}`);
       socket.to(roomId).emit("update-mouse", { userId, x, y });
     });
 
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
       try {
-        console.log(
-          `Signal from ${socket.id} to ${targetId}:`,
-          signal.type || "ICE candidate"
-        );
+        // console.log(
+        //   `Signal from ${socket.id} to ${targetId}:`,
+        //   signal.type || "ICE candidate"
+        // );
         io.to(targetId).emit("signal", {
           senderId: socket.id,
           signal: signal,

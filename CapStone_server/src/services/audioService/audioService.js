@@ -36,6 +36,8 @@ exports.processAudioFile = async (mp3Path) => {
     deleteFiles(tempAudioFolder);
     const clovaResponse = await callClovaSpeechAPI(mp3Path);
     const openAIResponse = await askOpenAI(clovaResponse);
+
+    deleteFiles(audioFolder);
     return { clovaResponse, openAIResponse };
   } catch (error) {
     console.error("❌ 음성 인식 및 분석 오류:", error);
