@@ -23,7 +23,6 @@ exports.convertToMP3 = async (inputPath) => {
 exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
   try {
     const mixedAudioPath = await mixAudio(tempAudioFolder, audioFolder);
-    deleteFiles(tempAudioFolder); // 원본 파일 삭제
     const mp3Path = await exports.convertToMP3(mixedAudioPath);
     return mp3Path;
   } catch (error) {
