@@ -11,12 +11,13 @@ export default function thisMeetingContent(content) {
   try {
     const cleanedContent = content.replace(/,\s*"refusal":null}[\s\S]*$/, "");
     const formattedText = cleanedContent
+      .replace(/\*\*(.+?)\*\*/g, "<$1>")
       .replace(/\\n/g, "<br>")
       .replace(/\n/g, "<br>")
       .replace(/---/g, "")
       .replace(/"/g, "")
       .replace(/###/g, "")
-      .replace(/\\/g,"");
+      .replace(/\\/g, "");
 
     // SRT 파일, 회의록, 키워드 추출
     const srtMatch = formattedText.match(/SRT 파일:\s*([\s\S]+?)회의록:/);
