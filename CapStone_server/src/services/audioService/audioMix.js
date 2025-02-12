@@ -47,10 +47,20 @@ async function mixAudio(folderPath, outputPath) {
         );
       }
 
+      // 1명일 경우 로직 처리
       if (inputPaths.length === 1) {
+         try {
 
-        const outputFile = path.join(folderPath, `converted_${index}.wav`);
-        return convertAudio(inputPaths[0], outputFile);
+           const outputFile = path.join(folderPath, `converted_0.wav`);
+           await convertAudio(inputPaths[0], outputFile);
+           console.log(`Converted to MP3: ${outputFile}`);
+           return resolve(outputFile);
+
+         } catch (error) {
+
+           return reject(error);
+
+         }
         
       }
 

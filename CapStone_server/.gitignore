@@ -1,3 +1,4 @@
 .env
 /test/
-/storage/
+/storage/audio/*
+/storage/temp_audio/*
