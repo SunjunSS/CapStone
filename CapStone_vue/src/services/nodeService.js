@@ -10,7 +10,7 @@ const serverError = ref(null);
 
 
 // const API_BASE_URL = `http://13.125.88.168:3000/api/mindmap`;
-const API_BASE_URL = `http://localhost:3000/api/mindmap`;
+const API_BASE_URL = `http://54.180.32.202:3000/api/mindmap`;
 console.log("ip주소값:",API_BASE_URL);
 /**
  * 서버에서 마인드맵 데이터를 불러오는 함수

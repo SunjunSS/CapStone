@@ -17,7 +17,7 @@ export default function uploadAudio(blob, roomId) {
     try {
        const API_BASE_URL = `http://13.125.88.168:3000`;
       const response = await axios.post(
-        "http://localhost:3000/api/audio/upload", // ✅ API URL 수정
+        "http://54.180.32.202:3000/api/audio/upload", // ✅ API URL 수정
         formData,
         {
           headers: {
@@ -26,7 +26,7 @@ export default function uploadAudio(blob, roomId) {
         }
       );
 
-      console.log("✅ 업로드 성공! 클로바 응답:", response.data.clovaResponse);
+      console.log("✅ 업로드 성공!");
       resolve(response);
     } catch (error) {
       console.error("❌ 업로드 오류:", error);
