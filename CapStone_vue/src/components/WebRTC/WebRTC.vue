@@ -315,7 +315,6 @@ export default {
 
         const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
         console.log("🎤 녹음 데이터 준비 완료, 업로드 시작...");
-        
 
         // 서버로 audio파일을 업로드함
         try {
@@ -337,7 +336,6 @@ export default {
       }
       this.isRecording = false;
     },
-
 
     updateMousePosition(userId, x, y, nickname) {
       let cursor = document.getElementById(`cursor-${userId}`);
@@ -363,16 +361,17 @@ export default {
       });
 
       return new Promise((resolve, reject) => {
-
         //  const customId = Math.random().toString(36).substring(2, 7); // 4~5글자 ID 생성
 
         this.socket.on("connect", () => {
           this.connectionStatus = "Connected";
           this.currentUserId = this.socket.id;
-          this.socket.emit("join-room", { roomId: this.roomId, userId: this.currentUserId });
+          this.socket.emit("join-room", {
+            roomId: this.roomId,
+            userId: this.currentUserId,
+          });
           resolve();
         });
-
 
         // 마우스 위치 업데이트 수신
         // this.socket.on("update-mouse", ({ userId, x, y, nickname }) => {
@@ -752,6 +751,10 @@ export default {
       this.remoteStreams = {};
       this.audioElements = {};
       this.roomId = "";
+
+      // 회의 기록 초기화 추가
+      this.meetingContent =
+        "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>";
     },
   },
   beforeDestroy() {
