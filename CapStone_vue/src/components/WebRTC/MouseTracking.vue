@@ -76,13 +76,24 @@ export default {
 .tracking-area {
   width: 100vw;
   height: 100vh;
-  background-color: white;
+  background-color: transparent;
   position: relative;
 }
 .mouse-tracking-container {
   position: relative;
   width: 100%;
   height: 100%;
+  background-color: transparent; /* 투명 배경 */
+}
+
+.mouse-tracking-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* 클릭 방해 X */
+  z-index: 9999; /* 최상위 레이어 */
 }
 
 .cursor {
