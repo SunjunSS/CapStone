@@ -59,14 +59,10 @@ exports.updateNode = (updatedNode) => {
       return reject(new Error("수정할 노드 데이터가 없습니다."));
     }
 
-    const query =
-      "UPDATE nodes SET name = ?, parent = ?, isSelected = ? WHERE `key` = ?";
-    const values = [
-      updatedNode.name,
-      updatedNode.parent ?? 0,
-      updatedNode.isSelected,
-      updatedNode.key,
-    ];
+    const query = "UPDATE nodes SET name = ?, isSelected = ? WHERE `key` = ?";
+    const values = [updatedNode.name, updatedNode.isSelected, updatedNode.key];
+
+    console.log("UPDATE VALUES:", values); // 입력값 디버�� 로그 추가
 
     connection.query(query, values, (err, result) => {
       if (err) return reject(err);
