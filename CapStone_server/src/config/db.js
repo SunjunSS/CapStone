@@ -1,11 +1,12 @@
 const mysql = require("mysql2");
+require("dotenv").config(); // .env 파일을 불러오기
 
 const connection = mysql.createConnection({
-  host: "database-capstone.cxw71dyvtgd2.ap-northeast-2.rds.amazonaws.com",
-  user: "root",
-  password: "00000000",
-  database: "capstone",
-  port: 3306,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
 });
 
 connection.connect((err) => {
