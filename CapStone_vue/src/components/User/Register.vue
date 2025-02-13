@@ -16,16 +16,6 @@
 
           <v-form ref="form" v-model="valid" @submit.prevent="register">
             <v-text-field
-              v-model="user_name"
-              :rules="[v => !!v || '이름을 입력하세요.']"
-              label="이름"
-              prepend-icon="mdi-account"
-              required
-              outlined
-              dense
-            ></v-text-field>
-
-            <v-text-field
               v-model="email"
               :rules="[v => !!v || '이메일을 입력하세요.', v => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.']"
               label="이메일"
@@ -41,16 +31,6 @@
               label="비밀번호"
               prepend-icon="mdi-lock"
               type="password"
-              required
-              outlined
-              dense
-            ></v-text-field>
-
-            <v-text-field
-              v-model="user_birthdate"
-              :rules="[v => !!v || '생년월일을 입력하세요.']"
-              label="생년월일 (YYYY-MM-DD)"
-              prepend-icon="mdi-calendar"
               required
               outlined
               dense
@@ -94,17 +74,13 @@
 </template>
 
 <script>
-
 import axios from 'axios';
-
 
 export default {
   data() {
     return {
-      user_name: '',
       email: '',
       user_password: '',
-      user_birthdate: '',
       snackbar: false,
       snackbarText: '',
       valid: false,
@@ -113,15 +89,12 @@ export default {
   methods: {
     async register() {
       try {
-        const response = await axios.post('http://localhost/api/register', {
-          user_name: this.user_name,
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const response = await axios.post(`http://${API_BASE_URL}/api/register`, {
           email: this.email,
           user_password: this.user_password,
-          user_birthdate: this.user_birthdate
         });
         this.snackbarText = response.data.message;
-        // 회원가입 성공 후 메인 페이지로 이동
-        // router.push('/');
       } catch (error) {
         this.snackbarText = error.response?.data.message || '오류가 발생했습니다.';
       }

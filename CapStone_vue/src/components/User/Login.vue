@@ -95,7 +95,8 @@ export default {
     async login() {
       try {
         // 로그인 요청
-        const response = await axios.post('http://43.200.4.199/api/login', {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
+        const response = await axios.post(`http://${API_BASE_URL}/api/login`, {
           email: this.email,
           password: this.password
         })

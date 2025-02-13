@@ -20,6 +20,10 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// ✅ Login 라우트 설정
+const userRoutes = require("./routes/userRoutes");
+app.use("api/user", userRoutes); // ✅ user API 사용
+
 // ✅ API 라우트 설정 (io 전달)
 const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
 app.use("/api/mindmap", require("./routes/nodeRoutes"));
