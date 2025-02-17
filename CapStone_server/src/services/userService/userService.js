@@ -1,4 +1,4 @@
-const User = require("../models/user");
+const User = require("../../models/user");
 
 // 🟢 회원가입 서비스 함수
 exports.registerUser = async (name, email, user_password) => {

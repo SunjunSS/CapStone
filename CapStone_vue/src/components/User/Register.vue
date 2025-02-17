@@ -4,19 +4,13 @@
       <v-col cols="12" sm="10" md="8" lg="6">
         <v-card class="elevation-12 pa-8 custom-card" rounded="lg">
           <div class="text-center mb-6">
-            <v-img
-              :src="headerImage2"
-              alt="Header Image"
-              height="50"
-              contain
-              class="mb-4"
-            ></v-img>
+            
             <h1 class="welcome-text">회원가입</h1>
           </div>
 
           <v-form ref="form" v-model="valid" @submit.prevent="register">
             <v-text-field
-              v-model="nickname"
+              v-model="name"
               :rules="[v => !!v || '닉네임을 입력하세요.']"
               label="닉네임"
               prepend-icon="mdi-account"
