@@ -40,28 +40,33 @@
         <table>
           <thead>
             <tr>
-              <th class="checkbox-column"></th>
               <th>이름</th>
               <th>만든 사람</th>
               <th>수정</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="checkbox-column">
-                <input type="checkbox" class="row-checkbox" />
+            <tr
+              v-for="(item, index) in mapItems"
+              :key="index"
+              :class="{ 'selected-row': item.selected }"
+            >
+              <td>
+                <div
+                  class="hover-checkbox"
+                  :class="{ 'show-checkbox': hasSelectedItems }"
+                >
+                  <input
+                    type="checkbox"
+                    v-model="item.selected"
+                    @change="handleCheckboxChange"
+                  />
+                </div>
+                <span class="map-icon">🌟</span>
+                {{ item.name }}
               </td>
-              <td>🗺 나의 새 마인드맵</td>
-              <td>kim</td>
-              <td>Jan 22, 2025</td>
-            </tr>
-            <tr>
-              <td class="checkbox-column">
-                <input type="checkbox" class="row-checkbox" />
-              </td>
-              <td>🗺 캡스톤 마인드맵 탐색</td>
-              <td>kim</td>
-              <td>Feb 10, 2025</td>
+              <td>{{ item.creator }}</td>
+              <td>{{ item.date }}</td>
             </tr>
           </tbody>
         </table>
@@ -78,10 +83,43 @@ export default {
   components: {
     MainHomeSideBar,
   },
+  data() {
+    return {
+      mapItems: [
+        {
+          name: "나의 새 마인드맵",
+          creator: "kim",
+          date: "Jan 22, 2025",
+          selected: false,
+        },
+        {
+          name: "캡스톤 마인드맵 탐색",
+          creator: "kim",
+          date: "Feb 10, 2025",
+          selected: false,
+        },
+      ],
+    };
+  },
+  computed: {
+    hasSelectedItems() {
+      return this.mapItems.some((item) => item.selected);
+    },
+  },
 };
 </script>
 
 <style scoped>
+/* 기존 스타일 유지 */
+.map-icon {
+  margin-right: 5px;
+}
+
+/* 나머지 스타일은 동일하게 유지 */
+.selected-row {
+  background-color: #e3f2fd;
+}
+
 .mymap-container {
   display: flex;
   min-height: 100vh;
@@ -89,7 +127,7 @@ export default {
 
 .content {
   flex: 1;
-  padding: 20px;
+  padding-top: 20px;
 }
 
 .content-header {
@@ -118,19 +156,23 @@ export default {
 
 .map-item {
   background: #eee;
-  padding: 40px;
-  border-radius: 5px;
+  padding: 20px;
+  border-radius: 15px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 150px;
+  min-width: 220px;
   min-height: 120px;
 }
 
+.map-item:hover {
+  background-color: #ddd; /* 호버 시 배경색 변경 */
+}
+
 .map-item .icon {
-  font-size: 24px;
+  font-size: 50px;
   margin-bottom: 10px;
 }
 
@@ -155,44 +197,72 @@ export default {
 .map-list th {
   font-weight: bold;
   background: #f5f5f5;
+  text-align: left;
 }
 
-/* 체크박스 열 스타일 */
-.checkbox-column {
-  width: 40px;
-  text-align: center;
+.map-list td {
+  text-align: left;
 }
 
-/* 체크박스 기본 상태 */
-.row-checkbox {
-  display: none;
-  cursor: pointer;
+.map-list th:nth-child(1),
+.map-list td:nth-child(1) {
+  width: 50%;
+  text-align: left;
+  position: relative;
 }
 
-/* tr에 호버했을 때 체크박스 보이기 */
-.map-list tbody tr:hover .row-checkbox {
-  display: inline-block;
-}
-
-/* 나머지 열 너비 조정 */
 .map-list th:nth-child(2),
 .map-list td:nth-child(2) {
-  width: 45%;
+  text-align: center;
 }
 
 .map-list th:nth-child(3),
-.map-list td:nth-child(3),
-.map-list th:nth-child(4),
-.map-list td:nth-child(4) {
-  width: 25%;
+.map-list td:nth-child(3) {
   text-align: center;
 }
 
-.map-list tbody tr {
-  cursor: pointer;
+.hover-checkbox {
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  padding: 10px;
 }
 
-.map-list tbody tr:hover {
-  background-color: #f8f9fa;
+.map-list tr:hover .hover-checkbox {
+  display: block;
+}
+
+.hover-checkbox.show-checkbox {
+  display: block !important;
+}
+
+.hover-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 1.5px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  position: relative;
+}
+
+.hover-checkbox input[type="checkbox"]:checked {
+  background-color: #1976d2;
+  border-color: #1976d2;
+}
+
+.hover-checkbox input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  color: white;
+  font-size: 12px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>
