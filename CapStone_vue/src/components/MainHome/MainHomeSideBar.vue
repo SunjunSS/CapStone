@@ -20,7 +20,7 @@
           </div>
         </div>
 
-        <div class="nav-item active">
+        <div class="nav-item" :class="{ active: isActive }" @click="goToMyMap">
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -93,8 +93,26 @@
 </template>
 
 <script>
+import { useRouter, useRoute } from "vue-router";
+import { computed } from "vue";
+
 export default {
   name: "App",
+  setup() {
+    const router = useRouter();
+    const route = useRoute();
+
+    const isActive = computed(() => route.path === "/MyMap");
+
+    const goToMyMap = () => {
+      router.push("/MyMap");
+    };
+
+    return {
+      isActive,
+      goToMyMap,
+    };
+  },
 };
 </script>
 
