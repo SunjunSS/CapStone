@@ -20,13 +20,15 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ Login 라우트 설정
+// ✅ Login, Register 라우트 설정
 const userRoutes = require("./routes/userRoutes");
-app.use("api/user", userRoutes); // ✅ user API 사용
+app.use("/api/user", userRoutes); // ✅ user API 사용
 
-// ✅ API 라우트 설정 (io 전달)
-const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
+// ✅ MindMap 라우트 설정
 app.use("/api/mindmap", require("./routes/nodeRoutes"));
+
+// ✅ Audio 라우트 설정
+const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
 app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 
 // ✅ WebSocket 연결 관리
