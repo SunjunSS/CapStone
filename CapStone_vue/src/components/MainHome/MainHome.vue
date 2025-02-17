@@ -98,7 +98,7 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .app-container {
   display: flex;
   min-height: 100vh;
