@@ -25,6 +25,13 @@ export const loadMindmapFromServer = async (myDiagram) => {
     }
 
     if (data.data && data.data.length > 0) {
+      console.log("🟢 서버에서 로드된 데이터:", data.data);
+
+      // ✅ 기존 데이터 초기화
+      if (myDiagram) {
+        myDiagram.clear(); // 🔥 기존 다이어그램 초기화
+      }
+
       myDiagram.model = new go.TreeModel(data.data);
       console.log("🟢 서버에서 로드된 데이터:", data.data);
     } else {
@@ -55,6 +62,7 @@ export const saveMindmapToServer = async (addedNodes) => {
 
     const response = await axios.post(`${API_MINDMAP_URL}/save`, {
       addedNodes,
+      roomId: "room-1", // 🔥 반드시 포함!
     });
 
     console.log("🟢 서버 응답:", response.data);
@@ -64,6 +72,10 @@ export const saveMindmapToServer = async (addedNodes) => {
     }
 
     lastSaveTime.value = new Date();
+
+    // ✅ 성공하면 다시 서버에서 데이터 불러와 다이어그램 갱신
+    // await loadMindmapFromServer();
+
     return true; // ✅ 성공 여부 반환
   } catch (error) {
     console.error("❌ 마인드맵 저장 중 오류 발생:", error);
@@ -86,17 +98,23 @@ export const deleteMindmapNodes = async (deletedNodes) => {
   }
 
   try {
-    console.log("🗑️ 삭제할 데이터:", deletedNodes);
+    console.log("🗑️ 서버로 삭제 요청 데이터:", deletedNodes);
 
     const response = await axios.delete(`${API_MINDMAP_URL}/delete`, {
-      data: { deletedNodes },
+      data: {
+        deletedNodes,
+        roomId: "room-1", // ✅ roomId 추가
+      },
     });
 
-    console.log("🟢 삭제 요청 응답:", response.data);
+    console.log("🟢 삭제 응답:", response.data);
 
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
+
+    // ✅ 삭제 후 다이어그램 데이터 다시 로드
+    // await loadMindmapFromServer();
 
     return true;
   } catch (error) {
@@ -118,17 +136,21 @@ export const updateMindmapNode = async (updatedNode) => {
   }
 
   try {
-    console.log("✏️ 수정 요청 데이터:", updatedNode);
+    console.log("✏️ 서버로 수정 요청 데이터:", updatedNode);
 
     const response = await axios.patch(`${API_MINDMAP_URL}/update`, {
       updatedNode,
+      roomId: "room-1", // ✅ roomId 추가
     });
 
-    console.log("🟢 수정 요청 응답:", response.data);
+    console.log("🟢 수정 응답:", response.data);
 
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
+
+    // ✅ 수정 후 다이어그램 데이터 다시 로드
+    // await loadMindmapFromServer();
 
     return true;
   } catch (error) {

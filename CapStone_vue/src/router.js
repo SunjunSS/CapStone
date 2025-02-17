@@ -1,36 +1,36 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import MainHome from './components/MindMap/MindMap.vue'
-import WeBRTC from './components/WebRTC/WebRTC.vue'
-import MouseTracking from './components/WebRTC/mouseTracking.vue'
-import Login from './components/User/Login.vue'
-import Register from './components/User/Register.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import MainHome from "./components/MainHome/MainHomeSideBar.vue";
+import MindMap from "./components/MindMap/MindMap.vue";
+import WeBRTC from "./components/WebRTC/WebRTC.vue";
+import MouseTracking from "./components/WebRTC/mouseTracking.vue";
+import MyMap from "./components/MainHome/MyMap.vue";
 
 const routes = [
   {
-    path: '/',
+    path: "/",
     component: MainHome,
   },
   {
-    path: '/RTC',
+    path: "/MindMap",
+    component: MindMap,
+  },
+  {
+    path: "/RTC",
     component: WeBRTC,
   },
   {
-    path: '/Mouse',
+    path: "/Mouse",
     component: MouseTracking,
   },
-  // {
-  //   path: 'user/login',
-  //   component: Login,
-  // },
-  // {
-  //   path: 'user/register',
-  //   component: Register,
-  // }
-]
+  {
+    path: "/MyMap",
+    component: MyMap,
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
-export default router
+export default router;
