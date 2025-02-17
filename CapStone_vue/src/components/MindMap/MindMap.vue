@@ -144,19 +144,57 @@ export default {
     };
 
     // ✅ WebSocket 이벤트 리스너 추가
-    socket.on("nodeAdded", () => {
-      console.log("🟢 새로운 노드 추가됨. 마인드맵 다시 로드!");
-      loadMindmapFromServer(myDiagram);
+    // ✅ WebSocket 이벤트 리스너 추가
+    socket.on("nodeAdded", (newNodes) => {
+      console.log("🟢 새로운 노드 추가됨:", newNodes);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("add node");
+
+      newNodes.forEach((newNode) => {
+        myDiagram.model.addNodeData(newNode); // ✅ 기존 다이어그램에 새 노드 추가
+      });
+
+      myDiagram.commitTransaction("add node");
     });
 
-    socket.on("nodeDeleted", () => {
-      console.log("🗑️ 노드 삭제됨. 마인드맵 다시 로드!");
-      loadMindmapFromServer(myDiagram);
+    socket.on("nodeUpdated", (updatedNode) => {
+      console.log("✏️ 노드 수정됨:", updatedNode);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("update node");
+
+      // ✅ 해당 노드 데이터만 변경
+      const node = myDiagram.model.findNodeDataForKey(updatedNode.key);
+      if (node) {
+        myDiagram.model.setDataProperty(node, "name", updatedNode.name);
+        myDiagram.model.setDataProperty(
+          node,
+          "isSelected",
+          updatedNode.isSelected
+        );
+      }
+
+      myDiagram.commitTransaction("update node");
     });
 
-    socket.on("nodeUpdated", () => {
-      console.log("✏️ 노드 수정됨. 마인드맵 다시 로드!");
-      loadMindmapFromServer(myDiagram);
+    socket.on("nodeDeleted", (deletedNodes) => {
+      console.log("🗑️ 노드 삭제됨:", deletedNodes);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("delete node");
+
+      deletedNodes.forEach((nodeKey) => {
+        const node = myDiagram.model.findNodeDataForKey(nodeKey);
+        if (node) {
+          myDiagram.model.removeNodeData(node); // ✅ 해당 노드만 삭제
+        }
+      });
+
+      myDiagram.commitTransaction("delete node");
     });
 
     // canAddSibling computed 속성 추가
@@ -455,9 +493,9 @@ export default {
         isSelected: false,
       };
 
-      myDiagram.startTransaction("add child node");
-      myDiagram.model.addNodeData(newNode);
-      myDiagram.commitTransaction("add child node");
+      // myDiagram.startTransaction("add child node");
+      // myDiagram.model.addNodeData(newNode);
+      // myDiagram.commitTransaction("add child node");
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
@@ -487,9 +525,9 @@ export default {
         isSelected: false,
       };
 
-      myDiagram.startTransaction("add sibling node");
-      myDiagram.model.addNodeData(newNode);
-      myDiagram.commitTransaction("add sibling node");
+      // myDiagram.startTransaction("add sibling node");
+      // myDiagram.model.addNodeData(newNode);
+      // myDiagram.commitTransaction("add sibling node");
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
@@ -498,6 +536,11 @@ export default {
       const success = await saveMindmapToServer(addedNodes.value); // ✅ await 사용 가능
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
+      } else {
+        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
+        myDiagram.startTransaction("rollback add node");
+        myDiagram.model.removeNodeData(newNode);
+        myDiagram.commitTransaction("rollback add node");
       }
     };
 
