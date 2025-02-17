@@ -1,8 +1,5 @@
 <template>
   <div class="app-container">
-
-     
-
     <!-- Sidebar for WebRTC -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
       <div class="sidebar-toggle" @click="toggleSidebar">
@@ -15,7 +12,6 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
-
       <mouseTracking class="mouse-tracking-layer" />
 
       <div
@@ -30,26 +26,6 @@
       >
         <div class="mindmap-container">
           <div ref="diagramDiv" class="mindmap-content"></div>
-        </div>
-
-        <!-- Original MindMap controls -->
-        <div class="history-controls">
-          <button
-            @click="undoAction"
-            class="history-btn"
-            :disabled="!canUndo"
-            :class="{ 'history-btn-enabled': canUndo }"
-          >
-            실행취소
-          </button>
-          <button
-            @click="redoAction"
-            class="history-btn"
-            :disabled="!canRedo"
-            :class="{ 'history-btn-enabled': canRedo }"
-          >
-            실행복귀
-          </button>
         </div>
 
         <div class="zoom-controls">
@@ -108,7 +84,7 @@ import {
 export default {
   components: {
     WebRTC,
-    mouseTracking
+    mouseTracking,
   },
   setup() {
     const diagramDiv = ref(null);
@@ -121,8 +97,6 @@ export default {
     const ZOOM_BUTTON_STEP = 0.2;
     const ANIMATION_DURATION = 300;
     const PAN_ANIMATION_DURATION = 100;
-    const canUndo = ref(false);
-    const canRedo = ref(false);
 
     const isDragging = ref(false);
     const isNodeDragging = ref(false);
@@ -157,24 +131,6 @@ export default {
 
       return true;
     });
-
-    const updateUndoRedoState = () => {
-      if (!myDiagram) return;
-      canUndo.value = myDiagram.undoManager.canUndo();
-      canRedo.value = myDiagram.undoManager.canRedo();
-    };
-
-    const undoAction = () => {
-      if (!myDiagram || !canUndo.value) return;
-      myDiagram.undoManager.undo();
-      updateUndoRedoState();
-    };
-
-    const redoAction = () => {
-      if (!myDiagram || !canRedo.value) return;
-      myDiagram.undoManager.redo();
-      updateUndoRedoState();
-    };
 
     const handleKeyDown = (event) => {
       // F5 키는 기본 동작 허용
@@ -511,7 +467,6 @@ export default {
 
       myDiagram = $(go.Diagram, diagramDiv.value, {
         initialContentAlignment: go.Spot.Center,
-        "undoManager.isEnabled": true,
         allowMove: true,
         allowHorizontalScroll: true,
         allowVerticalScroll: true,
@@ -545,10 +500,6 @@ export default {
           console.log("Selected Node:", node);
           selectedNode.value = node;
         }
-      });
-
-      myDiagram.addDiagramListener("Modified", (e) => {
-        updateUndoRedoState();
       });
 
       myDiagram.nodeTemplate = $(
@@ -860,10 +811,6 @@ export default {
       deleteSelectedNode,
       addChildNode,
       addSiblingNode,
-      canUndo,
-      canRedo,
-      undoAction,
-      redoAction,
       isSaving,
       lastSaveTime,
       serverError,
@@ -910,6 +857,14 @@ export default {
   justify-content: center;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  color: #333; /* 텍스트 색상 추가 */
+  font-size: 14px; /* 텍스트 크기 지정 */
+  font-weight: bold; /* 텍스트를 굵게 */
+}
+
+/* 호버 효과 추가 */
+.sidebar-toggle:hover {
+  background-color: #f5f5f5;
 }
 
 .sidebar-content {
@@ -1068,42 +1023,6 @@ export default {
 
 .add-btn-enabled:hover {
   background: #8a5bea;
-}
-
-.history-controls {
-  position: fixed;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: white;
-  padding: 5px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 9999;
-}
-
-.history-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #d3d3d3;
-  color: #666;
-  border-radius: 4px;
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.history-btn-enabled {
-  background: #4caf50;
-  color: white;
-  cursor: pointer;
-}
-
-.history-btn-enabled:hover {
-  background: #45a049;
 }
 
 .mindmap-wrapper:focus {
