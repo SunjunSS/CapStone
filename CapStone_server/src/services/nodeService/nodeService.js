@@ -4,29 +4,30 @@ const connection = require("../../config/db");
 exports.addNodes = (addedNodes) => {
   return new Promise((resolve, reject) => {
     if (!addedNodes || addedNodes.length === 0) {
-      console.error("Error: 추가할 노드 데이터가 없습니다."); // 로그 추가
       return reject(new Error("추가할 노드 데이터가 없습니다."));
     }
 
     const values = addedNodes.map((node) => [
-      node.key,
       node.name,
-      node.parent ?? 0,
+      node.parent ?? null,
       node.isSelected,
     ]);
 
-    console.log("INSERT VALUES:", values); // 입력값 디버깅 로그 추가
-
     connection.query(
-      "INSERT INTO nodes (`key`, name, parent, isSelected) VALUES ?",
+      "INSERT INTO nodes (name, parent, isSelected) VALUES ?",
       [values],
       (err, result) => {
-        if (err) {
-          console.error("MySQL Error:", err); // MySQL 오류 로그 추가
-          return reject(err);
-        }
-        console.log("INSERT RESULT:", result); // 성공 시 결과 로그 추가
-        resolve({ success: true, message: "마인드맵 저장 완료" });
+        if (err) return reject(err);
+
+        // ✅ 새로 추가된 노드 ID 가져오기
+        connection.query(
+          "SELECT * FROM nodes ORDER BY `key` DESC LIMIT ?",
+          [addedNodes.length],
+          (err, newNodes) => {
+            if (err) return reject(err);
+            resolve(newNodes); // ✅ 추가된 노드 정보 반환
+          }
+        );
       }
     );
   });
@@ -46,7 +47,7 @@ exports.deleteNodes = (deletedNodes) => {
       [keys],
       (err, result) => {
         if (err) return reject(err);
-        resolve({ success: true, message: "노드 삭제 완료" });
+        resolve(keys); // ✅ 삭제된 노드 ID 반환
       }
     );
   });
@@ -62,11 +63,18 @@ exports.updateNode = (updatedNode) => {
     const query = "UPDATE nodes SET name = ?, isSelected = ? WHERE `key` = ?";
     const values = [updatedNode.name, updatedNode.isSelected, updatedNode.key];
 
-    console.log("UPDATE VALUES:", values); // 입력값 디버�� 로그 추가
-
     connection.query(query, values, (err, result) => {
       if (err) return reject(err);
-      resolve({ success: true, message: "노드 수정 완료" });
+
+      // ✅ 수정된 노드 정보를 다시 조회해서 반환
+      connection.query(
+        "SELECT * FROM nodes WHERE `key` = ?",
+        [updatedNode.key],
+        (err, updatedNodes) => {
+          if (err) return reject(err);
+          resolve(updatedNodes[0]); // ✅ 수정된 노드 데이터 반환
+        }
+      );
     });
   });
 };

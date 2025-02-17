@@ -1,8 +1,5 @@
 <template>
   <div class="app-container">
-
-     
-
     <!-- Sidebar for WebRTC -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
       <div class="sidebar-toggle" @click="toggleSidebar">
@@ -15,7 +12,6 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
-
       <mouseTracking class="mouse-tracking-layer" />
 
       <div
@@ -104,11 +100,11 @@ import {
   deleteMindmapNodes,
   updateMindmapNode,
 } from "@/services/nodeService";
-
+import { socket, roomId, userId } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 export default {
   components: {
     WebRTC,
-    mouseTracking
+    mouseTracking,
   },
   setup() {
     const diagramDiv = ref(null);
@@ -146,6 +142,22 @@ export default {
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
     };
+
+    // ✅ WebSocket 이벤트 리스너 추가
+    socket.on("nodeAdded", () => {
+      console.log("🟢 새로운 노드 추가됨. 마인드맵 다시 로드!");
+      loadMindmapFromServer(myDiagram);
+    });
+
+    socket.on("nodeDeleted", () => {
+      console.log("🗑️ 노드 삭제됨. 마인드맵 다시 로드!");
+      loadMindmapFromServer(myDiagram);
+    });
+
+    socket.on("nodeUpdated", () => {
+      console.log("✏️ 노드 수정됨. 마인드맵 다시 로드!");
+      loadMindmapFromServer(myDiagram);
+    });
 
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
@@ -452,6 +464,11 @@ export default {
       const success = await saveMindmapToServer(addedNodes.value);
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
+      } else {
+        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
+        myDiagram.startTransaction("rollback add node");
+        myDiagram.model.removeNodeData(newNode);
+        myDiagram.commitTransaction("rollback add node");
       }
     };
 
@@ -834,6 +851,7 @@ export default {
     });
 
     onBeforeUnmount(() => {
+      socket.emit("leave-room", { roomId, userId }); // ✅ 방 나가기
       if (diagramDiv.value) {
         diagramDiv.value.removeEventListener("keydown", handleKeyDown);
       }
