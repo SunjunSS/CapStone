@@ -707,7 +707,7 @@ export default {
               myDiagram.commitTransaction("update node and layout");
 
               document.body.removeChild(inputField);
-              updateUndoRedoState();
+
               // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
               const success = await updateMindmapNode(node.data);
               if (success) {
