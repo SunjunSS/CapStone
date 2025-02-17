@@ -64,9 +64,7 @@
 </template>
 
 <script>
-
-import axios from 'axios'
-
+import io from 'socket.io-client'
 
 export default {
   data() {
@@ -80,10 +78,15 @@ export default {
         (v) => !!v || '이메일을 입력하세요.',
         (v) => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.'
       ],
-      passwordRules: [(v) => !!v || '비밀번호를 입력하세요.']
+      passwordRules: [(v) => !!v || '비밀번호를 입력하세요.'],
+      socket: null
     }
   },
   created() {
+    // 소켓 연결
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    this.socket = io(`http://${API_BASE_URL}`);  // 서버 주소에 맞게 수정
+
     // 로컬 스토리지 초기화
     localStorage.removeItem('chatMessages')
   },
@@ -92,36 +95,34 @@ export default {
       e.preventDefault()
       this.login()
     },
-    async login() {
-      try {
-        // 로그인 요청
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
-        const response = await axios.post(`http://${API_BASE_URL}/api/login`, {
-          email: this.email,
-          password: this.password
-        })
+    login() {
+      // 소켓을 사용한 로그인 요청
+      this.socket.emit("login", { email: this.email, password: this.password });
 
-        if (response.data.message === '로그인 성공!') {
-          this.snackbarText = '로그인 성공!'
-          this.snackbar = true
+      // 로그인 성공 및 실패 처리
+      this.socket.on("login_success", (data) => {
+        this.snackbarText = data.message;
+        this.snackbar = true;
 
-          // 상태 업데이트 요청은 더 이상 필요하지 않음 (서버에서 자동으로 처리)
+        // 로그인 성공 후 0.7초 후 홈으로 이동
+        setTimeout(() => {
+          this.$router.push('/')
+        }, 700);
+      });
 
-          // 0.7초 후 홈으로 이동
-          setTimeout(() => {
-            router.push('/')
-          }, 700)
-        } else {
-          this.snackbarText = response.data.message
-          this.snackbar = true
-        }
-      } catch (error) {
-        this.snackbarText = error.response?.data.message || '로그인 실패'
-        this.snackbar = true
-      }
+      this.socket.on("login_error", (data) => {
+        this.snackbarText = data.message;
+        this.snackbar = true;
+      });
     },
     goToRegister() {
-      router.push('/register')
+      this.$router.push('/register')
+    }
+  },
+  beforeDestroy() {
+    // 컴포넌트가 파괴될 때 소켓 연결 해제
+    if (this.socket) {
+      this.socket.disconnect();
     }
   }
 }
@@ -144,7 +145,7 @@ export default {
 }
 
 .welcome-text {
-  color: #ff8c42;
+  color: #42A5F5;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 

@@ -1,7 +1,7 @@
 const User = require("../models/user");
 
 // 🟢 회원가입 서비스 함수
-exports.registerUser = async (email, user_password) => {
+exports.registerUser = async (name, email, user_password) => {
   // 이메일 중복 확인
   const existingUser = await User.findOne({ where: { email } });
   if (existingUser) {
@@ -9,22 +9,15 @@ exports.registerUser = async (email, user_password) => {
   }
 
   // 새로운 사용자 생성
-  const newUser = await User.create({ email, user_password });
-  return newUser;
+  const newUser = await User.create({ name, email, user_password });
+
+   // 성공 메시지와 유저의 이름, 이메일 반환
+  return {
+    message: "회원가입이 성공적으로 완료되었습니다.",
+    user: {
+      name,
+      email,
+    },
+  }
 };
 
-// 🔵 로그인 서비스 함수
-exports.loginUser = async (email, password) => {
-  // 유저 확인
-  const user = await User.findOne({ where: { email } });
-  if (!user) {
-    throw new Error("존재하지 않는 이메일입니다.");
-  }
-
-  // 비밀번호 확인 (단순 비교)
-  if (password !== user.user_password) {
-    throw new Error("비밀번호가 일치하지 않습니다.");
-  }
-
-  return user;
-};

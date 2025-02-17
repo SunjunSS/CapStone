@@ -34,6 +34,9 @@ app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);
 
+// ✅ userSocket 로그인 관리
+require("./socket/LoginHandler")(io);
+
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () =>

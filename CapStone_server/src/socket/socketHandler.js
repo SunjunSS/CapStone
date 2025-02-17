@@ -123,10 +123,7 @@ module.exports = (io) => {
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
       try {
-        // console.log(
-        //   `Signal from ${socket.id} to ${targetId}:`,
-        //   signal.type || "ICE candidate"
-        // );
+        
         io.to(targetId).emit("signal", {
           senderId: socket.id,
           signal: signal,

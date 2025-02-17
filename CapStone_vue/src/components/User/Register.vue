@@ -16,6 +16,16 @@
 
           <v-form ref="form" v-model="valid" @submit.prevent="register">
             <v-text-field
+              v-model="nickname"
+              :rules="[v => !!v || '닉네임을 입력하세요.']"
+              label="닉네임"
+              prepend-icon="mdi-account"
+              required
+              outlined
+              dense
+            ></v-text-field>
+
+            <v-text-field
               v-model="email"
               :rules="[v => !!v || '이메일을 입력하세요.', v => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.']"
               label="이메일"
@@ -75,10 +85,12 @@
 
 <script>
 import axios from 'axios';
+import { useRouter } from 'vue-router';
 
 export default {
   data() {
     return {
+      name: '',
       email: '',
       user_password: '',
       snackbar: false,
@@ -90,18 +102,26 @@ export default {
     async register() {
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-        const response = await axios.post(`http://${API_BASE_URL}/api/register`, {
+        const response = await axios.post(`http://${API_BASE_URL}/api/user/register`, {
+          name: this.name,
           email: this.email,
           user_password: this.user_password,
         });
         this.snackbarText = response.data.message;
+
+
+        // 회원가입 성공 시 로그인 화면으로 이동
+        setTimeout(() => {
+          this.$router.push('/Login');
+        }, 700); // 700ms 후 이동
+        
       } catch (error) {
         this.snackbarText = error.response?.data.message || '오류가 발생했습니다.';
       }
       this.snackbar = true;
     },
     goToLogin() {
-      router.push('/Login');
+      this.$router.push('/Login');
     }
   }
 };
@@ -124,8 +144,8 @@ export default {
 }
 
 .welcome-text {
-  color: #FF8C42;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  color: #42A5F5; /* 파란색으로 변경 */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .v-btn {

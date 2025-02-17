@@ -4,6 +4,15 @@ const sequelize = require("../config/db"); // DB 연결 설정 파일
 const User = sequelize.define(
   "User",
   {
+    num: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
