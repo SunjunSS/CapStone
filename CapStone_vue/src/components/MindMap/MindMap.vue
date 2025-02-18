@@ -1,8 +1,5 @@
 <template>
   <div class="app-container">
-
-     
-
     <!-- Sidebar for WebRTC -->
     <div class="sidebar" :class="{ 'sidebar-collapsed': !sidebarOpen }">
       <div class="sidebar-toggle" @click="toggleSidebar">
@@ -15,7 +12,6 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
-
       <mouseTracking class="mouse-tracking-layer" />
 
       <div
@@ -30,26 +26,6 @@
       >
         <div class="mindmap-container">
           <div ref="diagramDiv" class="mindmap-content"></div>
-        </div>
-
-        <!-- Original MindMap controls -->
-        <div class="history-controls">
-          <button
-            @click="undoAction"
-            class="history-btn"
-            :disabled="!canUndo"
-            :class="{ 'history-btn-enabled': canUndo }"
-          >
-            실행취소
-          </button>
-          <button
-            @click="redoAction"
-            class="history-btn"
-            :disabled="!canRedo"
-            :class="{ 'history-btn-enabled': canRedo }"
-          >
-            실행복귀
-          </button>
         </div>
 
         <div class="zoom-controls">
@@ -104,11 +80,11 @@ import {
   deleteMindmapNodes,
   updateMindmapNode,
 } from "@/services/nodeService";
-
+import { socket, roomId, userId } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 export default {
   components: {
     WebRTC,
-    mouseTracking
+    mouseTracking,
   },
   setup() {
     const diagramDiv = ref(null);
@@ -121,8 +97,6 @@ export default {
     const ZOOM_BUTTON_STEP = 0.2;
     const ANIMATION_DURATION = 300;
     const PAN_ANIMATION_DURATION = 100;
-    const canUndo = ref(false);
-    const canRedo = ref(false);
 
     const isDragging = ref(false);
     const isNodeDragging = ref(false);
@@ -147,6 +121,60 @@ export default {
       sidebarOpen.value = !sidebarOpen.value;
     };
 
+    // ✅ WebSocket 이벤트 리스너 추가
+    // ✅ WebSocket 이벤트 리스너 추가
+    socket.on("nodeAdded", (newNodes) => {
+      console.log("🟢 새로운 노드 추가됨:", newNodes);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("add node");
+
+      newNodes.forEach((newNode) => {
+        myDiagram.model.addNodeData(newNode); // ✅ 기존 다이어그램에 새 노드 추가
+      });
+
+      myDiagram.commitTransaction("add node");
+    });
+
+    socket.on("nodeUpdated", (updatedNode) => {
+      console.log("✏️ 노드 수정됨:", updatedNode);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("update node");
+
+      // ✅ 해당 노드 데이터만 변경
+      const node = myDiagram.model.findNodeDataForKey(updatedNode.key);
+      if (node) {
+        myDiagram.model.setDataProperty(node, "name", updatedNode.name);
+        myDiagram.model.setDataProperty(
+          node,
+          "isSelected",
+          updatedNode.isSelected
+        );
+      }
+
+      myDiagram.commitTransaction("update node");
+    });
+
+    socket.on("nodeDeleted", (deletedNodes) => {
+      console.log("🗑️ 노드 삭제됨:", deletedNodes);
+
+      if (!myDiagram) return;
+
+      myDiagram.startTransaction("delete node");
+
+      deletedNodes.forEach((nodeKey) => {
+        const node = myDiagram.model.findNodeDataForKey(nodeKey);
+        if (node) {
+          myDiagram.model.removeNodeData(node); // ✅ 해당 노드만 삭제
+        }
+      });
+
+      myDiagram.commitTransaction("delete node");
+    });
+
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
       // 선택된 노드가 없으면 false
@@ -157,24 +185,6 @@ export default {
 
       return true;
     });
-
-    const updateUndoRedoState = () => {
-      if (!myDiagram) return;
-      canUndo.value = myDiagram.undoManager.canUndo();
-      canRedo.value = myDiagram.undoManager.canRedo();
-    };
-
-    const undoAction = () => {
-      if (!myDiagram || !canUndo.value) return;
-      myDiagram.undoManager.undo();
-      updateUndoRedoState();
-    };
-
-    const redoAction = () => {
-      if (!myDiagram || !canRedo.value) return;
-      myDiagram.undoManager.redo();
-      updateUndoRedoState();
-    };
 
     const handleKeyDown = (event) => {
       // F5 키는 기본 동작 허용
@@ -443,15 +453,20 @@ export default {
         isSelected: false,
       };
 
-      myDiagram.startTransaction("add child node");
-      myDiagram.model.addNodeData(newNode);
-      myDiagram.commitTransaction("add child node");
+      // myDiagram.startTransaction("add child node");
+      // myDiagram.model.addNodeData(newNode);
+      // myDiagram.commitTransaction("add child node");
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
       const success = await saveMindmapToServer(addedNodes.value);
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
+      } else {
+        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
+        myDiagram.startTransaction("rollback add node");
+        myDiagram.model.removeNodeData(newNode);
+        myDiagram.commitTransaction("rollback add node");
       }
     };
 
@@ -470,9 +485,9 @@ export default {
         isSelected: false,
       };
 
-      myDiagram.startTransaction("add sibling node");
-      myDiagram.model.addNodeData(newNode);
-      myDiagram.commitTransaction("add sibling node");
+      // myDiagram.startTransaction("add sibling node");
+      // myDiagram.model.addNodeData(newNode);
+      // myDiagram.commitTransaction("add sibling node");
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
@@ -481,6 +496,11 @@ export default {
       const success = await saveMindmapToServer(addedNodes.value); // ✅ await 사용 가능
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
+      } else {
+        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
+        myDiagram.startTransaction("rollback add node");
+        myDiagram.model.removeNodeData(newNode);
+        myDiagram.commitTransaction("rollback add node");
       }
     };
 
@@ -511,7 +531,6 @@ export default {
 
       myDiagram = $(go.Diagram, diagramDiv.value, {
         initialContentAlignment: go.Spot.Center,
-        "undoManager.isEnabled": true,
         allowMove: true,
         allowHorizontalScroll: true,
         allowVerticalScroll: true,
@@ -545,10 +564,6 @@ export default {
           console.log("Selected Node:", node);
           selectedNode.value = node;
         }
-      });
-
-      myDiagram.addDiagramListener("Modified", (e) => {
-        updateUndoRedoState();
       });
 
       myDiagram.nodeTemplate = $(
@@ -692,7 +707,7 @@ export default {
               myDiagram.commitTransaction("update node and layout");
 
               document.body.removeChild(inputField);
-              updateUndoRedoState();
+
               // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
               const success = await updateMindmapNode(node.data);
               if (success) {
@@ -834,6 +849,7 @@ export default {
     });
 
     onBeforeUnmount(() => {
+      socket.emit("leave-room", { roomId, userId }); // ✅ 방 나가기
       if (diagramDiv.value) {
         diagramDiv.value.removeEventListener("keydown", handleKeyDown);
       }
@@ -860,10 +876,6 @@ export default {
       deleteSelectedNode,
       addChildNode,
       addSiblingNode,
-      canUndo,
-      canRedo,
-      undoAction,
-      redoAction,
       isSaving,
       lastSaveTime,
       serverError,
@@ -910,6 +922,14 @@ export default {
   justify-content: center;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  color: #333; /* 텍스트 색상 추가 */
+  font-size: 14px; /* 텍스트 크기 지정 */
+  font-weight: bold; /* 텍스트를 굵게 */
+}
+
+/* 호버 효과 추가 */
+.sidebar-toggle:hover {
+  background-color: #f5f5f5;
 }
 
 .sidebar-content {
@@ -1068,42 +1088,6 @@ export default {
 
 .add-btn-enabled:hover {
   background: #8a5bea;
-}
-
-.history-controls {
-  position: fixed;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: white;
-  padding: 5px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 9999;
-}
-
-.history-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #d3d3d3;
-  color: #666;
-  border-radius: 4px;
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.history-btn-enabled {
-  background: #4caf50;
-  color: white;
-  cursor: pointer;
-}
-
-.history-btn-enabled:hover {
-  background: #45a049;
 }
 
 .mindmap-wrapper:focus {

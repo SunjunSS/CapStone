@@ -21,8 +21,9 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ API 라우트 설정 (io 전달)
+const nodeRoutes = require("./routes/nodeRoutes")(io); // io 전달
+app.use("/api/mindmap", nodeRoutes);
 const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
-app.use("/api/mindmap", require("./routes/nodeRoutes"));
 app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 
 // ✅ WebSocket 연결 관리
@@ -30,4 +31,6 @@ require("./socket/socketHandler")(io);
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
-server.listen(PORT,"0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server running on port ${PORT}`)
+);

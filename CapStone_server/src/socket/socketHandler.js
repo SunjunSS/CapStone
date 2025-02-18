@@ -69,6 +69,57 @@ module.exports = (io) => {
       socket.to(roomId).emit("update-mouse", { userId, x, y });
     });
 
+    // ✅ 노드 추가 (방의 모든 참가자에게 변경 사항 전송)
+    socket.on("add-node", ({ roomId, node }) => {
+      if (!roomNodes[roomId]) roomNodes[roomId] = [];
+
+      // 🔹 같은 노드가 존재하는지 확인
+      const exists = roomNodes[roomId].some(
+        (existingNode) => existingNode.id === node.id
+      );
+      if (!exists) {
+        roomNodes[roomId].push(node);
+
+        console.log("🟢 새로운 노드 추가됨:", node);
+        io.to(roomId).emit("nodeAdded", node); // ✅ 변경 사항 있을 때만 전송
+      }
+    });
+
+    // ✅ 노드 삭제 (방의 모든 참가자에게 변경 사항 전송)
+    socket.on("delete-node", ({ roomId, nodeId }) => {
+      if (roomNodes[roomId]) {
+        const beforeDeleteCount = roomNodes[roomId].length;
+        roomNodes[roomId] = roomNodes[roomId].filter(
+          (node) => node.id !== nodeId
+        );
+
+        // 🔹 삭제된 경우에만 이벤트 전송
+        if (roomNodes[roomId].length !== beforeDeleteCount) {
+          console.log("🗑️ 노드 삭제됨:", nodeId);
+          io.to(roomId).emit("nodeDeleted", nodeId);
+        }
+      }
+    });
+
+    // ✅ 노드 수정 (방의 모든 참가자에게 변경 사항 전송)
+    socket.on("update-node", ({ roomId, updatedNode }) => {
+      if (roomNodes[roomId]) {
+        const index = roomNodes[roomId].findIndex(
+          (node) => node.id === updatedNode.id
+        );
+        if (
+          index !== -1 &&
+          JSON.stringify(roomNodes[roomId][index]) !==
+            JSON.stringify(updatedNode)
+        ) {
+          roomNodes[roomId][index] = updatedNode;
+
+          console.log("✏️ 노드 수정됨:", updatedNode);
+          io.to(roomId).emit("nodeUpdated", updatedNode);
+        }
+      }
+    });
+
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
       try {
