@@ -446,11 +446,13 @@ export default {
 
       const parentKey = selectedNode.value ? selectedNode.value.key : 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
+      const project_id = selectedNode.value.project_id;
       const newNode = {
         key: newKey,
         name: "새 노드",
         parent: parentKey,
         isSelected: false,
+        project_id: project_id,
       };
 
       // myDiagram.startTransaction("add child node");
@@ -478,11 +480,13 @@ export default {
 
       const parentKey = selectedNode.value.parent || 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
+      const project_id = selectedNode.value.project_id;
       const newNode = {
         key: newKey,
         name: "새 노드",
         parent: parentKey, // 🔥 부모 키가 없으면 `null`
         isSelected: false,
+        project_id: project_id,
       };
 
       // myDiagram.startTransaction("add sibling node");

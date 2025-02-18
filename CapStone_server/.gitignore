@@ -4,3 +4,4 @@
 !/storage/audio/.gitkeep  # ✅ `.gitkeep` 파일은 무시하지 않음
 /storage/temp_audio/*
 !/storage/temp_audio/.gitkeep  # ✅ `.gitkeep` 파일은 무시하지 않음
+node_modules/
