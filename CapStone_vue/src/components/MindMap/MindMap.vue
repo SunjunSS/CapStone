@@ -80,7 +80,7 @@ import {
   deleteMindmapNodes,
   updateMindmapNode,
 } from "@/services/nodeService";
-import { socket, roomId, userId } from "../socket/socket.js"; // ✅ 전역 소켓 사용
+import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 export default {
   components: {
     WebRTC,

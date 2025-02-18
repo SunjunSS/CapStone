@@ -9,13 +9,22 @@ module.exports = (socket) => {
   // 기존 로그인 소켓 리스너 정리
   socket.removeAllListeners("login");
 
-  
+  let isLoggedIn = false; // 로그인 상태를 추적할 변수
 
   // 로그인 처리
   socket.on("login", async ({ email, password }) => {
+
+    if (isLoggedIn) {
+      console.log("❌ 이미 로그인 된 사용자입니다.");
+      return socket.emit("login_error", {
+        message: "이미 로그인 되어 있습니다.",
+      });
+    }
+
+
     try {
       const user = await User.findOne({ where: { email } });
-      const userId = user.userId;
+      const userId = user.user_id;
       if (!user) {
         return socket.emit("login_error", {
           message: "존재하지 않는 이메일입니다.",
@@ -33,6 +42,9 @@ module.exports = (socket) => {
       console.log(`🟢 ${email} logged in with socket ID: ${socket.id}`);
 
       activeUsers[userId] = email;
+
+      isLoggedIn = true; // 로그인 상태로 설정
+
       socket.emit("login_success", { message: "로그인 성공!" });
       console.log(`✅ User ${email} logged in`);
     } catch (error) {
@@ -47,6 +59,9 @@ module.exports = (socket) => {
     if (activeUsers[userId]) {
       delete socketSessions[userId];
       delete activeUsers[userId];
+
+      isLoggedIn = false; // 로그아웃 시 로그인 상태 해제
+
       console.log(`❌ User ${userId} logged out`);
       socket.emit("logout_success", { message: "로그아웃 성공!" });
     }
@@ -60,5 +75,15 @@ module.exports = (socket) => {
   // 소켓 연결 해제 처리
   socket.on("disconnect", () => {
     console.log("🔴 사용자 연결 종료:", socket.id);
+
+    // 사용자 세션 종료 시 처리
+    for (const userId in socketSessions) {
+      if (socketSessions[userId] === socket.id) {
+        delete socketSessions[userId];
+        delete activeUsers[userId];
+        console.log(`❌ User ${userId} session ended`);
+      }
+    }
+
   });
 };

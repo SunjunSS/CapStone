@@ -38,7 +38,6 @@
                 x-large
                 class="mt-6 custom-btn"
                 elevation="2"
-                @click="login"
               >
                 로그인
               </v-btn>
@@ -65,7 +64,7 @@
 
 <script>
 import io from 'socket.io-client'
-import { connectSocket, emitLogin } from "@/socket.js"; // ✅ 소켓 연결 함수 가져오기
+import { socket, connectSocket, emitLogin } from "../socket/socket.js"; // ✅ 소켓 연결 함수 가져오기
 
 
 export default {
@@ -99,16 +98,20 @@ export default {
     },
     login() {
       // 소켓을 사용한 로그인 요청
-      emitLogin(this.email, this.password);
+      emitLogin(this.email, this.password, this.handleLoginSuccess);
     },
     goToRegister() {
       this.$router.push('/register')
+    },
+    handleLoginSuccess() {
+      // 로그인 성공 후 /MyMap으로 이동
+      this.$router.push('/MyMap');
     }
   },
   beforeDestroy() {
     // 컴포넌트가 파괴될 때 소켓 연결 해제
     if (this.socket) {
-      this.socket.disconnect();
+      disconnectSocket();
     }
   }
 }

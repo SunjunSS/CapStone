@@ -1,5 +1,10 @@
 const { Sequelize } = require("sequelize");
-require("dotenv").config(); // 환경 변수 불러오기
+// require("dotenv").config(); // 환경 변수 불러오기
+
+const dotenv = require("dotenv");
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, "../../.env") });
+
 
 const sequelize = new Sequelize(
   process.env.DB_NAME, // DB 이름
