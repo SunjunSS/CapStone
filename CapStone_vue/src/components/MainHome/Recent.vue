@@ -9,32 +9,6 @@
         <h2>내 지도</h2>
       </header>
 
-      <section class="create-map">
-        <h3>지도 만들기</h3>
-        <div class="map-options">
-          <div class="map-item empty-map">
-            <span class="icon">➕</span>
-            <span class="text">빈 지도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">💡</span>
-            <span class="text">마인드 맵</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">⚙️</span>
-            <span class="text">조직도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">🎯</span>
-            <span class="text">SMART 목표</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">📝</span>
-            <span class="text">프로젝트 계획</span>
-          </div>
-        </div>
-      </section>
-
       <section class="map-list">
         <h3>지도 탐색</h3>
         <table>
@@ -227,58 +201,11 @@ export default {
   border-radius: 8px;
 }
 
-.create-map,
 .map-list {
   background: white;
   padding: 15px;
   margin-bottom: 40px;
   border-radius: 8px;
-}
-
-.map-options {
-  display: flex;
-  gap: 20px;
-  padding-top: 30px;
-}
-
-.map-item.empty-map {
-  background: #c8c8ff; /* 라벤더 색상 */
-}
-
-.map-item.empty-map .text {
-  color: #ffffff; /* 텍스트 색상 변경 */
-}
-
-.map-item.empty-map:hover {
-  background-color: #b0b0ff; /* 호버 시 더 진한 라벤더 */
-}
-
-.map-item {
-  background: #eee;
-  padding: 20px;
-  border-radius: 15px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 220px;
-  min-height: 120px;
-  transition: transform 0.3s ease; /* 애니메이션 효과 추가 */
-}
-
-.map-item:hover {
-  background-color: #ddd; /* 호버 시 배경색 변경 */
-  transform: scale(1.05); /* 호버 시 크기 5% 증가 */
-}
-
-.map-item .icon {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.map-item .text {
-  text-align: center;
 }
 
 .map-list table {
@@ -343,7 +270,7 @@ export default {
 .menu-dropdown {
   position: absolute;
   right: 0px;
-  bottom: 100%;
+  top: 100%;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);

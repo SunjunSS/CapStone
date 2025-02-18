@@ -4,6 +4,7 @@ import MindMap from "./components/MindMap/MindMap.vue";
 import WeBRTC from "./components/WebRTC/WebRTC.vue";
 import MouseTracking from "./components/WebRTC/mouseTracking.vue";
 import MyMap from "./components/MainHome/MyMap.vue";
+import Recent from "./components/MainHome/Recent.vue";
 
 const routes = [
   {
@@ -25,6 +26,10 @@ const routes = [
   {
     path: "/MyMap",
     component: MyMap,
+  },
+  {
+    path: "/Recent",
+    component: Recent,
   },
 ];
 
