@@ -75,12 +75,13 @@ import mouseTracking from "../WebRTC/mouseTracking.vue";
 import * as go from "gojs";
 import {
   loadMindmapFromServer,
-  serverError,
   saveMindmapToServer,
   deleteMindmapNodes,
   updateMindmapNode,
 } from "@/services/nodeService";
 import { socket, roomId, userId } from "../socket/socket.js"; // ✅ 전역 소켓 사용
+import { useRoute } from "vue-router"; // ✅ useRoute 추가
+
 export default {
   components: {
     WebRTC,
@@ -117,6 +118,11 @@ export default {
 
     const sidebarOpen = ref(false);
 
+    const route = useRoute(); // ✅ 현재 라우트 정보 가져오기
+    const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
+
+    console.log("현재 프로젝트 ID:", paramProject_id.value); // ✅ 디버깅용 콘솔 출력
+
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
     };
@@ -140,35 +146,62 @@ export default {
     socket.on("nodeUpdated", (updatedNode) => {
       console.log("✏️ 노드 수정됨:", updatedNode);
 
-      if (!myDiagram) return;
+      if (!myDiagram || !updatedNode.key || !updatedNode.name) return;
 
       myDiagram.startTransaction("update node");
 
-      // ✅ 해당 노드 데이터만 변경
+      // ✅ 해당 노드 찾기
       const node = myDiagram.model.findNodeDataForKey(updatedNode.key);
+
       if (node) {
         myDiagram.model.setDataProperty(node, "name", updatedNode.name);
-        myDiagram.model.setDataProperty(
-          node,
-          "isSelected",
-          updatedNode.isSelected
-        );
+
+        // `isSelected` 필드가 존재하는 경우에만 반영
+        if (updatedNode.hasOwnProperty("isSelected")) {
+          myDiagram.model.setDataProperty(
+            node,
+            "isSelected",
+            updatedNode.isSelected
+          );
+        }
+      } else {
+        console.error("node가 비었넹");
       }
 
       myDiagram.commitTransaction("update node");
     });
 
-    socket.on("nodeDeleted", (deletedNodes) => {
-      console.log("🗑️ 노드 삭제됨:", deletedNodes);
+    socket.on("nodeDeleted", (deletedNodeKey) => {
+      // console.log("🗑️ 삭제된 노드:", deletedNodeKey);
 
-      if (!myDiagram) return;
+      if (!myDiagram || typeof deletedNodeKey !== "number") {
+        console.error("🚨 잘못된 삭제 요청:", deletedNodeKey);
+        return;
+      }
 
       myDiagram.startTransaction("delete node");
 
-      deletedNodes.forEach((nodeKey) => {
+      // ✅ 삭제할 모든 자식 노드 찾기 (재귀 탐색)
+      function findAllChildNodes(parentKey) {
+        const toDelete = [parentKey]; // ✅ 부모 노드 포함
+        myDiagram.nodes.each((node) => {
+          if (toDelete.includes(node.data.parent)) {
+            toDelete.push(node.data.key);
+          }
+        });
+        return toDelete;
+      }
+
+      // 🔥 삭제할 모든 노드 가져오기
+      const nodesToDelete = findAllChildNodes(deletedNodeKey);
+
+      // console.log("🗑️ 최종 삭제할 노드 목록:", nodesToDelete);
+
+      // ✅ GoJS 모델에서 삭제
+      nodesToDelete.forEach((nodeKey) => {
         const node = myDiagram.model.findNodeDataForKey(nodeKey);
         if (node) {
-          myDiagram.model.removeNodeData(node); // ✅ 해당 노드만 삭제
+          myDiagram.model.removeNodeData(node);
         }
       });
 
@@ -237,7 +270,10 @@ export default {
       console.log("🗑️ 삭제된 노드 목록:", [...nodesToDelete]);
 
       // ✅ 서버에 삭제 요청 보내기
-      const success = await deleteMindmapNodes([...nodesToDelete]);
+      const success = await deleteMindmapNodes(
+        [...nodesToDelete],
+        paramProject_id.value
+      );
 
       if (success) {
         console.log("✅ 서버에서 삭제 완료");
@@ -446,13 +482,13 @@ export default {
 
       const parentKey = selectedNode.value ? selectedNode.value.key : 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
-      const project_id = selectedNode.value.project_id;
+      const parentProject_id = selectedNode.value.project_id;
       const newNode = {
-        key: newKey,
+        // key: newKey,
         name: "새 노드",
         parent: parentKey,
         isSelected: false,
-        project_id: project_id,
+        project_id: parentProject_id,
       };
 
       // myDiagram.startTransaction("add child node");
@@ -461,7 +497,10 @@ export default {
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
-      const success = await saveMindmapToServer(addedNodes.value);
+      const success = await saveMindmapToServer(
+        addedNodes.value,
+        paramProject_id.value
+      );
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
       } else {
@@ -480,13 +519,13 @@ export default {
 
       const parentKey = selectedNode.value.parent || 0;
       const newKey = myDiagram.model.nodeDataArray.length + 1;
-      const project_id = selectedNode.value.project_id;
+      const parentProject_id = selectedNode.value.project_id;
       const newNode = {
-        key: newKey,
+        // key: newKey,
         name: "새 노드",
         parent: parentKey, // 🔥 부모 키가 없으면 `null`
         isSelected: false,
-        project_id: project_id,
+        project_id: parentProject_id,
       };
 
       // myDiagram.startTransaction("add sibling node");
@@ -497,7 +536,10 @@ export default {
 
       console.log("✅ 새 동일 레벨 노드 추가됨:", newNode);
 
-      const success = await saveMindmapToServer(addedNodes.value); // ✅ await 사용 가능
+      const success = await saveMindmapToServer(
+        addedNodes.value,
+        paramProject_id.value
+      ); // ✅ await 사용 가능
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
       } else {
@@ -559,7 +601,7 @@ export default {
       });
 
       // ✅ API 호출하여 서버에서 마인드맵 데이터 불러오기
-      loadMindmapFromServer(myDiagram);
+      loadMindmapFromServer(myDiagram, paramProject_id.value);
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
         const part = e.subject.part;
@@ -689,6 +731,15 @@ export default {
               const updatedText = inputField.value
                 .replace(editEmoji, "")
                 .trim();
+
+              // 🔥 기존 이름과 같다면 API 요청하지 않고 종료
+              if (node.data.name === updatedText) {
+                console.log("🔄 변경 없음: API 요청 스킵");
+                myDiagram.commitTransaction("update node and layout");
+                document.body.removeChild(inputField);
+                return;
+              }
+
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
               const newWidth = node.actualBounds.width;
@@ -713,7 +764,10 @@ export default {
               document.body.removeChild(inputField);
 
               // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
-              const success = await updateMindmapNode(node.data);
+              const success = await updateMindmapNode(
+                node.data,
+                paramProject_id.value
+              );
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
               } else {
@@ -883,6 +937,7 @@ export default {
       isSaving,
       lastSaveTime,
       serverError,
+      paramProject_id,
     };
   },
 };
