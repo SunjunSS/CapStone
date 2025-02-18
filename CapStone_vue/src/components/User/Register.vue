@@ -30,7 +30,7 @@
             ></v-text-field>
 
             <v-text-field
-              v-model="user_password"
+              v-model="password"
               :rules="[v => !!v || '비밀번호를 입력하세요.']"
               label="비밀번호"
               prepend-icon="mdi-lock"
@@ -48,7 +48,6 @@
                 x-large
                 class="mt-6 custom-btn"
                 elevation="2"
-                @click="register"
               >
                 회원가입
               </v-btn>
@@ -86,7 +85,7 @@ export default {
     return {
       name: '',
       email: '',
-      user_password: '',
+      password: '',
       snackbar: false,
       snackbarText: '',
       valid: false,
@@ -96,21 +95,24 @@ export default {
     async register() {
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-        const response = await axios.post(`http://${API_BASE_URL}/api/user/register`, {
+        const response = await axios.post(`${API_BASE_URL}/api/user/register`, {
           name: this.name,
           email: this.email,
-          user_password: this.user_password,
+          password: this.password,
         });
         this.snackbarText = response.data.message;
+        console.log(response.data.message);
 
 
         // 회원가입 성공 시 로그인 화면으로 이동
         setTimeout(() => {
-          this.$router.push('/Login');
+          this.$router.push('/');
         }, 700); // 700ms 후 이동
         
-      } catch (error) {
+      }catch (error) {
+        console.error("서버 응답 오류:", error.response); // 전체 응답 확인
         this.snackbarText = error.response?.data.message || '오류가 발생했습니다.';
+        this.snackbar = true;
       }
       this.snackbar = true;
     },

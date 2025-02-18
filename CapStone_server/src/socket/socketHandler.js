@@ -1,17 +1,32 @@
 // socketHandler.js
 
+const loginHandler = require("./loginHandler");
+
 const rooms = {};
 const roomAudioBuffers = {};
 const recordingStatus = {};
+const socketSessions = require("./socketSessions");
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("🟢 사용자 연결됨:", socket.id);
 
+    // 로그인 핸들러 실행
+    loginHandler(socket);
+
     // 방 참가 처리
     socket.on("join-room", ({ roomId, userId }) => {
       socket.join(roomId);
-      socket.userId = userId;
+      //socket.userId = userId;
+
+
+      const userSocketId = socketSessions[userId]; // 로그인된 사용자의 socket.id 가져오기
+      if (userSocketId) {
+        // 이미 로그인된 사용자의 socket.id로 방 참여
+        socket.join(roomId);
+        console.log(`✅ ${userId} 님이 ${roomId} 방에 입장`);
+      }
+      
 
       // 방이 없으면 생성
       if (!rooms[roomId]) {
@@ -65,7 +80,7 @@ module.exports = (io) => {
         console.error(`🚨 x 또는 y 값이 없습니다! userId: ${userId}`);
         return;
       }
-      
+
       socket.to(roomId).emit("update-mouse", { userId, x, y });
     });
 
@@ -123,7 +138,6 @@ module.exports = (io) => {
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
       try {
-        
         io.to(targetId).emit("signal", {
           senderId: socket.id,
           signal: signal,

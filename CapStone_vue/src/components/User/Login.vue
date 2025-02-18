@@ -4,7 +4,7 @@
       <v-col cols="12" sm="10" md="8" lg="6">
         <v-card class="elevation-12 pa-8 custom-card" rounded="lg">
           <div class="text-center mb-6">
-            <v-img :src="headerImage2" alt="Header Image" height="45" contain class="mb-4"></v-img>
+          
             <h1 class="welcome-text">환영합니다!</h1>
           </div>
 
@@ -65,6 +65,8 @@
 
 <script>
 import io from 'socket.io-client'
+import { connectSocket, emitLogin } from "@/socket.js"; // ✅ 소켓 연결 함수 가져오기
+
 
 export default {
   data() {
@@ -83,9 +85,9 @@ export default {
     }
   },
   created() {
+    
     // 소켓 연결
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    this.socket = io(`http://${API_BASE_URL}`);  // 서버 주소에 맞게 수정
+    connectSocket();
 
     // 로컬 스토리지 초기화
     localStorage.removeItem('chatMessages')
@@ -97,23 +99,7 @@ export default {
     },
     login() {
       // 소켓을 사용한 로그인 요청
-      this.socket.emit("login", { email: this.email, password: this.password });
-
-      // 로그인 성공 및 실패 처리
-      this.socket.on("login_success", (data) => {
-        this.snackbarText = data.message;
-        this.snackbar = true;
-
-        // 로그인 성공 후 0.7초 후 홈으로 이동
-        setTimeout(() => {
-          this.$router.push('/')
-        }, 700);
-      });
-
-      this.socket.on("login_error", (data) => {
-        this.snackbarText = data.message;
-        this.snackbar = true;
-      });
+      emitLogin(this.email, this.password);
     },
     goToRegister() {
       this.$router.push('/register')
@@ -126,6 +112,7 @@ export default {
     }
   }
 }
+
 </script>
 
 <style scoped>

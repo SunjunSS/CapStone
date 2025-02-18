@@ -10,7 +10,7 @@ import Login from "./components/User/Login.vue"
 const routes = [
   {
     path: "/",
-    component: MainHome,
+    component: Login,
   },
   {
     path: "/MindMap",

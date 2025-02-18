@@ -20,7 +20,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ Login, Register 라우트 설정
+// ✅  Register 라우트 설정
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/user", userRoutes); // ✅ user API 사용
 
@@ -34,8 +34,6 @@ app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);
 
-// ✅ userSocket 로그인 관리
-require("./socket/LoginHandler")(io);
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
