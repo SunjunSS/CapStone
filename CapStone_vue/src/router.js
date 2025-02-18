@@ -6,6 +6,7 @@ import MouseTracking from "./components/WebRTC/mouseTracking.vue";
 import MyMap from "./components/MainHome/MyMap.vue";
 import Register from "./components/User/Register.vue"
 import Login from "./components/User/Login.vue"
+import Recent from "./components/MainHome/Recent.vue";
 
 const routes = [
   {
@@ -36,7 +37,10 @@ const routes = [
     path: "/Login",
     component: Login,
   },
-
+  {
+    path: "/Recent",
+    component: Recent,
+  },
 ];
 
 const router = createRouter({

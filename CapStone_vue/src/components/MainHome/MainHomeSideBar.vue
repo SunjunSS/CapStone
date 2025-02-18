@@ -32,7 +32,11 @@
           </div>
         </div>
 
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{ active: isRecentActive }"
+          @click="goToRecent"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -103,14 +107,21 @@ export default {
     const route = useRoute();
 
     const isActive = computed(() => route.path === "/MyMap");
+    const isRecentActive = computed(() => route.path === "/Recent");
 
     const goToMyMap = () => {
       router.push("/MyMap");
     };
 
+    const goToRecent = () => {
+      router.push("/Recent");
+    };
+
     return {
       isActive,
+      isRecentActive,
       goToMyMap,
+      goToRecent,
     };
   },
 };
@@ -165,6 +176,10 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
+}
+
+.nav-item.active .nav-link {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .nav-link:hover {
