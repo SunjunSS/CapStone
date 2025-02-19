@@ -40,7 +40,7 @@ export const registerSocketHandlers = (myDiagram) => {
     myDiagram.commitTransaction("update node");
   });
 
-  // ✅ 노드 삭제 이벤트
+  // ✅ 노드 삭제 이벤트 (서버에서 승인된 삭제 요청)
   socket.on("nodeDeleted", (deletedNodeKeys) => {
     console.log("🗑️ 삭제된 노드 리스트:", deletedNodeKeys);
 
@@ -48,6 +48,8 @@ export const registerSocketHandlers = (myDiagram) => {
       console.error("🚨 잘못된 삭제 요청:", deletedNodeKeys);
       return;
     }
+
+    if (!myDiagram) return;
 
     myDiagram.startTransaction("delete nodes");
 
@@ -62,6 +64,8 @@ export const registerSocketHandlers = (myDiagram) => {
     });
 
     myDiagram.commitTransaction("delete nodes");
+
+    console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
   });
 
   console.log("✅ WebSocket 이벤트 리스너 등록 완료");

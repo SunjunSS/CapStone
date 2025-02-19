@@ -162,47 +162,21 @@ export default {
     };
 
     const deleteSelectedNode = async () => {
-      if (!selectedNode.value || !myDiagram) return;
+      if (!selectedNode.value) return;
 
-      // myDiagram.startTransaction("delete node");
+      console.log("🗑️ 삭제 요청 보냄:", selectedNode.value.key);
 
-      // const node = myDiagram.findNodeForKey(selectedNode.value.key);
-      // if (!node) {
-      //   myDiagram.commitTransaction("delete node");
-      //   return;
-      // }
-
-      // // 🔥 삭제할 노드 리스트 수집
-      // const nodesToDelete = new Set();
-      // const collectDescendants = (node) => {
-      //   nodesToDelete.add(node.data);
-      //   node.findTreeChildrenNodes().each((child) => {
-      //     collectDescendants(child);
-      //   });
-      // };
-      // collectDescendants(node);
-
-      // // 🗑️ GoJS 모델에서 삭제
-      // nodesToDelete.forEach((nodeData) => {
-      //   myDiagram.model.removeNodeData(nodeData);
-      // });
-
-      // myDiagram.commitTransaction("delete node");
-
-      console.log("🗑️ 삭제된 노드 목록:", [...nodesToDelete]);
-
-      // ✅ 서버에 삭제 요청 보내기
+      // ✅ API 요청 → 서버에서 삭제 결정
       const success = await deleteMindmapNodes(
-        [...nodesToDelete],
+        selectedNode.value.key,
         paramProject_id.value
       );
 
-      if (success) {
-        console.log("✅ 서버에서 삭제 완료");
-        selectedNode.value = null; // 삭제 후 선택된 노드 초기화
-      } else {
-        console.error("❌ 서버 삭제 실패: 프론트에서 롤백할 수도 있음");
+      if (!success) {
+        console.error("❌ 서버 삭제 실패");
       }
+
+      // ✅ 삭제 요청만 보내고, 실제 삭제는 WebSocket 이벤트에서 처리됨 (socketHandlers.js)
     };
 
     const animateZoom = (startZoom, targetZoom, startTime, duration) => {
@@ -602,7 +576,6 @@ export default {
                 event.preventDefault(); // 아무것도 지워지지 않도록
               }
             });
-
             inputField.addEventListener("blur", async () => {
               myDiagram.startTransaction("update node and layout");
               const wasSelected = node.data.isSelected;

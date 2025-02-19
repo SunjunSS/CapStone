@@ -97,35 +97,23 @@ export const saveMindmapToServer = async (addedNodes, project_id) => {
  * @param {Array} deletedNodes - 삭제할 노드 리스트
  * @returns {boolean} 성공 여부
  */
-export const deleteMindmapNodes = async (deletedNodes, project_id) => {
-  if (!deletedNodes || deletedNodes.length === 0 || !project_id) {
-    console.warn("🚨 삭제할 노드가 없거나 project_id가 없습니다.");
+export const deleteMindmapNodes = async (deletedKey, project_id) => {
+  if (!deletedKey || !project_id) {
+    console.warn("🚨 삭제할 노드의 key 값 또는 project_id가 없습니다.");
     return false;
   }
 
   try {
     console.log(
-      `🗑️ 서버로 삭제 요청 (project_id=${project_id}):`,
-      deletedNodes
+      `🗑️ 서버로 삭제 요청 (project_id=${project_id}, key=${deletedKey})`
     );
 
-    // ✅ 한 번의 요청으로 삭제할 key 값만 서버로 보냄
-    const nodeKeys = deletedNodes.map((node) => node.key);
+    // ✅ 서버에 삭제 요청만 보냄 (실제 삭제는 WebSocket 이벤트에서 처리)
+    await axios.delete(`${getMindmapUrl(project_id)}/${deletedKey}`, {
+      data: { roomId: "room-1" }, // ✅ WebSocket과 동기화
+    });
 
-    const response = await axios.delete(
-      `${getMindmapUrl(project_id)}/${nodeKeys[0]}`,
-      {
-        data: { roomId: "room-1" },
-      }
-    );
-
-    console.log("🟢 삭제 응답:", response.data);
-
-    if (!response.data.success) {
-      throw new Error(response.data.message);
-    }
-
-    // ✅ 서버에서 삭제된 노드 key 리스트를 반환받아 UI에서 업데이트
+    console.log("🟢 서버에 삭제 요청 완료 (실제 삭제는 WebSocket에서 처리)");
     return true;
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error);
