@@ -33,7 +33,6 @@ module.exports = (io) => {
   };
 
   // 🔴 특정 프로젝트의 특정 노드 삭제
-  // 🔴 특정 프로젝트의 특정 노드 삭제 API (프론트에서 자식 노드 처리)
   const deleteNode = async (req, res) => {
     try {
       const { project_id, key } = req.params;
@@ -52,15 +51,18 @@ module.exports = (io) => {
           .json({ success: false, message: "roomId가 필요합니다." });
       }
 
-      // ✅ 요청한 노드만 삭제하고 해당 key 반환
-      const deletedKey = await nodeService.deleteNode(key, project_id);
+      // ✅ 노드 삭제 요청 (자식 노드 포함)
+      const deletedKeys = await nodeService.deleteNodeWithChildren(
+        key,
+        project_id
+      );
 
-      if (deletedKey) {
-        console.log("🗑️ 요청된 노드 삭제 완료:", deletedKey);
-        io.to(roomId).emit("nodeDeleted", deletedKey); // ✅ 요청된 노드 key만 보냄
+      if (deletedKeys.length > 0) {
+        console.log("🗑️ 삭제된 노드 리스트:", deletedKeys);
+        io.to(roomId).emit("nodeDeleted", deletedKeys); // ✅ 삭제된 노드 리스트 전달
       }
 
-      res.status(200).json({ success: true, deletedKey });
+      res.status(200).json({ success: true, deletedKeys });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

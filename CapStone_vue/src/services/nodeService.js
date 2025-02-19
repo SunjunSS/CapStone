@@ -109,24 +109,23 @@ export const deleteMindmapNodes = async (deletedNodes, project_id) => {
       deletedNodes
     );
 
-    // ✅ 각 노드의 key를 URL에 포함하여 개별 삭제 요청
-    for (const node of deletedNodes) {
-      const response = await axios.delete(
-        `${getMindmapUrl(project_id)}/${node.key}`,
-        {
-          data: {
-            roomId: "room-1", // ✅ roomId 추가
-          },
-        }
-      );
+    // ✅ 한 번의 요청으로 삭제할 key 값만 서버로 보냄
+    const nodeKeys = deletedNodes.map((node) => node.key);
 
-      console.log("🟢 삭제 응답:", response.data);
-
-      if (!response.data.success) {
-        throw new Error(response.data.message);
+    const response = await axios.delete(
+      `${getMindmapUrl(project_id)}/${nodeKeys[0]}`,
+      {
+        data: { roomId: "room-1" },
       }
+    );
+
+    console.log("🟢 삭제 응답:", response.data);
+
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
 
+    // ✅ 서버에서 삭제된 노드 key 리스트를 반환받아 UI에서 업데이트
     return true;
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error);

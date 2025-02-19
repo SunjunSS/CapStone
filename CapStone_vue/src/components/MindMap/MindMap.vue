@@ -171,31 +171,37 @@ export default {
       myDiagram.commitTransaction("update node");
     });
 
-    socket.on("nodeDeleted", (deletedNodeKey) => {
-      // console.log("🗑️ 삭제된 노드:", deletedNodeKey);
+    socket.on("nodeDeleted", (deletedNodeKeys) => {
+      console.log("🗑️ 삭제된 노드 리스트:", deletedNodeKeys);
 
-      if (!myDiagram || typeof deletedNodeKey !== "number") {
-        console.error("🚨 잘못된 삭제 요청:", deletedNodeKey);
+      if (
+        !myDiagram ||
+        !Array.isArray(deletedNodeKeys) ||
+        deletedNodeKeys.length === 0
+      ) {
+        console.error("🚨 잘못된 삭제 요청:", deletedNodeKeys);
         return;
       }
 
-      myDiagram.startTransaction("delete node");
+      myDiagram.startTransaction("delete nodes");
 
-      // ✅ 삭제할 모든 자식 노드 찾기 (재귀 탐색)
-      function findAllChildNodes(parentKey) {
-        const toDelete = [parentKey]; // ✅ 부모 노드 포함
+      // ✅ 삭제할 모든 노드 찾기 (재귀 탐색)
+      function findAllChildNodes(parentKeys) {
+        const toDelete = new Set(parentKeys); // 부모 노드 리스트 포함
+
         myDiagram.nodes.each((node) => {
-          if (toDelete.includes(node.data.parent)) {
-            toDelete.push(node.data.key);
+          if (toDelete.has(node.data.parent)) {
+            toDelete.add(node.data.key);
           }
         });
-        return toDelete;
+
+        return [...toDelete]; // ✅ Set을 배열로 변환하여 반환
       }
 
       // 🔥 삭제할 모든 노드 가져오기
-      const nodesToDelete = findAllChildNodes(deletedNodeKey);
+      const nodesToDelete = findAllChildNodes(deletedNodeKeys);
 
-      // console.log("🗑️ 최종 삭제할 노드 목록:", nodesToDelete);
+      console.log("🗑️ 최종 삭제할 노드 목록:", nodesToDelete);
 
       // ✅ GoJS 모델에서 삭제
       nodesToDelete.forEach((nodeKey) => {
@@ -205,7 +211,7 @@ export default {
         }
       });
 
-      myDiagram.commitTransaction("delete node");
+      myDiagram.commitTransaction("delete nodes");
     });
 
     // canAddSibling computed 속성 추가

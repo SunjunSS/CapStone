@@ -61,7 +61,13 @@ exports.addNodes = async (addedNodes, project_id) => {
 };
 
 // 🔴 특정 프로젝트의 특정 노드 삭제 (요청된 노드만 삭제)
-exports.deleteNode = async (key, project_id) => {
+/**
+ * 특정 프로젝트의 특정 노드를 삭제하는 함수 (자식 노드까지 삭제)
+ * @param {number} key - 삭제할 노드의 key 값
+ * @param {number} project_id - 프로젝트 ID
+ * @returns {Array<number>} 삭제된 노드 key 리스트
+ */
+exports.deleteNodeWithChildren = async (key, project_id) => {
   if (!key) {
     throw new Error("삭제할 노드의 key 값이 필요합니다.");
   }
@@ -69,23 +75,42 @@ exports.deleteNode = async (key, project_id) => {
   try {
     const nodeKey = parseInt(key, 10);
 
-    // // ✅ 요청된 노드가 존재하는지 확인
-    // const node = await Node.findOne({
-    //   where: { node_key: nodeKey, project_id },
-    // });
+    // ✅ 삭제할 노드 및 자식 노드 찾기
+    const nodesToDelete = await Node.findAll({
+      where: { project_id },
+    });
 
-    // if (!node) {
-    //   console.warn(`⚠️ 노드 ${nodeKey}는 이미 삭제되었거나 존재하지 않습니다.`);
-    //   return nodeKey; // 이미 삭제된 경우라도 key 반환
-    // }
+    // ✅ 삭제할 노드 리스트 찾기 (재귀적으로 삭제)
+    const getAllChildNodes = (parentKey) => {
+      let toDelete = nodesToDelete.filter(
+        (node) => node.parent_key === parentKey
+      );
+      toDelete.forEach((node) => {
+        toDelete = toDelete.concat(getAllChildNodes(node.node_key));
+      });
+      return toDelete;
+    };
 
-    // ✅ 요청된 노드만 삭제 (자식 노드는 DB에서 자동 삭제됨)
-    await Node.destroy({ where: { node_key: nodeKey, project_id } });
-
-    console.log(
-      `🗑️ 요청된 노드 ${nodeKey} 삭제 완료 (DB에서 하위 노드는 자동 삭제됨)`
+    const nodesToRemove = new Set(
+      getAllChildNodes(nodeKey).map((node) => node.node_key)
     );
-    return nodeKey; // 요청한 노드 key만 반환
+    nodesToRemove.add(nodeKey); // 부모 노드 추가
+
+    // ✅ 중복 제거 및 정렬
+    const sortedNodesToRemove = [...nodesToRemove].sort((a, b) => a - b);
+
+    console.log(`🗑️ 삭제할 노드 목록 (정렬 완료):`, sortedNodesToRemove);
+
+    // ✅ 노드 삭제 실행
+    await Node.destroy({
+      where: {
+        node_key: sortedNodesToRemove,
+        project_id,
+      },
+    });
+
+    console.log(`🗑️ 요청된 노드 ${nodeKey} 및 자식 노드 삭제 완료`);
+    return sortedNodesToRemove; // ✅ 정렬된 삭제된 노드 리스트 반환
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error.message);
     throw new Error("노드 삭제 중 오류 발생");
