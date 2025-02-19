@@ -5,6 +5,8 @@ import WeBRTC from "./components/WebRTC/WebRTC.vue";
 import MouseTracking from "./components/WebRTC/mouseTracking.vue";
 import MyMap from "./components/MainHome/MyMap.vue";
 import Recent from "./components/MainHome/Recent.vue";
+import TrashPage from "./components/MainHome/TrashPage.vue";
+import Favorite from "./components/MainHome/Favorite.vue";
 
 const routes = [
   {
@@ -30,6 +32,14 @@ const routes = [
   {
     path: "/Recent",
     component: Recent,
+  },
+  {
+    path: "/TrashPage",
+    component: TrashPage,
+  },
+  {
+    path: "/Favorite",
+    component: Favorite,
   },
 ];
 
