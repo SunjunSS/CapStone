@@ -47,7 +47,7 @@
 
         <div class="add-controls" @keydown="handleKeyDown">
           <button
-            @click="addChildNode"
+            @click="addNode(false)"
             class="add-btn"
             :class="{ 'add-btn-enabled': selectedNode }"
             :disabled="!selectedNode"
@@ -55,7 +55,7 @@
             하위레벨 추가
           </button>
           <button
-            @click="addSiblingNode"
+            @click="addNode(true)"
             class="add-btn"
             :class="{ 'add-btn-enabled': canAddSibling }"
             :disabled="!canAddSibling"
@@ -152,42 +152,42 @@ export default {
 
       if (event.key === "Tab") {
         event.preventDefault();
-        addChildNode();
+        addNode(false); // ✅ 하위 레벨 추가
       }
 
       if (event.key === "Shift") {
         event.preventDefault();
-        addSiblingNode();
+        addNode(true); // ✅ 동일 레벨 추가
       }
     };
 
     const deleteSelectedNode = async () => {
       if (!selectedNode.value || !myDiagram) return;
 
-      myDiagram.startTransaction("delete node");
+      // myDiagram.startTransaction("delete node");
 
-      const node = myDiagram.findNodeForKey(selectedNode.value.key);
-      if (!node) {
-        myDiagram.commitTransaction("delete node");
-        return;
-      }
+      // const node = myDiagram.findNodeForKey(selectedNode.value.key);
+      // if (!node) {
+      //   myDiagram.commitTransaction("delete node");
+      //   return;
+      // }
 
-      // 🔥 삭제할 노드 리스트 수집
-      const nodesToDelete = new Set();
-      const collectDescendants = (node) => {
-        nodesToDelete.add(node.data);
-        node.findTreeChildrenNodes().each((child) => {
-          collectDescendants(child);
-        });
-      };
-      collectDescendants(node);
+      // // 🔥 삭제할 노드 리스트 수집
+      // const nodesToDelete = new Set();
+      // const collectDescendants = (node) => {
+      //   nodesToDelete.add(node.data);
+      //   node.findTreeChildrenNodes().each((child) => {
+      //     collectDescendants(child);
+      //   });
+      // };
+      // collectDescendants(node);
 
-      // 🗑️ GoJS 모델에서 삭제
-      nodesToDelete.forEach((nodeData) => {
-        myDiagram.model.removeNodeData(nodeData);
-      });
+      // // 🗑️ GoJS 모델에서 삭제
+      // nodesToDelete.forEach((nodeData) => {
+      //   myDiagram.model.removeNodeData(nodeData);
+      // });
 
-      myDiagram.commitTransaction("delete node");
+      // myDiagram.commitTransaction("delete node");
 
       console.log("🗑️ 삭제된 노드 목록:", [...nodesToDelete]);
 
@@ -399,25 +399,27 @@ export default {
       initialTouchDistance.value = 0;
     };
 
-    const addChildNode = async () => {
-      if (!myDiagram) return;
+    const addNode = async (isSibling = false) => {
+      if (!selectedNode.value || !myDiagram) return;
 
-      const parentKey = selectedNode.value ? selectedNode.value.key : 0;
-      const newKey = myDiagram.model.nodeDataArray.length + 1;
+      const parentKey = isSibling
+        ? selectedNode.value.parent // 동일 레벨 추가 시 부모를 유지
+        : selectedNode.value.key; // 하위 레벨 추가 시 부모는 현재 선택된 노드
+
       const parentProject_id = selectedNode.value.project_id;
       const newNode = {
-        // key: newKey,
         name: "새 노드",
-        parent: parentKey,
+        parent: parentKey || 0, // 부모 키가 없으면 최상위 노드
         isSelected: false,
         project_id: parentProject_id,
       };
 
-      // myDiagram.startTransaction("add child node");
-      // myDiagram.model.addNodeData(newNode);
-      // myDiagram.commitTransaction("add child node");
-
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
+
+      console.log(
+        `✅ ${isSibling ? "동일 레벨" : "하위 레벨"} 노드 추가됨:`,
+        newNode
+      );
 
       const success = await saveMindmapToServer(
         addedNodes.value,
@@ -426,49 +428,7 @@ export default {
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
       } else {
-        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
-        myDiagram.startTransaction("rollback add node");
-        myDiagram.model.removeNodeData(newNode);
-        myDiagram.commitTransaction("rollback add node");
-      }
-    };
-
-    const addSiblingNode = async () => {
-      // ✅ async 추가
-      // canAddSibling이 false면 early return
-      if (!canAddSibling.value) return;
-      if (!selectedNode.value || !myDiagram) return;
-
-      const parentKey = selectedNode.value.parent || 0;
-      const newKey = myDiagram.model.nodeDataArray.length + 1;
-      const parentProject_id = selectedNode.value.project_id;
-      const newNode = {
-        // key: newKey,
-        name: "새 노드",
-        parent: parentKey, // 🔥 부모 키가 없으면 `null`
-        isSelected: false,
-        project_id: parentProject_id,
-      };
-
-      // myDiagram.startTransaction("add sibling node");
-      // myDiagram.model.addNodeData(newNode);
-      // myDiagram.commitTransaction("add sibling node");
-
-      addedNodes.value.push(newNode); // ✅ 새 노드 저장
-
-      console.log("✅ 새 동일 레벨 노드 추가됨:", newNode);
-
-      const success = await saveMindmapToServer(
-        addedNodes.value,
-        paramProject_id.value
-      ); // ✅ await 사용 가능
-      if (success) {
-        addedNodes.value = []; // ✅ 저장 성공 시 초기화
-      } else {
-        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
-        myDiagram.startTransaction("rollback add node");
-        myDiagram.model.removeNodeData(newNode);
-        myDiagram.commitTransaction("rollback add node");
+        console.warn("⏪ 서버 오류 발생");
       }
     };
 
@@ -759,27 +719,6 @@ export default {
               )
             )
           )
-        ),
-        $(
-          go.Panel,
-          "Spot",
-          {
-            alignment: go.Spot.Right,
-            alignmentFocus: go.Spot.Left,
-            margin: new go.Margin(0, 0, 0, 15),
-            desiredSize: new go.Size(25, 25),
-            click: (e, obj) => {
-              addChildNode();
-              e.handled = true;
-            },
-            cursor: "pointer",
-          },
-          new go.Binding("visible", "", (node) => {
-            if (!node.isSelected) return false;
-            const nodeData = myDiagram.findNodeForKey(node.key);
-            if (!nodeData) return false;
-            return nodeData.findTreeChildrenNodes().count === 0;
-          }).ofObject()
         )
       );
 
@@ -857,8 +796,7 @@ export default {
       touchMove,
       stopTouch,
       deleteSelectedNode,
-      addChildNode,
-      addSiblingNode,
+      addNode,
       isSaving,
       lastSaveTime,
       serverError,
