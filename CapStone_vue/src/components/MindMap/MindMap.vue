@@ -79,8 +79,11 @@ import {
   deleteMindmapNodes,
   updateMindmapNode,
 } from "@/services/nodeService";
-import { socket, roomId, userId } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 import { useRoute } from "vue-router"; // ✅ useRoute 추가
+import {
+  registerSocketHandlers,
+  unregisterSocketHandlers,
+} from "../socket/socketHandlers.js"; // ✅ WebSocket 핸들러 모듈 import
 
 export default {
   components: {
@@ -126,93 +129,6 @@ export default {
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
     };
-
-    // ✅ WebSocket 이벤트 리스너 추가
-    // ✅ WebSocket 이벤트 리스너 추가
-    socket.on("nodeAdded", (newNodes) => {
-      console.log("🟢 새로운 노드 추가됨:", newNodes);
-
-      if (!myDiagram) return;
-
-      myDiagram.startTransaction("add node");
-
-      newNodes.forEach((newNode) => {
-        myDiagram.model.addNodeData(newNode); // ✅ 기존 다이어그램에 새 노드 추가
-      });
-
-      myDiagram.commitTransaction("add node");
-    });
-
-    socket.on("nodeUpdated", (updatedNode) => {
-      console.log("✏️ 노드 수정됨:", updatedNode);
-
-      if (!myDiagram || !updatedNode.key || !updatedNode.name) return;
-
-      myDiagram.startTransaction("update node");
-
-      // ✅ 해당 노드 찾기
-      const node = myDiagram.model.findNodeDataForKey(updatedNode.key);
-
-      if (node) {
-        myDiagram.model.setDataProperty(node, "name", updatedNode.name);
-
-        // `isSelected` 필드가 존재하는 경우에만 반영
-        if (updatedNode.hasOwnProperty("isSelected")) {
-          myDiagram.model.setDataProperty(
-            node,
-            "isSelected",
-            updatedNode.isSelected
-          );
-        }
-      } else {
-        console.error("node가 비었넹");
-      }
-
-      myDiagram.commitTransaction("update node");
-    });
-
-    socket.on("nodeDeleted", (deletedNodeKeys) => {
-      console.log("🗑️ 삭제된 노드 리스트:", deletedNodeKeys);
-
-      if (
-        !myDiagram ||
-        !Array.isArray(deletedNodeKeys) ||
-        deletedNodeKeys.length === 0
-      ) {
-        console.error("🚨 잘못된 삭제 요청:", deletedNodeKeys);
-        return;
-      }
-
-      myDiagram.startTransaction("delete nodes");
-
-      // ✅ 삭제할 모든 노드 찾기 (재귀 탐색)
-      function findAllChildNodes(parentKeys) {
-        const toDelete = new Set(parentKeys); // 부모 노드 리스트 포함
-
-        myDiagram.nodes.each((node) => {
-          if (toDelete.has(node.data.parent)) {
-            toDelete.add(node.data.key);
-          }
-        });
-
-        return [...toDelete]; // ✅ Set을 배열로 변환하여 반환
-      }
-
-      // 🔥 삭제할 모든 노드 가져오기
-      const nodesToDelete = findAllChildNodes(deletedNodeKeys);
-
-      console.log("🗑️ 최종 삭제할 노드 목록:", nodesToDelete);
-
-      // ✅ GoJS 모델에서 삭제
-      nodesToDelete.forEach((nodeKey) => {
-        const node = myDiagram.model.findNodeDataForKey(nodeKey);
-        if (node) {
-          myDiagram.model.removeNodeData(node);
-        }
-      });
-
-      myDiagram.commitTransaction("delete nodes");
-    });
 
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
@@ -605,6 +521,8 @@ export default {
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value,
       });
+      // ✅ WebSocket 이벤트 등록
+      registerSocketHandlers(myDiagram);
 
       // ✅ API 호출하여 서버에서 마인드맵 데이터 불러오기
       loadMindmapFromServer(myDiagram, paramProject_id.value);
@@ -913,7 +831,8 @@ export default {
     });
 
     onBeforeUnmount(() => {
-      socket.emit("leave-room", { roomId, userId }); // ✅ 방 나가기
+      unregisterSocketHandlers(); // ✅ WebSocket 이벤트 해제
+
       if (diagramDiv.value) {
         diagramDiv.value.removeEventListener("keydown", handleKeyDown);
       }
