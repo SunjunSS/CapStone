@@ -8,6 +8,8 @@ import Register from "./components/User/Register.vue"
 import Login from "./components/User/Login.vue"
 import Recent from "./components/MainHome/Recent.vue";
 import Project from "./components/MainHome/Project.vue";
+import TrashPage from "./components/MainHome/TrashPage.vue";
+import Favorite from "./components/MainHome/Favorite.vue";
 
 const routes = [
   {
@@ -45,8 +47,15 @@ const routes = [
   {
     path: "/Project",
     component: Project,
-  }
-
+  },  
+  {
+    path: "/TrashPage",
+    component: TrashPage,
+  },
+  {
+    path: "/Favorite",
+    component: Favorite,
+  },
 ];
 
 const router = createRouter({

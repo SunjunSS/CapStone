@@ -36,7 +36,12 @@
       </section>
 
       <section class="map-list">
-        <h3>지도 탐색</h3>
+        <div class="map-list-header">
+          <h3>지도 탐색</h3>
+          <span v-if="selectedItemsCount > 0" class="selected-count">
+            {{ selectedItemsCount }}개 선택됨
+          </span>
+        </div>
         <table>
           <thead>
             <tr>
@@ -78,12 +83,11 @@
                   ref="menuDropdown"
                 >
                   <ul>
-                    <li @click="openMap(index)">열기</li>
-                    <li @click="modifyMap(index)">편집</li>
-                    <li @click="duplicateMap(index)">복제</li>
-                    <li @click="moveToTeam(index)">팀 맵으로 이동</li>
+                    <li @click="openMap(index)">🗝️ 열기</li>
+                    <li @click="duplicateMap(index)">📋 복제</li>
+                    <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
                     <li @click="moveToTrash(index)" class="delete-option">
-                      휴지통으로 이동
+                      🗑️ 휴지통으로 이동
                     </li>
                   </ul>
                 </div>
@@ -137,6 +141,9 @@ export default {
   computed: {
     hasSelectedItems() {
       return this.mapItems.some((item) => item.selected);
+    },
+    selectedItemsCount() {
+      return this.mapItems.filter((item) => item.selected).length;
     },
   },
   methods: {
@@ -220,19 +227,14 @@ export default {
       alert(`${this.mapItems[index].name} 열기`);
       this.closeAllMenus();
     },
-    modifyMap(index) {
-      // 맵 편집 기능 구현
-      alert(`${this.mapItems[index].name} 편집`);
-      this.closeAllMenus();
-    },
     duplicateMap(index) {
       // 맵 복제 기능 구현
       alert(`${this.mapItems[index].name} 복제`);
       this.closeAllMenus();
     },
-    moveToTeam(index) {
-      // 팀 맵으로 이동 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 팀 맵으로 이동`);
+    moveToFavorite(index) {
+      // 즐겨찾기 추가 기능 구현
+      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
       this.closeAllMenus();
     },
     moveToTrash(index) {
@@ -349,6 +351,18 @@ export default {
   table-layout: fixed;
 }
 
+.map-list-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.selected-count {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
 .map-list th,
 .map-list td {
   padding: 10px;
@@ -409,7 +423,7 @@ export default {
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  width: 150px;
+  width: 180px;
 }
 
 .menu-dropdown ul {
