@@ -24,6 +24,10 @@ app.use(express.json());
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/user", userRoutes); // ✅ user API 사용
 
+// ✅  Project 라우트 설정
+const projectRoutes = require("./routes/projectRoutes");
+app.use("/api/project", projectRoutes);
+
 // ✅ MindMap 라우트 설정
 app.use("/api/mindmap", require("./routes/nodeRoutes"));
 

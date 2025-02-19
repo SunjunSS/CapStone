@@ -12,7 +12,7 @@
       <section class="create-map">
         <h3>지도 만들기</h3>
         <div class="map-options">
-          <div class="map-item empty-map">
+          <div class="map-item empty-map" @click="openProjectDialog">
             <span class="icon">➕</span>
             <span class="text">빈 지도</span>
           </div>
@@ -93,16 +93,21 @@
         </table>
       </section>
     </main>
+
+    
+
   </div>
 </template>
 
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
+import Project from "./Project.vue";
 
 export default {
   name: "MyMap",
   components: {
     MainHomeSideBar,
+    Project,
   },
   data() {
     return {
@@ -122,6 +127,11 @@ export default {
           showMenu: false,
         },
       ],
+      isProjectDialogOpen: false,
+      teamName: "",
+      teamDescription: "",
+      teamTopic: "",
+      topics: [], // 예시 주제
     };
   },
   computed: {
@@ -130,6 +140,57 @@ export default {
     },
   },
   methods: {
+
+    openProjectDialog() {
+      this.$router.push('/Project')
+    },
+    close() {
+      this.isProjectDialogOpen = false;
+    },
+    submit() {
+      // 프로젝트 생성 처리
+      this.$emit("createProject", {
+        name: this.teamName,
+        description: this.teamDescription,
+        topic: this.teamTopic,
+      });
+      this.close();
+    },
+    addProject(projectData) {
+      this.mapItems.push({
+        name: projectData.name,
+        creator: "kim", // 실제 사용자로 변경 필요
+        date: new Date().toISOString().split("T")[0],
+        selected: false,
+        showMenu: false,
+      });
+      this.isProjectDialogOpen = false;
+    },
+
+    async createProject() {
+      try {
+        const response = await axios.post("/api/project", {
+          user_id: 1, // 실제 로그인된 사용자의 ID로 변경 필요
+          name: "새 프로젝트",
+          description: "빈 지도에서 시작하는 프로젝트",
+          topic: "일반",
+        });
+
+        alert(`프로젝트 생성 완료: ${response.data.project.name}`);
+
+        // 새로운 프로젝트를 목록에 추가
+        this.mapItems.push({
+          name: response.data.project.name,
+          creator: "kim", // 실제 사용자 이름으로 변경 필요
+          date: new Date().toISOString().split("T")[0],
+          selected: false,
+          showMenu: false,
+        });
+      } catch (error) {
+        console.error("프로젝트 생성 실패:", error);
+        alert("프로젝트 생성에 실패했습니다.");
+      }
+    },
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },

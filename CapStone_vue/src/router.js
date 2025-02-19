@@ -7,6 +7,7 @@ import MyMap from "./components/MainHome/MyMap.vue";
 import Register from "./components/User/Register.vue"
 import Login from "./components/User/Login.vue"
 import Recent from "./components/MainHome/Recent.vue";
+import Project from "./components/MainHome/Project.vue";
 
 const routes = [
   {
@@ -41,6 +42,11 @@ const routes = [
     path: "/Recent",
     component: Recent,
   },
+  {
+    path: "/Project",
+    component: Project,
+  }
+
 ];
 
 const router = createRouter({

@@ -18,13 +18,18 @@ export const connectSocket = () => {
 };
 
 
+
+let currentUser = null; // 로그인된 유저 객체를 저장할 변수
+
 export const emitLogin = (email, password, onLoginSuccess) => {
   socket.emit("login", { email, password });
 
-  socket.on("login_success", () => {
+  socket.on("login_success", (data) => {
     // Vue 컴포넌트 내에서 이 메서드가 호출되도록 처리
     if (onLoginSuccess) onLoginSuccess(); // 로그인 성공 시 콜백 호출
     console.log("✅ 로그인 성공");
+    currentUser = data.user;
+
   });
 
   socket.on("login_error", (data) => {
@@ -40,6 +45,12 @@ export const disconnectSocket = () =>  {
       console.log("❌ 소켓 연결 해제됨");
     }
 }
+
+
+// ✅ 로그인된 유저 객체를 가져오는 함수
+export const getCurrentUser = () => {
+  return currentUser;
+};
 
 
 // // ✅ 방 ID 및 사용자 ID 관리

@@ -101,7 +101,7 @@ export default {
       emitLogin(this.email, this.password, this.handleLoginSuccess);
     },
     goToRegister() {
-      this.$router.push('/register')
+      this.$router.push('/Register')
     },
     handleLoginSuccess() {
       // 로그인 성공 후 /MyMap으로 이동

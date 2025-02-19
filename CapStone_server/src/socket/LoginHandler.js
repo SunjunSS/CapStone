@@ -45,7 +45,7 @@ module.exports = (socket) => {
 
       isLoggedIn = true; // 로그인 상태로 설정
 
-      socket.emit("login_success", { message: "로그인 성공!" });
+      socket.emit("login_success", { user: user, message: "로그인 성공!" });
       console.log(`✅ User ${email} logged in`);
     } catch (error) {
       socket.emit("login_error", {
