@@ -43,7 +43,7 @@ CREATE TABLE projects (
 -- 노드 테이블 (프로젝트와 연결)
 CREATE TABLE nodes (
     id INT PRIMARY KEY AUTO_INCREMENT,        -- 고유 ID
-    node_key INT NOT NULL UNIQUE,             -- 노드의 고유 키 (고유 값)
+    node_key INT NOT NULL,             -- 노드의 고유 키 (고유 값)
     project_id INT NOT NULL,                  -- 해당 노드가 속한 프로젝트
     parent_key INT DEFAULT NULL,          -- 부모 노드 (없으면 NULL)
     content CHAR(255) NOT NULL,               -- 노드의 내용
