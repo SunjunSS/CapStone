@@ -18,7 +18,7 @@ const routes = [
     component: MainHome,
   },
   {
-    path: "/MindMap",
+    path: "/MindMap/:project_id?",
     component: MindMap,
   },
   {

@@ -38,8 +38,10 @@
           <button
             @click="deleteSelectedNode"
             class="delete-btn"
-            :class="{ 'delete-btn-enabled': selectedNode }"
-            :disabled="!selectedNode"
+            :class="{
+              'delete-btn-enabled': selectedNode && selectedNode.parent !== 0,
+            }"
+            :disabled="!selectedNode || selectedNode.parent === 0"
           >
             Delete Node
           </button>
@@ -47,7 +49,7 @@
 
         <div class="add-controls" @keydown="handleKeyDown">
           <button
-            @click="addChildNode"
+            @click="addNode(false)"
             class="add-btn"
             :class="{ 'add-btn-enabled': selectedNode }"
             :disabled="!selectedNode"
@@ -55,7 +57,7 @@
             하위레벨 추가
           </button>
           <button
-            @click="addSiblingNode"
+            @click="addNode(true)"
             class="add-btn"
             :class="{ 'add-btn-enabled': canAddSibling }"
             :disabled="!canAddSibling"
@@ -69,7 +71,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, watchEffect } from "vue";
 import WebRTC from "..//WebRTC/WebRTC.vue";
 import mouseTracking from "../WebRTC/mouseTracking.vue";
 import * as go from "gojs";
@@ -81,17 +83,21 @@ import {
   updateMindmapNode,
 } from "@/services/nodeService";
 import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
+import { useRoute } from "vue-router"; // ✅ useRoute 추가
+import {
+  registerSocketHandlers,
+  unregisterSocketHandlers,
+} from "../socket/socketHandlers.js"; // ✅ WebSocket 핸들러 모듈 import
+
 export default {
   components: {
     WebRTC,
     mouseTracking,
   },
   setup() {
-
-
     // mouseTracking과 관련됨
     const mindmapContainer = ref(null);
-    
+
     // mindmap의 영역 정보를 반환하는 함수
     const getMindmapBounds = () => {
       if (mindmapContainer.value) {
@@ -105,8 +111,6 @@ export default {
       }
       return { left: 0, top: 0, width: 1, height: 1 }; // 기본값
     };
-
-
 
     const diagramDiv = ref(null);
     let myDiagram = null;
@@ -138,63 +142,25 @@ export default {
 
     const sidebarOpen = ref(false);
 
+    const route = useRoute(); // ✅ 현재 라우트 정보 가져오기
+    const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
+    // ✅ 방 ID 및 사용자 ID 관리
+    const roomId = "room-1"; // 특정 방 ID (동적으로 설정 가능)
+    const userId = Math.random().toString(36).substring(2, 7); // 랜덤한 사용자 ID
+
+    console.log("현재 프로젝트 ID:", paramProject_id.value); // ✅ 디버깅용 콘솔 출력
+
+    // // roomId 값 업데이트 (project_id가 변경될 때마다 실행)
+    // watchEffect(() => {
+    //   if (paramProject_id.value) {
+    //     roomId.value = `project-${paramProject_id.value}`;
+    //     console.log("✅ 방 ID 설정 완료:", roomId.value);
+    //   }
+    // });
+
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
     };
-
-    // ✅ WebSocket 이벤트 리스너 추가
-    // ✅ WebSocket 이벤트 리스너 추가
-    socket.on("nodeAdded", (newNodes) => {
-      console.log("🟢 새로운 노드 추가됨:", newNodes);
-
-      if (!myDiagram) return;
-
-      myDiagram.startTransaction("add node");
-
-      newNodes.forEach((newNode) => {
-        myDiagram.model.addNodeData(newNode); // ✅ 기존 다이어그램에 새 노드 추가
-      });
-
-      myDiagram.commitTransaction("add node");
-    });
-
-    socket.on("nodeUpdated", (updatedNode) => {
-      console.log("✏️ 노드 수정됨:", updatedNode);
-
-      if (!myDiagram) return;
-
-      myDiagram.startTransaction("update node");
-
-      // ✅ 해당 노드 데이터만 변경
-      const node = myDiagram.model.findNodeDataForKey(updatedNode.key);
-      if (node) {
-        myDiagram.model.setDataProperty(node, "name", updatedNode.name);
-        myDiagram.model.setDataProperty(
-          node,
-          "isSelected",
-          updatedNode.isSelected
-        );
-      }
-
-      myDiagram.commitTransaction("update node");
-    });
-
-    socket.on("nodeDeleted", (deletedNodes) => {
-      console.log("🗑️ 노드 삭제됨:", deletedNodes);
-
-      if (!myDiagram) return;
-
-      myDiagram.startTransaction("delete node");
-
-      deletedNodes.forEach((nodeKey) => {
-        const node = myDiagram.model.findNodeDataForKey(nodeKey);
-        if (node) {
-          myDiagram.model.removeNodeData(node); // ✅ 해당 노드만 삭제
-        }
-      });
-
-      myDiagram.commitTransaction("delete node");
-    });
 
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
@@ -218,54 +184,31 @@ export default {
 
       if (event.key === "Tab") {
         event.preventDefault();
-        addChildNode();
+        addNode(false); // ✅ 하위 레벨 추가
       }
 
       if (event.key === "Shift") {
         event.preventDefault();
-        addSiblingNode();
+        addNode(true); // ✅ 동일 레벨 추가
       }
     };
 
     const deleteSelectedNode = async () => {
-      if (!selectedNode.value || !myDiagram) return;
+      if (!selectedNode.value) return;
 
-      myDiagram.startTransaction("delete node");
+      console.log("🗑️ 삭제 요청 보냄:", selectedNode.value.key);
 
-      const node = myDiagram.findNodeForKey(selectedNode.value.key);
-      if (!node) {
-        myDiagram.commitTransaction("delete node");
-        return;
+      // ✅ API 요청 → 서버에서 삭제 결정
+      const success = await deleteMindmapNodes(
+        selectedNode.value.key,
+        paramProject_id.value
+      );
+
+      if (!success) {
+        console.error("❌ 서버 삭제 실패");
       }
 
-      // 🔥 삭제할 노드 리스트 수집
-      const nodesToDelete = new Set();
-      const collectDescendants = (node) => {
-        nodesToDelete.add(node.data);
-        node.findTreeChildrenNodes().each((child) => {
-          collectDescendants(child);
-        });
-      };
-      collectDescendants(node);
-
-      // 🗑️ GoJS 모델에서 삭제
-      nodesToDelete.forEach((nodeData) => {
-        myDiagram.model.removeNodeData(nodeData);
-      });
-
-      myDiagram.commitTransaction("delete node");
-
-      console.log("🗑️ 삭제된 노드 목록:", [...nodesToDelete]);
-
-      // ✅ 서버에 삭제 요청 보내기
-      const success = await deleteMindmapNodes([...nodesToDelete]);
-
-      if (success) {
-        console.log("✅ 서버에서 삭제 완료");
-        selectedNode.value = null; // 삭제 후 선택된 노드 초기화
-      } else {
-        console.error("❌ 서버 삭제 실패: 프론트에서 롤백할 수도 있음");
-      }
+      // ✅ 삭제 요청만 보내고, 실제 삭제는 WebSocket 이벤트에서 처리됨 (socketHandlers.js)
     };
 
     const animateZoom = (startZoom, targetZoom, startTime, duration) => {
@@ -462,66 +405,38 @@ export default {
       initialTouchDistance.value = 0;
     };
 
-    const addChildNode = async () => {
-      if (!myDiagram) return;
-
-      const parentKey = selectedNode.value ? selectedNode.value.key : 0;
-      const newKey = myDiagram.model.nodeDataArray.length + 1;
-      const newNode = {
-        key: newKey,
-        name: "새 노드",
-        parent: parentKey,
-        isSelected: false,
-      };
-
-      // myDiagram.startTransaction("add child node");
-      // myDiagram.model.addNodeData(newNode);
-      // myDiagram.commitTransaction("add child node");
-
-      addedNodes.value.push(newNode); // ✅ 새 노드 저장
-
-      const success = await saveMindmapToServer(addedNodes.value);
-      if (success) {
-        addedNodes.value = []; // ✅ 저장 성공 시 초기화
-      } else {
-        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
-        myDiagram.startTransaction("rollback add node");
-        myDiagram.model.removeNodeData(newNode);
-        myDiagram.commitTransaction("rollback add node");
-      }
-    };
-
-    const addSiblingNode = async () => {
-      // ✅ async 추가
-      // canAddSibling이 false면 early return
-      if (!canAddSibling.value) return;
+    const addNode = async (isSibling = false) => {
       if (!selectedNode.value || !myDiagram) return;
+      // ✅ 동일 레벨 추가일 때만 canAddSibling 체크
+      if (isSibling && !canAddSibling.value) return;
 
-      const parentKey = selectedNode.value.parent || 0;
-      const newKey = myDiagram.model.nodeDataArray.length + 1;
+      const parentKey = isSibling
+        ? selectedNode.value.parent // 동일 레벨 추가 시 부모를 유지
+        : selectedNode.value.key; // 하위 레벨 추가 시 부모는 현재 선택된 노드
+
+      const parentProject_id = selectedNode.value.project_id;
       const newNode = {
-        key: newKey,
         name: "새 노드",
-        parent: parentKey, // 🔥 부모 키가 없으면 `null`
+        parent: parentKey || 0, // 부모 키가 없으면 최상위 노드
         isSelected: false,
+        project_id: parentProject_id,
       };
-
-      // myDiagram.startTransaction("add sibling node");
-      // myDiagram.model.addNodeData(newNode);
-      // myDiagram.commitTransaction("add sibling node");
 
       addedNodes.value.push(newNode); // ✅ 새 노드 저장
 
-      console.log("✅ 새 동일 레벨 노드 추가됨:", newNode);
+      console.log(
+        `✅ ${isSibling ? "동일 레벨" : "하위 레벨"} 노드 추가됨:`,
+        newNode
+      );
 
-      const success = await saveMindmapToServer(addedNodes.value); // ✅ await 사용 가능
+      const success = await saveMindmapToServer(
+        addedNodes.value,
+        paramProject_id.value
+      );
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
       } else {
-        console.warn("⏪ 서버 오류 발생: 다이어그램에서 추가한 노드 롤백");
-        myDiagram.startTransaction("rollback add node");
-        myDiagram.model.removeNodeData(newNode);
-        myDiagram.commitTransaction("rollback add node");
+        console.warn("⏪ 서버 오류 발생");
       }
     };
 
@@ -574,9 +489,11 @@ export default {
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value,
       });
+      // ✅ WebSocket 이벤트 등록
+      registerSocketHandlers(myDiagram, roomId, userId);
 
       // ✅ API 호출하여 서버에서 마인드맵 데이터 불러오기
-      loadMindmapFromServer(myDiagram);
+      loadMindmapFromServer(myDiagram, paramProject_id.value);
 
       myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
         const part = e.subject.part;
@@ -693,7 +610,6 @@ export default {
                 event.preventDefault(); // 아무것도 지워지지 않도록
               }
             });
-
             inputField.addEventListener("blur", async () => {
               myDiagram.startTransaction("update node and layout");
               const wasSelected = node.data.isSelected;
@@ -706,6 +622,15 @@ export default {
               const updatedText = inputField.value
                 .replace(editEmoji, "")
                 .trim();
+
+              // 🔥 기존 이름과 같다면 API 요청하지 않고 종료
+              if (node.data.name === updatedText) {
+                console.log("🔄 변경 없음: API 요청 스킵");
+                myDiagram.commitTransaction("update node and layout");
+                document.body.removeChild(inputField);
+                return;
+              }
+
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
               const newWidth = node.actualBounds.width;
@@ -730,7 +655,10 @@ export default {
               document.body.removeChild(inputField);
 
               // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
-              const success = await updateMindmapNode(node.data);
+              const success = await updateMindmapNode(
+                node.data,
+                paramProject_id.value
+              );
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
               } else {
@@ -798,27 +726,6 @@ export default {
               )
             )
           )
-        ),
-        $(
-          go.Panel,
-          "Spot",
-          {
-            alignment: go.Spot.Right,
-            alignmentFocus: go.Spot.Left,
-            margin: new go.Margin(0, 0, 0, 15),
-            desiredSize: new go.Size(25, 25),
-            click: (e, obj) => {
-              addChildNode();
-              e.handled = true;
-            },
-            cursor: "pointer",
-          },
-          new go.Binding("visible", "", (node) => {
-            if (!node.isSelected) return false;
-            const nodeData = myDiagram.findNodeForKey(node.key);
-            if (!nodeData) return false;
-            return nodeData.findTreeChildrenNodes().count === 0;
-          }).ofObject()
         )
       );
 
@@ -870,7 +777,8 @@ export default {
     });
 
     onBeforeUnmount(() => {
-      socket.emit("leave-room", { roomId, userId }); // ✅ 방 나가기
+      unregisterSocketHandlers(); // ✅ WebSocket 이벤트 해제
+
       if (diagramDiv.value) {
         diagramDiv.value.removeEventListener("keydown", handleKeyDown);
       }
@@ -879,11 +787,11 @@ export default {
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달
-      socket.emit("update-mindmap-bounds", getMindmapBounds());
+    socket.emit("update-mindmap-bounds", getMindmapBounds());
 
-      window.addEventListener("resize", () => {
-        socket.emit("update-mindmap-bounds", getMindmapBounds());
-      });
+    window.addEventListener("resize", () => {
+      socket.emit("update-mindmap-bounds", getMindmapBounds());
+    });
 
     return {
       diagramDiv,
@@ -904,11 +812,11 @@ export default {
       touchMove,
       stopTouch,
       deleteSelectedNode,
-      addChildNode,
-      addSiblingNode,
+      addNode,
       isSaving,
       lastSaveTime,
       serverError,
+      paramProject_id,
     };
   },
 };
