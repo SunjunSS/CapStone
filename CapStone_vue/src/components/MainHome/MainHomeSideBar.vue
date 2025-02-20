@@ -8,18 +8,6 @@
       </div>
 
       <nav class="nav-menu">
-        <div class="nav-item">
-          <div class="nav-link">
-            <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
-              />
-            </svg>
-            <span>팀 맵</span>
-          </div>
-        </div>
-
         <div class="nav-item" :class="{ active: isActive }" @click="goToMyMap">
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
@@ -32,7 +20,11 @@
           </div>
         </div>
 
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{ active: isRecentActive }"
+          @click="goToRecent"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -48,7 +40,11 @@
           </div>
         </div>
 
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{ active: isFavoriteActive }"
+          @click="goToFavorite"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -60,19 +56,11 @@
           </div>
         </div>
 
-        <div class="nav-item">
-          <div class="nav-link">
-            <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-              />
-            </svg>
-            <span>공개</span>
-          </div>
-        </div>
-
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{ active: isTrashActive }"
+          @click="goToTrash"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -103,14 +91,35 @@ export default {
     const route = useRoute();
 
     const isActive = computed(() => route.path === "/MyMap");
+    const isRecentActive = computed(() => route.path === "/Recent");
+    const isTrashActive = computed(() => route.path === "/TrashPage");
+    const isFavoriteActive = computed(() => route.path === "/Favorite");
 
     const goToMyMap = () => {
       router.push("/MyMap");
     };
 
+    const goToRecent = () => {
+      router.push("/Recent");
+    };
+
+    const goToTrash = () => {
+      router.push("/TrashPage");
+    };
+
+    const goToFavorite = () => {
+      router.push("/Favorite");
+    };
+
     return {
       isActive,
+      isRecentActive,
+      isTrashActive,
       goToMyMap,
+      goToRecent,
+      goToTrash,
+      isFavoriteActive,
+      goToFavorite,
     };
   },
 };
@@ -124,7 +133,7 @@ export default {
 
 .sidebar {
   width: 250px;
-  background-color: #1e1f24;
+  background-color: #333333;
   position: fixed;
   left: 0;
   top: 0;
@@ -138,9 +147,9 @@ export default {
 .logo-container {
   padding: 10px 0;
   margin-bottom: 20px;
-  display: flex; /* 추가 */
-  align-items: center; /* 추가 */
-  gap: 10px; /* 추가: 이미지와 텍스트 사이 간격 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .logo-text {
@@ -167,6 +176,10 @@ export default {
   transition: background-color 0.2s;
 }
 
+.nav-item.active .nav-link {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
@@ -188,7 +201,7 @@ export default {
 }
 
 .logo-image {
-  height: 45px; /* 원하는 크기로 조절하세요 */
+  height: 45px;
   width: auto;
   margin-bottom: 10px;
 }

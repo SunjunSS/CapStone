@@ -6,34 +6,8 @@
     <!-- 콘텐츠 영역 -->
     <main class="content">
       <header class="content-header">
-        <h2>내 지도</h2>
+        <h2>최근 맵</h2>
       </header>
-
-      <section class="create-map">
-        <h3>지도 만들기</h3>
-        <div class="map-options">
-          <div class="map-item empty-map" @click="openProjectDialog">
-            <span class="icon">➕</span>
-            <span class="text">빈 지도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">💡</span>
-            <span class="text">마인드 맵</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">⚙️</span>
-            <span class="text">조직도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">🎯</span>
-            <span class="text">SMART 목표</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">📝</span>
-            <span class="text">프로젝트 계획</span>
-          </div>
-        </div>
-      </section>
 
       <section class="map-list">
         <div class="map-list-header">
@@ -97,21 +71,16 @@
         </table>
       </section>
     </main>
-
-    
-
   </div>
 </template>
 
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
-import Project from "./Project.vue";
 
 export default {
   name: "MyMap",
   components: {
     MainHomeSideBar,
-    Project,
   },
   data() {
     return {
@@ -131,11 +100,6 @@ export default {
           showMenu: false,
         },
       ],
-      isProjectDialogOpen: false,
-      teamName: "",
-      teamDescription: "",
-      teamTopic: "",
-      topics: [], // 예시 주제
     };
   },
   computed: {
@@ -147,57 +111,6 @@ export default {
     },
   },
   methods: {
-
-    openProjectDialog() {
-      this.$router.push('/Project')
-    },
-    close() {
-      this.isProjectDialogOpen = false;
-    },
-    submit() {
-      // 프로젝트 생성 처리
-      this.$emit("createProject", {
-        name: this.teamName,
-        description: this.teamDescription,
-        topic: this.teamTopic,
-      });
-      this.close();
-    },
-    addProject(projectData) {
-      this.mapItems.push({
-        name: projectData.name,
-        creator: "kim", // 실제 사용자로 변경 필요
-        date: new Date().toISOString().split("T")[0],
-        selected: false,
-        showMenu: false,
-      });
-      this.isProjectDialogOpen = false;
-    },
-
-    async createProject() {
-      try {
-        const response = await axios.post("/api/project", {
-          user_id: 1, // 실제 로그인된 사용자의 ID로 변경 필요
-          name: "새 프로젝트",
-          description: "빈 지도에서 시작하는 프로젝트",
-          topic: "일반",
-        });
-
-        alert(`프로젝트 생성 완료: ${response.data.project.name}`);
-
-        // 새로운 프로젝트를 목록에 추가
-        this.mapItems.push({
-          name: response.data.project.name,
-          creator: "kim", // 실제 사용자 이름으로 변경 필요
-          date: new Date().toISOString().split("T")[0],
-          selected: false,
-          showMenu: false,
-        });
-      } catch (error) {
-        console.error("프로젝트 생성 실패:", error);
-        alert("프로젝트 생성에 실패했습니다.");
-      }
-    },
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -234,7 +147,7 @@ export default {
     },
     moveToFavorite(index) {
       // 즐겨찾기 추가 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
+      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에에 추가`);
       this.closeAllMenus();
     },
     moveToTrash(index) {
@@ -290,58 +203,11 @@ export default {
   border-radius: 8px;
 }
 
-.create-map,
 .map-list {
   background: white;
   padding: 15px;
   margin-bottom: 40px;
   border-radius: 8px;
-}
-
-.map-options {
-  display: flex;
-  gap: 20px;
-  padding-top: 30px;
-}
-
-.map-item.empty-map {
-  background: #c8c8ff; /* 라벤더 색상 */
-}
-
-.map-item.empty-map .text {
-  color: #ffffff; /* 텍스트 색상 변경 */
-}
-
-.map-item.empty-map:hover {
-  background-color: #b0b0ff; /* 호버 시 더 진한 라벤더 */
-}
-
-.map-item {
-  background: #eee;
-  padding: 20px;
-  border-radius: 15px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 220px;
-  min-height: 120px;
-  transition: transform 0.3s ease; /* 애니메이션 효과 추가 */
-}
-
-.map-item:hover {
-  background-color: #ddd; /* 호버 시 배경색 변경 */
-  transform: scale(1.05); /* 호버 시 크기 5% 증가 */
-}
-
-.map-item .icon {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.map-item .text {
-  text-align: center;
 }
 
 .map-list table {
@@ -353,7 +219,7 @@ export default {
 
 .map-list-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
@@ -418,7 +284,7 @@ export default {
 .menu-dropdown {
   position: absolute;
   right: 0px;
-  bottom: 100%;
+  top: 100%;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);

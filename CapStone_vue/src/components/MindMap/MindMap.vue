@@ -24,7 +24,7 @@
         @touchmove="touchMove"
         @touchend="stopTouch"
       >
-        <div class="mindmap-container">
+        <div class="mindmap-container" ref="mindmapContainer">
           <div ref="diagramDiv" class="mindmap-content"></div>
         </div>
 
@@ -84,13 +84,34 @@ import {
   registerSocketHandlers,
   unregisterSocketHandlers,
 } from "../socket/socketHandlers.js"; // ✅ WebSocket 핸들러 모듈 import
-
+import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 export default {
   components: {
     WebRTC,
     mouseTracking,
   },
   setup() {
+
+
+    // mouseTracking과 관련됨
+    const mindmapContainer = ref(null);
+    
+    // mindmap의 영역 정보를 반환하는 함수
+    const getMindmapBounds = () => {
+      if (mindmapContainer.value) {
+        const bounds = mindmapContainer.value.getBoundingClientRect();
+        return {
+          left: bounds.left,
+          top: bounds.top,
+          width: bounds.width,
+          height: bounds.height,
+        };
+      }
+      return { left: 0, top: 0, width: 1, height: 1 }; // 기본값
+    };
+
+
+
     const diagramDiv = ref(null);
     let myDiagram = null;
     const currentZoom = ref(1);
@@ -752,10 +773,19 @@ export default {
       // saveMindmapToServer()
     });
 
+    // mindmap 영역을 `mouseTracking.vue`에 전달
+      socket.emit("update-mindmap-bounds", getMindmapBounds());
+
+      window.addEventListener("resize", () => {
+        socket.emit("update-mindmap-bounds", getMindmapBounds());
+      });
+
     return {
+      diagramDiv,
+      mindmapContainer,
+      getMindmapBounds,
       sidebarOpen,
       toggleSidebar,
-      diagramDiv,
       currentZoom,
       selectedNode,
       canAddSibling,

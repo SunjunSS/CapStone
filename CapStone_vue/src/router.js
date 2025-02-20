@@ -4,11 +4,17 @@ import MindMap from "./components/MindMap/MindMap.vue";
 import WeBRTC from "./components/WebRTC/WebRTC.vue";
 import MouseTracking from "./components/WebRTC/mouseTracking.vue";
 import MyMap from "./components/MainHome/MyMap.vue";
+import Register from "./components/User/Register.vue"
+import Login from "./components/User/Login.vue"
+import Recent from "./components/MainHome/Recent.vue";
+import Project from "./components/MainHome/Project.vue";
+import TrashPage from "./components/MainHome/TrashPage.vue";
+import Favorite from "./components/MainHome/Favorite.vue";
 
 const routes = [
   {
     path: "/",
-    component: MainHome,
+    component: Login,
   },
   {
     path: "/MindMap/:project_id?",
@@ -25,6 +31,30 @@ const routes = [
   {
     path: "/MyMap",
     component: MyMap,
+  },
+  {
+    path: "/Register",
+    component: Register,
+  },
+  {
+    path: "/Login",
+    component: Login,
+  },
+  {
+    path: "/Recent",
+    component: Recent,
+  },
+  {
+    path: "/Project",
+    component: Project,
+  },  
+  {
+    path: "/TrashPage",
+    component: TrashPage,
+  },
+  {
+    path: "/Favorite",
+    component: Favorite,
   },
 ];
 
