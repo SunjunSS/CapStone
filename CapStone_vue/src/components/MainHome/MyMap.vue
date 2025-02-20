@@ -12,7 +12,7 @@
       <section class="create-map">
         <h3>지도 만들기</h3>
         <div class="map-options">
-          <div class="map-item empty-map" @click="openProjectDialog">
+          <div class="map-item empty-map">
             <span class="icon">➕</span>
             <span class="text">빈 지도</span>
           </div>
@@ -36,82 +36,103 @@
       </section>
 
       <section class="map-list">
-        <div class="map-list-header">
-          <h3>지도 탐색</h3>
-          <span v-if="selectedItemsCount > 0" class="selected-count">
-            {{ selectedItemsCount }}개 선택됨
-          </span>
+        <!-- mapItems가 있을 때 테이블 표시 -->
+        <div v-if="mapItems.length > 0">
+          <div class="map-list-header">
+            <h3>지도 탐색</h3>
+            <span v-if="selectedItemsCount > 0" class="selected-count">
+              {{ selectedItemsCount }}개 선택됨
+            </span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="name-column">이름</th>
+                <th class="creator-column">만든 사람</th>
+                <th class="date-column">수정</th>
+                <th class="action-column"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, index) in mapItems"
+                :key="index"
+                :class="{ 'selected-row': item.selected }"
+              >
+                <td class="name-column">
+                  <div
+                    class="hover-checkbox"
+                    :class="{ 'show-checkbox': hasSelectedItems }"
+                  >
+                    <input
+                      type="checkbox"
+                      v-model="item.selected"
+                      @change="handleCheckboxChange"
+                    />
+                  </div>
+                  <span class="map-icon">🌟</span>
+                  {{ item.name }}
+                </td>
+                <td class="creator-column">{{ item.creator }}</td>
+                <td class="date-column">{{ item.date }}</td>
+                <td class="action-column">
+                  <button class="menu-button" @click="showMenu(index, $event)">
+                    ⋯
+                  </button>
+                  <div
+                    v-if="item.showMenu"
+                    class="menu-dropdown"
+                    ref="menuDropdown"
+                  >
+                    <ul>
+                      <li @click="openMap(index)">🗝️ 열기</li>
+                      <li @click="duplicateMap(index)">📋 복제</li>
+                      <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
+                      <li @click="moveToTrash(index)" class="delete-option">
+                        🗑️ 휴지통으로 이동
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th class="name-column">이름</th>
-              <th class="creator-column">만든 사람</th>
-              <th class="date-column">수정</th>
-              <th class="action-column"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(item, index) in mapItems"
-              :key="index"
-              :class="{ 'selected-row': item.selected }"
+
+        <!-- mapItems가 비어있을 때 빈 상태 UI 표시 -->
+        <div v-else class="empty-recent-container">
+          <div class="empty-recent-icon">
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <td class="name-column">
-                <div
-                  class="hover-checkbox"
-                  :class="{ 'show-checkbox': hasSelectedItems }"
-                >
-                  <input
-                    type="checkbox"
-                    v-model="item.selected"
-                    @change="handleCheckboxChange"
-                  />
-                </div>
-                <span class="map-icon">🌟</span>
-                {{ item.name }}
-              </td>
-              <td class="creator-column">{{ item.creator }}</td>
-              <td class="date-column">{{ item.date }}</td>
-              <td class="action-column">
-                <button class="menu-button" @click="showMenu(index, $event)">
-                  ⋯
-                </button>
-                <div
-                  v-if="item.showMenu"
-                  class="menu-dropdown"
-                  ref="menuDropdown"
-                >
-                  <ul>
-                    <li @click="openMap(index)">🗝️ 열기</li>
-                    <li @click="duplicateMap(index)">📋 복제</li>
-                    <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                    <li @click="moveToTrash(index)" class="delete-option">
-                      🗑️ 휴지통으로 이동
-                    </li>
-                  </ul>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              <path
+                fill="currentColor"
+                d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
+              />
+            </svg>
+          </div>
+          <h3 class="empty-recent-title">첫 번째 지도 만들기</h3>
+          <p class="empty-recent-description">
+            지도를 만들고 생각을 정리하세요.<br />
+            중요한 아이디어를 쉽게 시각화할 수 있습니다.
+          </p>
+        </div>
       </section>
     </main>
-
-    
-
   </div>
 </template>
 
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
-import Project from "./Project.vue";
 
 export default {
   name: "MyMap",
   components: {
     MainHomeSideBar,
-    Project,
   },
   data() {
     return {
@@ -131,11 +152,6 @@ export default {
           showMenu: false,
         },
       ],
-      isProjectDialogOpen: false,
-      teamName: "",
-      teamDescription: "",
-      teamTopic: "",
-      topics: [], // 예시 주제
     };
   },
   computed: {
@@ -147,57 +163,6 @@ export default {
     },
   },
   methods: {
-
-    openProjectDialog() {
-      this.$router.push('/Project')
-    },
-    close() {
-      this.isProjectDialogOpen = false;
-    },
-    submit() {
-      // 프로젝트 생성 처리
-      this.$emit("createProject", {
-        name: this.teamName,
-        description: this.teamDescription,
-        topic: this.teamTopic,
-      });
-      this.close();
-    },
-    addProject(projectData) {
-      this.mapItems.push({
-        name: projectData.name,
-        creator: "kim", // 실제 사용자로 변경 필요
-        date: new Date().toISOString().split("T")[0],
-        selected: false,
-        showMenu: false,
-      });
-      this.isProjectDialogOpen = false;
-    },
-
-    async createProject() {
-      try {
-        const response = await axios.post("/api/project", {
-          user_id: 1, // 실제 로그인된 사용자의 ID로 변경 필요
-          name: "새 프로젝트",
-          description: "빈 지도에서 시작하는 프로젝트",
-          topic: "일반",
-        });
-
-        alert(`프로젝트 생성 완료: ${response.data.project.name}`);
-
-        // 새로운 프로젝트를 목록에 추가
-        this.mapItems.push({
-          name: response.data.project.name,
-          creator: "kim", // 실제 사용자 이름으로 변경 필요
-          date: new Date().toISOString().split("T")[0],
-          selected: false,
-          showMenu: false,
-        });
-      } catch (error) {
-        console.error("프로젝트 생성 실패:", error);
-        alert("프로젝트 생성에 실패했습니다.");
-      }
-    },
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -317,7 +282,7 @@ export default {
 }
 
 .map-item {
-  background: #eee;
+  background: #f5f5f7;
   padding: 20px;
   border-radius: 15px;
   cursor: pointer;
@@ -331,7 +296,7 @@ export default {
 }
 
 .map-item:hover {
-  background-color: #ddd; /* 호버 시 배경색 변경 */
+  background-color: #eee; /* 호버 시 배경색 변경 */
   transform: scale(1.05); /* 호버 시 크기 5% 증가 */
 }
 
@@ -494,5 +459,40 @@ export default {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* 빈 최근 맵 상태 스타일 */
+.empty-recent-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 10px 20px;
+  text-align: center;
+  min-height: 30vh;
+}
+
+.empty-recent-icon {
+  margin-bottom: 20px;
+  background-color: #f5f5f5;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-recent-title {
+  margin-bottom: 5px; /* 제목과 설명 사이 간격 */
+}
+
+.empty-recent-description {
+  font-size: 14px;
+  color: #5f6368;
+  max-width: 400px;
+  margin-bottom: 24px;
+  line-height: 1.5;
 }
 </style>

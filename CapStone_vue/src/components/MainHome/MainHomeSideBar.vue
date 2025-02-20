@@ -1,4 +1,3 @@
-<!-- App.vue -->
 <template>
   <div class="app-container">
     <div class="sidebar">
@@ -8,7 +7,14 @@
       </div>
 
       <nav class="nav-menu">
-        <div class="nav-item" :class="{ active: isActive }" @click="goToMyMap">
+        <div
+          class="nav-item"
+          :class="{
+            active: isActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToMyMap)"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -22,8 +28,11 @@
 
         <div
           class="nav-item"
-          :class="{ active: isRecentActive }"
-          @click="goToRecent"
+          :class="{
+            active: isRecentActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToRecent)"
         >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
@@ -42,8 +51,11 @@
 
         <div
           class="nav-item"
-          :class="{ active: isFavoriteActive }"
-          @click="goToFavorite"
+          :class="{
+            active: isFavoriteActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToFavorite)"
         >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
@@ -58,8 +70,11 @@
 
         <div
           class="nav-item"
-          :class="{ active: isTrashActive }"
-          @click="goToTrash"
+          :class="{
+            active: isTrashActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToTrash)"
         >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
@@ -72,28 +87,86 @@
           </div>
         </div>
       </nav>
+
+      <div class="login-section">
+        <div class="user-profile">
+          <div class="profile-image">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20">
+              <path
+                fill="currentColor"
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+              />
+            </svg>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name">{{ userDisplayName }}</div>
+            <button v-if="!isLoggedIn" class="login-button" @click="goToLogin">
+              로그인
+            </button>
+            <button v-else class="login-button" @click="handleLogout">
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="main-content">
-      <!-- 메인 콘텐츠는 여기에 -->
+      <login-required v-if="shouldShowLoginRequired" />
+      <router-view v-else></router-view>
     </div>
   </div>
 </template>
 
 <script>
 import { useRouter, useRoute } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import LoginRequired from "./LoginRequired.vue";
 
 export default {
   name: "App",
+  components: {
+    LoginRequired,
+  },
   setup() {
     const router = useRouter();
     const route = useRoute();
+    const loginRedirectMessage = ref(false);
 
     const isActive = computed(() => route.path === "/MyMap");
     const isRecentActive = computed(() => route.path === "/Recent");
     const isTrashActive = computed(() => route.path === "/TrashPage");
     const isFavoriteActive = computed(() => route.path === "/Favorite");
+
+    // 로그인 상태 확인
+    const isLoggedIn = computed(() => {
+      return localStorage.getItem("isLoggedIn") === "true";
+    });
+
+    // 사용자 표시 이름을 위한 computed 속성
+    const userDisplayName = computed(() => {
+      const userEmail = localStorage.getItem("userEmail");
+      return isLoggedIn.value ? userEmail : "게스트";
+    });
+
+    // 메인 페이지에서 로그인하지 않은 상태인지 확인하는 computed 속성
+    const isMainRouteAndNotLoggedIn = computed(() => {
+      return route.path === "/" && !isLoggedIn.value;
+    });
+
+    // LoginRequired를 표시할지 결정하는 computed 속성
+    const shouldShowLoginRequired = computed(() => {
+      return route.path === "/" && !isLoggedIn.value;
+    });
+
+    // 네비게이션 핸들러
+    const handleNavClick = (navFunction) => {
+      if (isMainRouteAndNotLoggedIn.value) {
+        loginRedirectMessage.value = true;
+        return;
+      }
+      navFunction();
+    };
 
     const goToMyMap = () => {
       router.push("/MyMap");
@@ -111,6 +184,17 @@ export default {
       router.push("/Favorite");
     };
 
+    const goToLogin = () => {
+      router.push("/Login");
+    };
+
+    // 로그아웃 핸들러
+    const handleLogout = () => {
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("isLoggedIn");
+      router.push("/");
+    };
+
     return {
       isActive,
       isRecentActive,
@@ -120,6 +204,14 @@ export default {
       goToTrash,
       isFavoriteActive,
       goToFavorite,
+      isLoggedIn,
+      shouldShowLoginRequired,
+      goToLogin,
+      handleNavClick,
+      loginRedirectMessage,
+      isMainRouteAndNotLoggedIn,
+      userDisplayName,
+      handleLogout,
     };
   },
 };
@@ -180,8 +272,21 @@ export default {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.nav-link:hover {
+.nav-item:not(.disabled) .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-item.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.nav-item.disabled .nav-link {
+  cursor: not-allowed;
+}
+
+.nav-item.disabled .nav-link:hover {
+  background-color: transparent;
 }
 
 .icon {
@@ -204,5 +309,62 @@ export default {
   height: 45px;
   width: auto;
   margin-bottom: 10px;
+}
+
+.login-section {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-image .icon {
+  margin-right: 0;
+  width: 27px;
+  height: 27px;
+}
+
+.profile-info {
+  flex-grow: 1;
+}
+
+.profile-name {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 4px;
+}
+
+.login-button {
+  width: 100%;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover {
+  background-color: #357abd;
 }
 </style>

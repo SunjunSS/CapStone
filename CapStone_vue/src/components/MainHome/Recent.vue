@@ -10,65 +10,94 @@
       </header>
 
       <section class="map-list">
-        <div class="map-list-header">
-          <h3>지도 탐색</h3>
-          <span v-if="selectedItemsCount > 0" class="selected-count">
-            {{ selectedItemsCount }}개 선택됨
-          </span>
+        <!-- mapItems가 있을 때 테이블 표시 -->
+        <div v-if="mapItems.length > 0">
+          <div class="map-list-header">
+            <h3>지도 탐색</h3>
+            <span v-if="selectedItemsCount > 0" class="selected-count">
+              {{ selectedItemsCount }}개 선택됨
+            </span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="name-column">이름</th>
+                <th class="creator-column">만든 사람</th>
+                <th class="date-column">수정</th>
+                <th class="action-column"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, index) in mapItems"
+                :key="index"
+                :class="{ 'selected-row': item.selected }"
+              >
+                <td class="name-column">
+                  <div
+                    class="hover-checkbox"
+                    :class="{ 'show-checkbox': hasSelectedItems }"
+                  >
+                    <input
+                      type="checkbox"
+                      v-model="item.selected"
+                      @change="handleCheckboxChange"
+                    />
+                  </div>
+                  <span class="map-icon">🌟</span>
+                  {{ item.name }}
+                </td>
+                <td class="creator-column">{{ item.creator }}</td>
+                <td class="date-column">{{ item.date }}</td>
+                <td class="action-column">
+                  <button class="menu-button" @click="showMenu(index, $event)">
+                    ⋯
+                  </button>
+                  <div
+                    v-if="item.showMenu"
+                    class="menu-dropdown"
+                    ref="menuDropdown"
+                  >
+                    <ul>
+                      <li @click="openMap(index)">🗝️ 열기</li>
+                      <li @click="duplicateMap(index)">📋 복제</li>
+                      <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
+                      <li @click="moveToTrash(index)" class="delete-option">
+                        🗑️ 휴지통으로 이동
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th class="name-column">이름</th>
-              <th class="creator-column">만든 사람</th>
-              <th class="date-column">수정</th>
-              <th class="action-column"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(item, index) in mapItems"
-              :key="index"
-              :class="{ 'selected-row': item.selected }"
+
+        <!-- mapItems가 비어있을 때 빈 상태 UI 표시 -->
+        <div v-else class="empty-recent-container">
+          <div class="empty-recent-icon">
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <td class="name-column">
-                <div
-                  class="hover-checkbox"
-                  :class="{ 'show-checkbox': hasSelectedItems }"
-                >
-                  <input
-                    type="checkbox"
-                    v-model="item.selected"
-                    @change="handleCheckboxChange"
-                  />
-                </div>
-                <span class="map-icon">🌟</span>
-                {{ item.name }}
-              </td>
-              <td class="creator-column">{{ item.creator }}</td>
-              <td class="date-column">{{ item.date }}</td>
-              <td class="action-column">
-                <button class="menu-button" @click="showMenu(index, $event)">
-                  ⋯
-                </button>
-                <div
-                  v-if="item.showMenu"
-                  class="menu-dropdown"
-                  ref="menuDropdown"
-                >
-                  <ul>
-                    <li @click="openMap(index)">🗝️ 열기</li>
-                    <li @click="duplicateMap(index)">📋 복제</li>
-                    <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                    <li @click="moveToTrash(index)" class="delete-option">
-                      🗑️ 휴지통으로 이동
-                    </li>
-                  </ul>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              <path
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                stroke="#9AA0A6"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <h3 class="empty-recent-title">최근 지도가 여기에 표시됩니다.</h3>
+          <p class="empty-recent-description">
+            최근 지도에 쉽게 액세스하여<br />
+            중단한 부분부터 빠르게 시작하세요.
+          </p>
+        </div>
       </section>
     </main>
   </div>
@@ -208,6 +237,9 @@ export default {
   padding: 15px;
   margin-bottom: 40px;
   border-radius: 8px;
+  min-height: 70vh; /* 뷰포트 높이의 70%를 최소 높이로 설정 */
+  display: flex; /* 내부 콘텐츠를 유연하게 배치 */
+  flex-direction: column; /* 세로 방향으로 배치 */
 }
 
 .map-list table {
@@ -360,5 +392,40 @@ export default {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* 빈 최근 맵 상태 스타일 */
+.empty-recent-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 50vh;
+}
+
+.empty-recent-icon {
+  margin-bottom: 20px;
+  background-color: #f5f5f5;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-recent-title {
+  margin-bottom: 5px; /* 제목과 설명 사이 간격 */
+}
+
+.empty-recent-description {
+  font-size: 14px;
+  color: #5f6368;
+  max-width: 400px;
+  margin-bottom: 24px;
+  line-height: 1.5;
 }
 </style>
