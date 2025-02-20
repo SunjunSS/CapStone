@@ -1,4 +1,3 @@
-<!-- App.vue -->
 <template>
   <div class="app-container">
     <div class="sidebar">
@@ -8,19 +7,14 @@
       </div>
 
       <nav class="nav-menu">
-        <div class="nav-item">
-          <div class="nav-link">
-            <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
-              />
-            </svg>
-            <span>팀 맵</span>
-          </div>
-        </div>
-
-        <div class="nav-item" :class="{ active: isActive }" @click="goToMyMap">
+        <div
+          class="nav-item"
+          :class="{
+            active: isActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToMyMap)"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -34,8 +28,11 @@
 
         <div
           class="nav-item"
-          :class="{ active: isRecentActive }"
-          @click="goToRecent"
+          :class="{
+            active: isRecentActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToRecent)"
         >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
@@ -52,7 +49,14 @@
           </div>
         </div>
 
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{
+            active: isFavoriteActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToFavorite)"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -64,19 +68,14 @@
           </div>
         </div>
 
-        <div class="nav-item">
-          <div class="nav-link">
-            <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-              />
-            </svg>
-            <span>공개</span>
-          </div>
-        </div>
-
-        <div class="nav-item">
+        <div
+          class="nav-item"
+          :class="{
+            active: isTrashActive,
+            disabled: isMainRouteAndNotLoggedIn,
+          }"
+          @click="handleNavClick(goToTrash)"
+        >
           <div class="nav-link">
             <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -88,26 +87,86 @@
           </div>
         </div>
       </nav>
+
+      <div class="login-section">
+        <div class="user-profile">
+          <div class="profile-image">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20">
+              <path
+                fill="currentColor"
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+              />
+            </svg>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name">{{ userDisplayName }}</div>
+            <button v-if="!isLoggedIn" class="login-button" @click="goToLogin">
+              로그인
+            </button>
+            <button v-else class="login-button" @click="handleLogout">
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="main-content">
-      <!-- 메인 콘텐츠는 여기에 -->
+      <login-required v-if="shouldShowLoginRequired" />
+      <router-view v-else></router-view>
     </div>
   </div>
 </template>
 
 <script>
 import { useRouter, useRoute } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import LoginRequired from "./LoginRequired.vue";
 
 export default {
   name: "App",
+  components: {
+    LoginRequired,
+  },
   setup() {
     const router = useRouter();
     const route = useRoute();
+    const loginRedirectMessage = ref(false);
 
     const isActive = computed(() => route.path === "/MyMap");
     const isRecentActive = computed(() => route.path === "/Recent");
+    const isTrashActive = computed(() => route.path === "/TrashPage");
+    const isFavoriteActive = computed(() => route.path === "/Favorite");
+
+    // 로그인 상태 확인
+    const isLoggedIn = computed(() => {
+      return localStorage.getItem("isLoggedIn") === "true";
+    });
+
+    // 사용자 표시 이름을 위한 computed 속성
+    const userDisplayName = computed(() => {
+      const userEmail = localStorage.getItem("userEmail");
+      return isLoggedIn.value ? userEmail : "게스트";
+    });
+
+    // 메인 페이지에서 로그인하지 않은 상태인지 확인하는 computed 속성
+    const isMainRouteAndNotLoggedIn = computed(() => {
+      return route.path === "/" && !isLoggedIn.value;
+    });
+
+    // LoginRequired를 표시할지 결정하는 computed 속성
+    const shouldShowLoginRequired = computed(() => {
+      return route.path === "/" && !isLoggedIn.value;
+    });
+
+    // 네비게이션 핸들러
+    const handleNavClick = (navFunction) => {
+      if (isMainRouteAndNotLoggedIn.value) {
+        loginRedirectMessage.value = true;
+        return;
+      }
+      navFunction();
+    };
 
     const goToMyMap = () => {
       router.push("/MyMap");
@@ -117,11 +176,42 @@ export default {
       router.push("/Recent");
     };
 
+    const goToTrash = () => {
+      router.push("/TrashPage");
+    };
+
+    const goToFavorite = () => {
+      router.push("/Favorite");
+    };
+
+    const goToLogin = () => {
+      router.push("/Login");
+    };
+
+    // 로그아웃 핸들러
+    const handleLogout = () => {
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("isLoggedIn");
+      router.push("/");
+    };
+
     return {
       isActive,
       isRecentActive,
+      isTrashActive,
       goToMyMap,
       goToRecent,
+      goToTrash,
+      isFavoriteActive,
+      goToFavorite,
+      isLoggedIn,
+      shouldShowLoginRequired,
+      goToLogin,
+      handleNavClick,
+      loginRedirectMessage,
+      isMainRouteAndNotLoggedIn,
+      userDisplayName,
+      handleLogout,
     };
   },
 };
@@ -135,7 +225,7 @@ export default {
 
 .sidebar {
   width: 250px;
-  background-color: #1e1f24;
+  background-color: #333333;
   position: fixed;
   left: 0;
   top: 0;
@@ -149,9 +239,9 @@ export default {
 .logo-container {
   padding: 10px 0;
   margin-bottom: 20px;
-  display: flex; /* 추가 */
-  align-items: center; /* 추가 */
-  gap: 10px; /* 추가: 이미지와 텍스트 사이 간격 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .logo-text {
@@ -182,8 +272,21 @@ export default {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.nav-link:hover {
+.nav-item:not(.disabled) .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-item.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.nav-item.disabled .nav-link {
+  cursor: not-allowed;
+}
+
+.nav-item.disabled .nav-link:hover {
+  background-color: transparent;
 }
 
 .icon {
@@ -203,8 +306,65 @@ export default {
 }
 
 .logo-image {
-  height: 45px; /* 원하는 크기로 조절하세요 */
+  height: 45px;
   width: auto;
   margin-bottom: 10px;
+}
+
+.login-section {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-image .icon {
+  margin-right: 0;
+  width: 27px;
+  height: 27px;
+}
+
+.profile-info {
+  flex-grow: 1;
+}
+
+.profile-name {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 4px;
+}
+
+.login-button {
+  width: 100%;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover {
+  background-color: #357abd;
 }
 </style>

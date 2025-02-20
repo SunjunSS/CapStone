@@ -6,34 +6,8 @@
     <!-- 콘텐츠 영역 -->
     <main class="content">
       <header class="content-header">
-        <h2>내 지도</h2>
+        <h2>즐겨찾기</h2>
       </header>
-
-      <section class="create-map">
-        <h3>지도 만들기</h3>
-        <div class="map-options">
-          <div class="map-item empty-map">
-            <span class="icon">➕</span>
-            <span class="text">빈 지도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">💡</span>
-            <span class="text">마인드 맵</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">⚙️</span>
-            <span class="text">조직도</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">🎯</span>
-            <span class="text">SMART 목표</span>
-          </div>
-          <div class="map-item">
-            <span class="icon">📝</span>
-            <span class="text">프로젝트 계획</span>
-          </div>
-        </div>
-      </section>
 
       <section class="map-list">
         <!-- mapItems가 있을 때 테이블 표시 -->
@@ -85,11 +59,8 @@
                     ref="menuDropdown"
                   >
                     <ul>
-                      <li @click="openMap(index)">🗝️ 열기</li>
-                      <li @click="duplicateMap(index)">📋 복제</li>
-                      <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                      <li @click="moveToTrash(index)" class="delete-option">
-                        🗑️ 휴지통으로 이동
+                      <li @click="removeFromFavorite(index)">
+                        ❌ 즐겨찾기 취소
                       </li>
                     </ul>
                   </div>
@@ -100,8 +71,8 @@
         </div>
 
         <!-- mapItems가 비어있을 때 빈 상태 UI 표시 -->
-        <div v-else class="empty-recent-container">
-          <div class="empty-recent-icon">
+        <div v-else class="empty-favorite-container">
+          <div class="empty-favorite-icon">
             <svg
               width="80"
               height="80"
@@ -110,15 +81,20 @@
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                fill="currentColor"
-                d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
+                d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                stroke="#9AA0A6"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
               />
             </svg>
           </div>
-          <h3 class="empty-recent-title">첫 번째 지도 만들기</h3>
-          <p class="empty-recent-description">
-            지도를 만들고 생각을 정리하세요.<br />
-            중요한 아이디어를 쉽게 시각화할 수 있습니다.
+          <h3 class="empty-favorite-title">
+            즐겨찾기한 지도가 여기에 표시됩니다.
+          </h3>
+          <p class="empty-favorite-description">
+            검색하느라 시간을 허비하지 마세요.<br />
+            가장 중요한 지도를 모두 한 곳에서 찾아보세요.
           </p>
         </div>
       </section>
@@ -128,8 +104,6 @@
 
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
-import Project from "./Project.vue";
-import { getCurrentUser, getProject } from '../socket/socket';
 
 export default {
   name: "MyMap",
@@ -138,14 +112,22 @@ export default {
   },
   data() {
     return {
-      mapItems: [],
-      isProjectDialogOpen: false,
-      teamName: "",
-      teamDescription: "",
-      teamTopic: "",
-      topics: [], // 예시 주제
-      currentUser: null,
-      email: null,
+      mapItems: [
+        {
+          name: "나의 새 마인드맵",
+          creator: "kim",
+          date: "Jan 22, 2025",
+          selected: false,
+          showMenu: false,
+        },
+        {
+          name: "캡스톤 마인드맵 탐색",
+          creator: "kim",
+          date: "Feb 10, 2025",
+          selected: false,
+          showMenu: false,
+        },
+      ],
     };
   },
   computed: {
@@ -156,56 +138,7 @@ export default {
       return this.mapItems.filter((item) => item.selected).length;
     },
   },
-  watch: {
-    currentUser: {
-      handler(newUser) {
-        console.log("실행됨 --- 유저")
-        if (newUser && newUser.email) {
-          console.log(`프로젝트 요청 실행 --`)
-          this.loadProjects();
-        }
-      },
-      deep: true
-    }
-  },
   methods: {
-
-    loadProjects() {
-      if (this.currentUser) {
-        getProject(this.currentUser.email, (projects) => {
-          console.log(`프로젝트 내부`);
-          this.mapItems = projects.map((project) => ({
-            project_id: project.project_id,
-            name: project.name,
-            description: project.description,
-            topic: project.topic,
-            tema_id: project.team_id,
-            selected: false,
-            showMenu: false,
-          }));
-          console.log(`프로젝트 개수: ${this.mapItems.length}`);
-        });
-      }
-      console.log("흠");
-    },
-
-    loadCurrentUser() {
-      this.currentUser = getCurrentUser(); // 로그인된 유저 정보를 받아옴
-      if (this.currentUser) {
-        this.email = this.currentUser.email;
-        console.log("현재 로그인된 유저:", this.email);
-      } else {
-        console.log("로그인된 유저가 없습니다.");
-      }
-    },
-
-    openProjectDialog() {
-      this.$router.push('/Project')
-    },
-    close() {
-      this.isProjectDialogOpen = false;
-    },
-    
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -230,26 +163,11 @@ export default {
         item.showMenu = false;
       });
     },
-    openMap(index) {
-      // 맵 열기 기능 구현
-      alert(`${this.mapItems[index].name} 열기`);
-      this.closeAllMenus();
-    },
-    duplicateMap(index) {
-      // 맵 복제 기능 구현
-      alert(`${this.mapItems[index].name} 복제`);
-      this.closeAllMenus();
-    },
-    moveToFavorite(index) {
-      // 즐겨찾기 추가 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
-      this.closeAllMenus();
-    },
-    moveToTrash(index) {
-      // 휴지통으로 이동 기능 구현
+    removeFromFavorite(index) {
+      // 즐겨찾기 취소 기능 구현
       if (
         confirm(
-          `${this.mapItems[index].name}을(를) 휴지통으로 이동하시겠습니까?`
+          `${this.mapItems[index].name}을(를) 즐겨찾기에서 제거하시겠습니까?`
         )
       ) {
         this.mapItems.splice(index, 1);
@@ -258,12 +176,8 @@ export default {
     },
   },
   mounted() {
-
-    this.loadCurrentUser();
-
     // 메뉴 외부 클릭 시 메뉴 닫기
     document.addEventListener("click", this.closeAllMenus);
-    
   },
   beforeDestroy() {
     document.removeEventListener("click", this.closeAllMenus);
@@ -290,6 +204,8 @@ export default {
 .content {
   flex: 1;
   padding-top: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-header {
@@ -302,58 +218,14 @@ export default {
   border-radius: 8px;
 }
 
-.create-map,
 .map-list {
   background: white;
   padding: 15px;
   margin-bottom: 40px;
   border-radius: 8px;
-}
-
-.map-options {
-  display: flex;
-  gap: 20px;
-  padding-top: 30px;
-}
-
-.map-item.empty-map {
-  background: #c8c8ff; /* 라벤더 색상 */
-}
-
-.map-item.empty-map .text {
-  color: #ffffff; /* 텍스트 색상 변경 */
-}
-
-.map-item.empty-map:hover {
-  background-color: #b0b0ff; /* 호버 시 더 진한 라벤더 */
-}
-
-.map-item {
-  background: #f5f5f7;
-  padding: 20px;
-  border-radius: 15px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 220px;
-  min-height: 120px;
-  transition: transform 0.3s ease; /* 애니메이션 효과 추가 */
-}
-
-.map-item:hover {
-  background-color: #eee; /* 호버 시 배경색 변경 */
-  transform: scale(1.05); /* 호버 시 크기 5% 증가 */
-}
-
-.map-item .icon {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.map-item .text {
-  text-align: center;
+  min-height: 70vh; /* 뷰포트 높이의 70%를 최소 높이로 설정 */
+  display: flex; /* 내부 콘텐츠를 유연하게 배치 */
+  flex-direction: column; /* 세로 방향으로 배치 */
 }
 
 .map-list table {
@@ -365,7 +237,7 @@ export default {
 
 .map-list-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
@@ -430,7 +302,7 @@ export default {
 .menu-dropdown {
   position: absolute;
   right: 0px;
-  bottom: 100%;
+  top: 100%;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -508,19 +380,19 @@ export default {
   transform: translate(-50%, -50%);
 }
 
-/* 빈 최근 맵 상태 스타일 */
-.empty-recent-container {
+/* 빈 즐겨찾기 상태 스타일 */
+.empty-favorite-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 10px 20px;
+  padding: 60px 20px;
   text-align: center;
-  min-height: 30vh;
+  min-height: 50vh;
 }
 
-.empty-recent-icon {
+.empty-favorite-icon {
   margin-bottom: 20px;
   background-color: #f5f5f5;
   width: 160px;
@@ -531,11 +403,11 @@ export default {
   justify-content: center;
 }
 
-.empty-recent-title {
+.empty-favorite-title {
   margin-bottom: 5px; /* 제목과 설명 사이 간격 */
 }
 
-.empty-recent-description {
+.empty-favorite-description {
   font-size: 14px;
   color: #5f6368;
   max-width: 400px;
