@@ -10,11 +10,12 @@ import Recent from "./components/MainHome/Recent.vue";
 import Project from "./components/MainHome/Project.vue";
 import TrashPage from "./components/MainHome/TrashPage.vue";
 import Favorite from "./components/MainHome/Favorite.vue";
+import LoginRequired from "./components/MainHome/LoginRequired.vue";
 
 const routes = [
   {
     path: "/",
-    component: Login,
+    component: MainHome,
   },
   {
     path: "/MindMap/:project_id?",
@@ -55,6 +56,10 @@ const routes = [
   {
     path: "/Favorite",
     component: Favorite,
+  },
+  {
+    path: "/LoginRequired",
+    component: LoginRequired,
   },
 ];
 
