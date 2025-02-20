@@ -168,7 +168,7 @@ export default {
       if (!selectedNode.value) return false;
 
       // key가 1인 첫 번째 노드면 false
-      if (selectedNode.value.key === 1) return false;
+      if (selectedNode.value.parent === 0) return false;
 
       return true;
     });
