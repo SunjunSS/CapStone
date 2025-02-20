@@ -4,7 +4,6 @@
       <v-col cols="12" sm="10" md="8" lg="6">
         <v-card class="elevation-12 pa-8 custom-card" rounded="lg">
           <div class="text-center mb-6">
-          
             <h1 class="welcome-text">환영합니다!</h1>
           </div>
 
@@ -45,7 +44,12 @@
           </v-form>
 
           <div class="text-center mt-6">
-            <v-btn text color="secondary" class="custom-btn" @click="goToRegister">
+            <v-btn
+              text
+              color="secondary"
+              class="custom-btn"
+              @click="goToRegister"
+            >
               회원가입
             </v-btn>
           </div>
@@ -56,66 +60,67 @@
     <v-snackbar v-model="snackbar" :timeout="3000" color="info" rounded="pill">
       <span class="snackbar-text">{{ snackbarText }}</span>
       <template v-slot:action="{ attrs }">
-        <v-btn color="white" text v-bind="attrs" @click="snackbar = false"> 닫기 </v-btn>
+        <v-btn color="white" text v-bind="attrs" @click="snackbar = false">
+          닫기
+        </v-btn>
       </template>
     </v-snackbar>
   </v-container>
 </template>
 
 <script>
-import io from 'socket.io-client'
+import io from "socket.io-client";
 import { socket, connectSocket, emitLogin } from "../socket/socket.js"; // ✅ 소켓 연결 함수 가져오기
-
 
 export default {
   data() {
     return {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
       valid: false,
       snackbar: false,
-      snackbarText: '',
+      snackbarText: "",
       emailRules: [
-        (v) => !!v || '이메일을 입력하세요.',
-        (v) => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.'
+        (v) => !!v || "이메일을 입력하세요.",
+        (v) => /.+@.+\..+/.test(v) || "유효한 이메일을 입력하세요.",
       ],
-      passwordRules: [(v) => !!v || '비밀번호를 입력하세요.'],
-      socket: null
-    }
+      passwordRules: [(v) => !!v || "비밀번호를 입력하세요."],
+      socket: null,
+    };
   },
   created() {
-    
     // 소켓 연결
     connectSocket();
 
-    // 로컬 스토리지 초기화
-    localStorage.removeItem('chatMessages')
+    // 세션 스토리지 초기화
+    sessionStorage.removeItem("chatMessages");
   },
   methods: {
     handleSubmit(e) {
-      e.preventDefault()
-      this.login()
+      e.preventDefault();
+      this.login();
     },
     login() {
       // 소켓을 사용한 로그인 요청
       emitLogin(this.email, this.password, this.handleLoginSuccess);
     },
     goToRegister() {
-      this.$router.push('/Register')
+      this.$router.push("/Register");
     },
-    handleLoginSuccess() {
-      // 로그인 성공 후 /MyMap으로 이동
-      this.$router.push('/MyMap');
-    }
+    handleLoginSuccess(userData) {
+      // userData를 파라미터로 받도록 수정
+      sessionStorage.setItem("userEmail", this.email); // 사용자 이메일 저장
+      sessionStorage.setItem("isLoggedIn", "true");
+      this.$router.push("/MyMap");
+    },
   },
   beforeDestroy() {
     // 컴포넌트가 파괴될 때 소켓 연결 해제
     if (this.socket) {
       disconnectSocket();
     }
-  }
-}
-
+  },
+};
 </script>
 
 <style scoped>
@@ -135,7 +140,7 @@ export default {
 }
 
 .welcome-text {
-  color: #42A5F5;
+  color: #42a5f5;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 

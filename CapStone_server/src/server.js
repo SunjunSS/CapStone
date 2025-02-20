@@ -1,11 +1,13 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 
 dotenv.config({ path: path.join(__dirname, "../.env") });
+
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const { initDB } = require("./models");
 
 const app = express();
 const server = http.createServer(app);
@@ -29,7 +31,8 @@ const projectRoutes = require("./routes/projectRoutes");
 app.use("/api/project", projectRoutes);
 
 // ✅ MindMap 라우트 설정
-app.use("/api/mindmap", require("./routes/nodeRoutes"));
+const nodeRoutes = require("./routes/nodeRoutes")(io); // io 전달
+app.use("/api/mindmap", nodeRoutes);
 
 // ✅ Audio 라우트 설정
 const audioRoutes = require("./routes/audioRoutes")(io); // ✅ io를 전달
@@ -38,6 +41,8 @@ app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);
 
+// ✅ 서버 시작 전에 데이터베이스 동기화 수행
+initDB();
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
