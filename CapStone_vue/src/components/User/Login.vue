@@ -92,8 +92,8 @@ export default {
     // 소켓 연결
     connectSocket();
 
-    // 로컬 스토리지 초기화
-    localStorage.removeItem("chatMessages");
+    // 세션 스토리지 초기화
+    sessionStorage.removeItem("chatMessages");
   },
   methods: {
     handleSubmit(e) {
@@ -109,8 +109,8 @@ export default {
     },
     handleLoginSuccess(userData) {
       // userData를 파라미터로 받도록 수정
-      localStorage.setItem("userEmail", this.email); // 사용자 이메일 저장
-      localStorage.setItem("isLoggedIn", "true");
+      sessionStorage.setItem("userEmail", this.email); // 사용자 이메일 저장
+      sessionStorage.setItem("isLoggedIn", "true");
       this.$router.push("/MyMap");
     },
   },

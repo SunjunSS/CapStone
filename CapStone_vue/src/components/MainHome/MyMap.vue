@@ -260,6 +260,7 @@ export default {
     },
   },
   mounted() {
+    
   // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
   connectSocket(() => {
     this.loadCurrentUser();

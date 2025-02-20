@@ -123,7 +123,7 @@
 import { useRouter, useRoute } from "vue-router";
 import { computed, ref } from "vue";
 import LoginRequired from "./LoginRequired.vue";
-import { disconnectSocket } from '../socket/socket'; // 이 줄을 추가
+import { disconnectSocket } from '../socket/socket';
 
 export default {
   name: "App",
@@ -140,29 +140,25 @@ export default {
     const isTrashActive = computed(() => route.path === "/TrashPage");
     const isFavoriteActive = computed(() => route.path === "/Favorite");
 
-    // 로그인 상태 확인
+    // Changed to use sessionStorage
     const isLoggedIn = computed(() => {
-  return localStorage.getItem("isLoggedIn") === "true" && 
-         localStorage.getItem("userEmail") !== null;
-});
+      return sessionStorage.getItem("isLoggedIn") === "true" && 
+             sessionStorage.getItem("userEmail") !== null;
+    });
 
-    // 사용자 표시 이름을 위한 computed 속성
     const userDisplayName = computed(() => {
-      const userEmail = localStorage.getItem("userEmail");
+      const userEmail = sessionStorage.getItem("userEmail");
       return isLoggedIn.value ? userEmail : "게스트";
     });
 
-    // 메인 페이지에서 로그인하지 않은 상태인지 확인하는 computed 속성
     const isMainRouteAndNotLoggedIn = computed(() => {
       return route.path === "/" && !isLoggedIn.value;
     });
 
-    // LoginRequired를 표시할지 결정하는 computed 속성
     const shouldShowLoginRequired = computed(() => {
       return route.path === "/" && !isLoggedIn.value;
     });
 
-    // 네비게이션 핸들러
     const handleNavClick = (navFunction) => {
       if (isMainRouteAndNotLoggedIn.value) {
         loginRedirectMessage.value = true;
@@ -191,13 +187,13 @@ export default {
       router.push("/Login");
     };
 
-    // 로그아웃 핸들러
+    // Changed to use sessionStorage
     const handleLogout = () => {
-  disconnectSocket(); // 소켓 연결 해제
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("isLoggedIn");
-  router.push("/");
-};
+      disconnectSocket();
+      sessionStorage.removeItem("userEmail");
+      sessionStorage.removeItem("isLoggedIn");
+      router.push("/");
+    };
 
     return {
       isActive,
