@@ -1,35 +1,36 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/localDB");
 
-const Project = sequelize.define(
-  "Project",
+const Node = sequelize.define(
+  "Node",
   {
-    project_id: {
+    id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    name: {
-      type: DataTypes.STRING,
+    node_key: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
+    },
+    project_id: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.TEXT,
+    parent_key: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
-    topic: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    team_id: {
-      type: DataTypes.INTEGER,
+    content: {
+      type: DataTypes.CHAR(255),
       allowNull: false,
     },
   },
   {
-    tableName: "projects",
+    tableName: "nodes",
     timestamps: false,
   }
 );
 
-module.exports = Project;
+module.exports = Node;

@@ -132,7 +132,6 @@ import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
 import { getCurrentUser, getProject, connectSocket } from '../socket/socket'; // connectSocket 추가
 
-
 export default {
   name: "MyMap",
   components: {

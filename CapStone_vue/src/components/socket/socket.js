@@ -5,14 +5,12 @@ const socket = io(API_BASE_URL, {
   transports: ["websocket"],
   autoConnect: false // 자동 연결 비활성화
 });
-
 let currentUser = null;
 let projects = {};
 
 // 소켓 연결 함수 수정
 export const connectSocket = (callback) => {
   if (!socket.connected) {
-    socket.connect();
     socket.on("connect", () => {
       console.log("🟢 소켓 연결됨:", socket.id);
       
@@ -81,7 +79,7 @@ export const getProject = (email, callback) => {
     console.log("📂 받은 프로젝트 데이터:", data.message);
     callback(data.projects);
   });
-
+  
   socket.emit("get_project", { email });
 };
 
