@@ -1,79 +1,88 @@
-// socket.js
 import { io } from "socket.io-client";
 
-// ✅ 소켓을 한 번만 생성하여 공유
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const socket = io(API_BASE_URL, {
   transports: ["websocket"],
+  autoConnect: false // 자동 연결 비활성화
 });
 
-let currentUser = null; // 로그인된 유저 객체를 저장할 변수
+let currentUser = null;
 let projects = {};
 
-
-// ✅ 로그인 후 소켓 연결 함수
-export const connectSocket = () => {
-  socket.on("connect", () => {
-    console.log("🟢 소켓 연결됨:", socket.id);
-  });
-
+// 소켓 연결 함수 수정
+export const connectSocket = (callback) => {
+  if (!socket.connected) {
+    socket.connect();
+    socket.on("connect", () => {
+      console.log("🟢 소켓 연결됨:", socket.id);
+      
+      // localStorage에서 이메일 가져오기
+      const storedEmail = localStorage.getItem("userEmail");
+      
+      if (storedEmail) {
+        // 자동 재연결 시 사용자 정보 복구
+        currentUser = { email: storedEmail };
+        if (callback) callback();
+      }
+    });
+  } else if (callback) {
+    callback();
+  }
 };
 
-
-
+// 로그인 함수 수정
 export const emitLogin = (email, password, onLoginSuccess) => {
-  socket.emit("login", { email, password });
+  socket.off("login_success");
+  socket.off("login_error");
 
   socket.on("login_success", (data) => {
-    // Vue 컴포넌트 내에서 이 메서드가 호출되도록 처리
-    if (onLoginSuccess) onLoginSuccess(); // 로그인 성공 시 콜백 호출
-    console.log("✅ 로그인 성공");
     currentUser = data.user;
-
+    // localStorage에 이메일 저장
+    localStorage.setItem("userEmail", data.user.email);
+    localStorage.setItem("isLoggedIn", "true");
+    console.log("✅ 로그인 성공");
+    if (onLoginSuccess) onLoginSuccess();
   });
 
   socket.on("login_error", (data) => {
     console.log("❌ 로그인 실패:", data);
   });
+
+  socket.emit("login", { email, password });
+};
+// 로그아웃 함수 수정
+export const disconnectSocket = () => {
+  // 모든 리스너 제거
+  socket.off("login_success");
+  socket.off("login_error");
+  socket.off("return_project");
+  
+  // 현재 유저 정보 초기화
+  currentUser = null;
+  projects = {};
+  
+  // 소켓 연결 해제
+  if (socket.connected) {
+    socket.disconnect();
+    console.log("❌ 소켓 연결 해제됨");
+  }
 };
 
-
-// ✅ 로그아웃 시 소켓 연결 해제
-export const disconnectSocket = () =>  {
-    if (socket.connected) {
-      socket.disconnect();
-      console.log("❌ 소켓 연결 해제됨");
-    }
-}
-
-
-// ✅ 로그인된 유저 객체를 가져오는 함수
 export const getCurrentUser = () => {
   return currentUser;
 };
 
-
-// ✅ 현재 유저의 프로젝트 객체를 가져오는 함수
 export const getProject = (email, callback) => {
-  projects = {};
-
+  // 기존 리스너 제거
   socket.off("return_project");
-
-  socket.emit("get_project", { email });
-
-  // 받은 프로젝트를 저장
+  
+  // 새로운 리스너 등록
   socket.on("return_project", (data) => {
     console.log("📂 받은 프로젝트 데이터:", data.message);
-    callback(data.projects); // 받아온 데이터를 콜백으로 넘김
+    callback(data.projects);
   });
+
+  socket.emit("get_project", { email });
 };
 
-// // ✅ 방 ID 및 사용자 ID 관리
-// const roomId = "room-1"; // 특정 방 ID (동적으로 설정 가능)
-// const userId = Math.random().toString(36).substring(2, 7); // 랜덤한 사용자 ID
-
-// // ✅ 방에 입장
-// socket.emit("join-room", { roomId, userId });
-
-// ✅ 소켓 객체 내보내기 (모든 컴포넌트에서 import 해서 사용)
 export { socket };

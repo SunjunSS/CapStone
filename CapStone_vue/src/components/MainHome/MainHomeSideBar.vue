@@ -1,3 +1,4 @@
+<!-- MainHomeSideBar.vue -->
 <template>
   <div class="app-container">
     <div class="sidebar">
@@ -122,6 +123,7 @@
 import { useRouter, useRoute } from "vue-router";
 import { computed, ref } from "vue";
 import LoginRequired from "./LoginRequired.vue";
+import { disconnectSocket } from '../socket/socket'; // 이 줄을 추가
 
 export default {
   name: "App",
@@ -140,8 +142,9 @@ export default {
 
     // 로그인 상태 확인
     const isLoggedIn = computed(() => {
-      return localStorage.getItem("isLoggedIn") === "true";
-    });
+  return localStorage.getItem("isLoggedIn") === "true" && 
+         localStorage.getItem("userEmail") !== null;
+});
 
     // 사용자 표시 이름을 위한 computed 속성
     const userDisplayName = computed(() => {
@@ -190,10 +193,11 @@ export default {
 
     // 로그아웃 핸들러
     const handleLogout = () => {
-      localStorage.removeItem("userEmail");
-      localStorage.removeItem("isLoggedIn");
-      router.push("/");
-    };
+  disconnectSocket(); // 소켓 연결 해제
+  localStorage.removeItem("userEmail");
+  localStorage.removeItem("isLoggedIn");
+  router.push("/");
+};
 
     return {
       isActive,

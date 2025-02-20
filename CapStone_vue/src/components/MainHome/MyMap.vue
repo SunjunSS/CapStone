@@ -1,3 +1,4 @@
+<!-- MyMap.vue -->
 <template>
   <div class="mymap-container">
     <!-- 사이드바 -->
@@ -129,7 +130,8 @@
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
-import { getCurrentUser, getProject } from '../socket/socket';
+import { getCurrentUser, getProject, connectSocket } from '../socket/socket'; // connectSocket 추가
+
 
 export default {
   name: "MyMap",
@@ -258,13 +260,14 @@ export default {
     },
   },
   mounted() {
-
+  // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
+  connectSocket(() => {
     this.loadCurrentUser();
+  });
 
-    // 메뉴 외부 클릭 시 메뉴 닫기
-    document.addEventListener("click", this.closeAllMenus);
-    
-  },
+  // 메뉴 외부 클릭 시 메뉴 닫기
+  document.addEventListener("click", this.closeAllMenus);
+},
   beforeDestroy() {
     document.removeEventListener("click", this.closeAllMenus);
   },
