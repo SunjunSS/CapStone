@@ -66,7 +66,11 @@
                 <span class="map-icon">🌟</span>
                 {{ item.name }}
               </td>
-              <td class="creator-column">{{ item.creator }}</td>
+              <td class="creator-column">
+                <router-link :to="`/team/${item.team_id}`" class="team-link">
+                  {{ item.creator }}
+                </router-link>
+              </td>
               <td class="date-column">{{ item.date }}</td>
               <td class="action-column">
                 <button class="menu-button" @click="showMenu(index, $event)">
@@ -102,7 +106,7 @@
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
-import { getCurrentUser, getProject } from '../socket/socket';
+import { getCurrentUser, getProject, emitLogout } from '../socket/socket';
 
 export default {
   name: "MyMap",
@@ -140,6 +144,19 @@ export default {
     }
   },
   methods: {
+
+    handleLogout() {
+        emitLogout(() => {
+          console.log("✔️ 로그아웃 후 UI 업데이트");
+          
+          this.currentUser = null; // 로그인한 사용자 정보 초기화
+          this.email = null; // 이메일 초기화
+          this.mapItems = []; // 지도 아이템 목록 초기화
+
+          this.$router.push('/'); // 홈 화면으로 이동
+          
+        });
+    },
 
     loadProjects() {
       if (this.currentUser) {

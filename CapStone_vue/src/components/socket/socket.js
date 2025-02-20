@@ -20,7 +20,7 @@ export const connectSocket = () => {
 };
 
 
-
+// ✅ 로그인 요청
 export const emitLogin = (email, password, onLoginSuccess) => {
   socket.emit("login", { email, password });
 
@@ -34,6 +34,27 @@ export const emitLogin = (email, password, onLoginSuccess) => {
 
   socket.on("login_error", (data) => {
     console.log("❌ 로그인 실패:", data);
+  });
+};
+
+// ✅ 로그아웃 요청
+export const emitLogout = (onLogoutSuccess) => {
+  if (!currentUser) {
+    console.log("⚠️ 이미 로그아웃 상태입니다.");
+    return;
+  }
+
+  socket.emit("logout", { userId: currentUser.id });
+
+  socket.on("logout_success", () => {
+    console.log("✅ 로그아웃 성공");
+    currentUser = null;
+    disconnectSocket(); // 소켓 연결 해제
+    if (onLogoutSuccess) onLogoutSuccess(); // 콜백 실행
+  });
+
+  socket.on("logout_error", (data) => {
+    console.log("❌ 로그아웃 실패:", data.message);
   });
 };
 
