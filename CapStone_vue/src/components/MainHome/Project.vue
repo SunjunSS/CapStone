@@ -14,7 +14,7 @@
       </v-card-text>
       <v-card-actions class="justify-end">
         <v-btn color="red" text @click="reset">취소</v-btn>
-        <v-btn color="blue" text @click="submit">생성</v-btn>
+        <v-btn color="blue" text @click="createProject">생성</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -52,8 +52,9 @@ export default {
       this.projectName = "";
       this.projectDescription = "";
       this.projectTopic = "";
+      this.$router.push('/MyMap');
     },
-    async submit() {
+    async createProject() {
       console.log("팀 생성:", this.projectName, this.projectDescription, this.projectTopic);
 
       try {
@@ -66,6 +67,7 @@ export default {
         });
 
         alert(`프로젝트 생성 완료: ${response.data.project.name}`);
+        this.$router.push('/MyMap');
 
       } catch (error) {
         console.error("프로젝트 생성 실패:", error);

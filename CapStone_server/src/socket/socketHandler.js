@@ -1,6 +1,7 @@
 // socketHandler.js
 
 const loginHandler = require("./loginHandler");
+const mainHomeHandler = require("./mainHomeHandler");
 
 const rooms = {};
 const roomAudioBuffers = {};
@@ -13,6 +14,9 @@ module.exports = (io) => {
 
     // 로그인 핸들러 실행
     loginHandler(socket);
+
+    //  프로젝트 관리 핸들러 실행
+    mainHomeHandler(socket);
 
     // 방 참가 처리
     socket.on("join-room", ({ roomId, userId }) => {

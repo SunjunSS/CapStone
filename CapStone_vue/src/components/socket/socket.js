@@ -7,6 +7,8 @@ const socket = io(API_BASE_URL, {
   transports: ["websocket"],
 });
 
+let currentUser = null; // 로그인된 유저 객체를 저장할 변수
+let projects = {};
 
 
 // ✅ 로그인 후 소켓 연결 함수
@@ -18,8 +20,6 @@ export const connectSocket = () => {
 };
 
 
-
-let currentUser = null; // 로그인된 유저 객체를 저장할 변수
 
 export const emitLogin = (email, password, onLoginSuccess) => {
   socket.emit("login", { email, password });
@@ -52,6 +52,21 @@ export const getCurrentUser = () => {
   return currentUser;
 };
 
+
+// ✅ 현재 유저의 프로젝트 객체를 가져오는 함수
+export const getProject = (email, callback) => {
+  projects = {};
+
+  socket.off("return_project");
+
+  socket.emit("get_project", { email });
+
+  // 받은 프로젝트를 저장
+  socket.on("return_project", (data) => {
+    console.log("📂 받은 프로젝트 데이터:", data.message);
+    callback(data.projects); // 받아온 데이터를 콜백으로 넘김
+  });
+};
 
 // // ✅ 방 ID 및 사용자 ID 관리
 // const roomId = "room-1"; // 특정 방 ID (동적으로 설정 가능)
