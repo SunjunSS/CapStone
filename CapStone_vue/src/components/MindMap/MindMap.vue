@@ -38,8 +38,10 @@
           <button
             @click="deleteSelectedNode"
             class="delete-btn"
-            :class="{ 'delete-btn-enabled': selectedNode }"
-            :disabled="!selectedNode"
+            :class="{
+              'delete-btn-enabled': selectedNode && selectedNode.parent !== 0,
+            }"
+            :disabled="!selectedNode || selectedNode.parent === 0"
           >
             Delete Node
           </button>
@@ -405,6 +407,8 @@ export default {
 
     const addNode = async (isSibling = false) => {
       if (!selectedNode.value || !myDiagram) return;
+      // ✅ 동일 레벨 추가일 때만 canAddSibling 체크
+      if (isSibling && !canAddSibling.value) return;
 
       const parentKey = isSibling
         ? selectedNode.value.parent // 동일 레벨 추가 시 부모를 유지
