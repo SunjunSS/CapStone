@@ -7,32 +7,12 @@ exports.addNodes = async (addedNodes, project_id) => {
   }
 
   try {
-    // console.log("📌 추가할 노드 데이터:", JSON.stringify(addedNodes, null, 2));
-    // console.log("📌 project_id 값:", project_id);
-
-    // // 🔥 Node 모델 필드 확인
-    // console.log("📌 Node 모델 필드 확인:", Node.rawAttributes);
-
     const projectIdAsNumber = parseInt(project_id, 10); // ✅ project_id를 숫자로 변환
 
-    // 🔥 기존 `node_key` 중 가장 큰 값 가져오기
-    const maxKeyResult = await Node.findOne({
-      attributes: [
-        [Node.sequelize.fn("MAX", Node.sequelize.col("node_key")), "maxKey"],
-      ],
-      where: { project_id: projectIdAsNumber },
-      raw: true,
-    });
-
-    const maxKey = maxKeyResult?.maxKey ?? 0; // 기존 key 값이 없으면 0부터 시작
-    // console.log(`🆕 새로운 node_key 시작값: ${maxKey + 1}`);
-
-    // 🔥 새로운 노드의 key 자동 생성
-    let newKey = maxKey + 1;
+    // 🔥 새로운 노드 데이터 생성
     const newNodes = addedNodes.map(({ name, parent }) => ({
-      node_key: newKey++, // ✅ 새로운 key 값 자동 할당
       content: name || "새 노드", // ✅ 기본값 설정
-      parent_key: parent ?? null,
+      parent_key: parent > 0 ? parent : null, // ✅ 부모 ID가 유효하지 않으면 NULL로 설정
       project_id: projectIdAsNumber,
     }));
 
@@ -44,36 +24,28 @@ exports.addNodes = async (addedNodes, project_id) => {
       JSON.stringify(createdNodes, null, 2)
     );
 
-    return createdNodes.map(
-      ({ id, node_key, content, parent_key, project_id }) => ({
-        id,
-        key: node_key,
-        name: content,
-        parent: parent_key ?? 0,
-        project_id,
-        isSelected: false,
-      })
-    );
+    return createdNodes.map(({ id, content, parent_key, project_id }) => ({
+      id,
+      key: id, // ✅ key 필드를 id 값과 동일하게 설정
+      name: content,
+      parent: parent_key ?? 0, // 부모가 없으면 0으로 설정
+      project_id,
+      isSelected: false,
+    }));
   } catch (error) {
     console.error("❌ 노드 추가 중 오류 발생:", error.message);
     throw new Error(`노드 추가 중 오류 발생: ${error.message}`);
   }
 };
 
-// 🔴 특정 프로젝트의 특정 노드 삭제 (요청된 노드만 삭제)
-/**
- * 특정 프로젝트의 특정 노드를 삭제하는 함수 (자식 노드까지 삭제)
- * @param {number} key - 삭제할 노드의 key 값
- * @param {number} project_id - 프로젝트 ID
- * @returns {Array<number>} 삭제된 노드 key 리스트
- */
-exports.deleteNodeWithChildren = async (key, project_id) => {
-  if (!key) {
-    throw new Error("삭제할 노드의 key 값이 필요합니다.");
+// 🔴 특정 프로젝트의 특정 노드 삭제 (자식 노드 포함)
+exports.deleteNodeWithChildren = async (id, project_id) => {
+  if (!id) {
+    throw new Error("삭제할 노드의 id 값이 필요합니다.");
   }
 
   try {
-    const nodeKey = parseInt(key, 10);
+    const nodeId = parseInt(id, 10);
 
     // ✅ 삭제할 노드 및 자식 노드 찾기
     const nodesToDelete = await Node.findAll({
@@ -81,22 +53,21 @@ exports.deleteNodeWithChildren = async (key, project_id) => {
     });
 
     // ✅ 삭제할 노드 리스트 찾기 (재귀적으로 삭제)
-    const getAllChildNodes = (parentKey) => {
+    const getAllChildNodes = (parentId) => {
       let toDelete = nodesToDelete.filter(
-        (node) => node.parent_key === parentKey
+        (node) => node.parent_key === parentId
       );
       toDelete.forEach((node) => {
-        toDelete = toDelete.concat(getAllChildNodes(node.node_key));
+        toDelete = toDelete.concat(getAllChildNodes(node.id)); // 🔥 `node_key` 대신 `id`
       });
       return toDelete;
     };
 
     const nodesToRemove = new Set(
-      getAllChildNodes(nodeKey).map((node) => node.node_key)
-    );
-    nodesToRemove.add(nodeKey); // 부모 노드 추가
+      getAllChildNodes(nodeId).map((node) => node.id)
+    ); // 🔥 `node_key` → `id`
+    nodesToRemove.add(nodeId); // 부모 노드 추가
 
-    // ✅ 중복 제거 및 정렬
     const sortedNodesToRemove = [...nodesToRemove].sort((a, b) => a - b);
 
     console.log(`🗑️ 삭제할 노드 목록 (정렬 완료):`, sortedNodesToRemove);
@@ -104,13 +75,13 @@ exports.deleteNodeWithChildren = async (key, project_id) => {
     // ✅ 노드 삭제 실행
     await Node.destroy({
       where: {
-        node_key: sortedNodesToRemove,
+        id: sortedNodesToRemove, // 🔥 `node_key` 대신 `id`
         project_id,
       },
     });
 
-    console.log(`🗑️ 요청된 노드 ${nodeKey} 및 자식 노드 삭제 완료`);
-    return sortedNodesToRemove; // ✅ 정렬된 삭제된 노드 리스트 반환
+    console.log(`🗑️ 요청된 노드 ${nodeId} 및 자식 노드 삭제 완료`);
+    return sortedNodesToRemove;
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error.message);
     throw new Error("노드 삭제 중 오류 발생");
@@ -118,22 +89,22 @@ exports.deleteNodeWithChildren = async (key, project_id) => {
 };
 
 // ✏️ 특정 프로젝트의 특정 노드 수정
-exports.updateNode = async (key, project_id, name) => {
-  if (!key || !name) {
-    throw new Error("수정할 노드의 key 값과 name 값이 필요합니다.");
+exports.updateNode = async (id, project_id, name) => {
+  if (!id || !name) {
+    throw new Error("수정할 노드의 id 값과 name 값이 필요합니다.");
   }
 
   try {
     const [updatedCount] = await Node.update(
       { content: name },
-      { where: { node_key: key, project_id } }
+      { where: { id, project_id } } // 🔥 `node_key` → `id`
     );
 
     if (updatedCount === 0) {
       throw new Error("노드를 찾을 수 없거나 수정할 수 없습니다.");
     }
 
-    return { key: parseInt(key, 10), name };
+    return { id: parseInt(id, 10), key: parseInt(id, 10), name };
   } catch (error) {
     console.error("❌ 노드 수정 실패:", error.message);
     throw new Error("노드 수정 중 오류 발생");
@@ -144,17 +115,17 @@ exports.updateNode = async (key, project_id, name) => {
 exports.getMindmapByProjectId = async (project_id) => {
   try {
     const nodes = await Node.findAll({
-      where: { project_id }, // project_id가 일치하는 노드만 가져옴
-      order: [["id", "ASC"]], // 정렬 추가 (선택 사항)
+      where: { project_id },
+      order: [["id", "ASC"]],
     });
 
     return {
       success: true,
-      data: nodes.map(({ id, node_key, content, parent_key, project_id }) => ({
-        id,
-        key: node_key,
+      data: nodes.map(({ id, content, parent_key, project_id }) => ({
+        id, // 🔥 `node_key` 제거
+        key: id, // ✅ key 필드를 id 값과 동일하게 설정
         name: content,
-        parent: parent_key ?? 0,
+        parent: parent_key ?? 0, // 부모 없으면 0
         project_id,
         isSelected: false,
       })),

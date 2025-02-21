@@ -412,7 +412,7 @@ export default {
 
       const parentKey = isSibling
         ? selectedNode.value.parent // 동일 레벨 추가 시 부모를 유지
-        : selectedNode.value.key; // 하위 레벨 추가 시 부모는 현재 선택된 노드
+        : selectedNode.value.id; // 하위 레벨 추가 시 부모는 현재 선택된 노드
 
       const parentProject_id = selectedNode.value.project_id;
       const newNode = {

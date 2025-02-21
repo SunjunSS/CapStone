@@ -100,7 +100,9 @@
             </svg>
           </div>
           <div class="profile-info">
-            <div class="profile-name">{{ userDisplayName }}</div>
+            <div class="profile-name" :class="{ 'not-logged-in': !isLoggedIn }">
+              {{ userDisplayName }}
+            </div>
             <button v-if="!isLoggedIn" class="login-button" @click="goToLogin">
               로그인
             </button>
@@ -123,7 +125,7 @@
 import { useRouter, useRoute } from "vue-router";
 import { computed, ref } from "vue";
 import LoginRequired from "./LoginRequired.vue";
-import { disconnectSocket } from '../socket/socket';
+import { disconnectSocket } from "../socket/socket";
 
 export default {
   name: "App",
@@ -142,13 +144,18 @@ export default {
 
     // Changed to use sessionStorage
     const isLoggedIn = computed(() => {
-      return sessionStorage.getItem("isLoggedIn") === "true" && 
-             sessionStorage.getItem("userEmail") !== null;
+      return (
+        sessionStorage.getItem("isLoggedIn") === "true" &&
+        sessionStorage.getItem("userEmail") !== null
+      );
     });
 
     const userDisplayName = computed(() => {
-      const userEmail = sessionStorage.getItem("userEmail");
-      return isLoggedIn.value ? userEmail : "게스트";
+      // 닉네임을 우선적으로 사용하고, 없으면 이메일 사용
+      const userNickname = sessionStorage.getItem("userNickname");
+      return isLoggedIn.value
+        ? userNickname || sessionStorage.getItem("userEmail")
+        : "로그인 후 이용 가능합니다.";
     });
 
     const isMainRouteAndNotLoggedIn = computed(() => {
@@ -191,6 +198,7 @@ export default {
     const handleLogout = () => {
       disconnectSocket();
       sessionStorage.removeItem("userEmail");
+      sessionStorage.removeItem("userNickname");
       sessionStorage.removeItem("isLoggedIn");
       router.push("/");
     };
@@ -350,6 +358,12 @@ export default {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
   margin-bottom: 4px;
+}
+
+.not-logged-in {
+  font-size: 11px; /* 로그인하지 않은 상태일 때 더 작은 폰트 크기 */
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.7); /* 옵션: 약간 다른 색상 */
 }
 
 .login-button {

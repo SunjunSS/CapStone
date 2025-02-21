@@ -9,11 +9,6 @@ const Node = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    node_key: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      unique: true,
-    },
     project_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -21,6 +16,12 @@ const Node = sequelize.define(
     parent_key: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      references: {
+        model: "nodes", // 자기 자신을 참조하는 설정
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     },
     content: {
       type: DataTypes.CHAR(255),
