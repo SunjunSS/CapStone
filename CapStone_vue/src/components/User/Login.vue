@@ -108,8 +108,18 @@ export default {
       this.$router.push("/Register");
     },
     handleLoginSuccess(userData) {
-      // userData를 파라미터로 받도록 수정
-      sessionStorage.setItem("userEmail", this.email); // 사용자 이메일 저장
+      // userData가 user 객체 전체를 포함하는지 확인
+      if (userData && userData.name) {
+        sessionStorage.setItem("userNickname", userData.name);
+      } else if (userData && userData.username) {
+        sessionStorage.setItem("userNickname", userData.username);
+      } else {
+        // 닉네임 데이터가 없으면 이메일의 @ 앞부분 사용
+        const emailName = this.email.split("@")[0];
+        sessionStorage.setItem("userNickname", emailName);
+      }
+
+      sessionStorage.setItem("userEmail", this.email);
       sessionStorage.setItem("isLoggedIn", "true");
       this.$router.push("/MyMap");
     },

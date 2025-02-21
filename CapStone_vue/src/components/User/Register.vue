@@ -4,14 +4,13 @@
       <v-col cols="12" sm="10" md="8" lg="6">
         <v-card class="elevation-12 pa-8 custom-card" rounded="lg">
           <div class="text-center mb-6">
-            
             <h1 class="welcome-text">회원가입</h1>
           </div>
 
           <v-form ref="form" v-model="valid" @submit.prevent="register">
             <v-text-field
               v-model="name"
-              :rules="[v => !!v || '닉네임을 입력하세요.']"
+              :rules="[(v) => !!v || '닉네임을 입력하세요.']"
               label="닉네임"
               prepend-icon="mdi-account"
               required
@@ -21,7 +20,10 @@
 
             <v-text-field
               v-model="email"
-              :rules="[v => !!v || '이메일을 입력하세요.', v => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.']"
+              :rules="[
+                (v) => !!v || '이메일을 입력하세요.',
+                (v) => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.',
+              ]"
               label="이메일"
               prepend-icon="mdi-email"
               required
@@ -31,7 +33,7 @@
 
             <v-text-field
               v-model="password"
-              :rules="[v => !!v || '비밀번호를 입력하세요.']"
+              :rules="[(v) => !!v || '비밀번호를 입력하세요.']"
               label="비밀번호"
               prepend-icon="mdi-lock"
               type="password"
@@ -77,17 +79,17 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { useRouter } from 'vue-router';
+import axios from "axios";
+import { useRouter } from "vue-router";
 
 export default {
   data() {
     return {
-      name: '',
-      email: '',
-      password: '',
+      name: "",
+      email: "",
+      password: "",
       snackbar: false,
-      snackbarText: '',
+      snackbarText: "",
       valid: false,
     };
   },
@@ -103,23 +105,22 @@ export default {
         this.snackbarText = response.data.message;
         console.log(response.data.message);
 
-
         // 회원가입 성공 시 로그인 화면으로 이동
         setTimeout(() => {
-          this.$router.push('/');
+          this.$router.push("/Login");
         }, 700); // 700ms 후 이동
-        
-      }catch (error) {
+      } catch (error) {
         console.error("서버 응답 오류:", error.response); // 전체 응답 확인
-        this.snackbarText = error.response?.data.message || '오류가 발생했습니다.';
+        this.snackbarText =
+          error.response?.data.message || "오류가 발생했습니다.";
         this.snackbar = true;
       }
       this.snackbar = true;
     },
     goToLogin() {
-      this.$router.push('/Login');
-    }
-  }
+      this.$router.push("/Login");
+    },
+  },
 };
 </script>
 
@@ -140,7 +141,7 @@ export default {
 }
 
 .welcome-text {
-  color: #42A5F5; /* 파란색으로 변경 */
+  color: #42a5f5; /* 파란색으로 변경 */
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 

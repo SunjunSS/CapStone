@@ -37,11 +37,15 @@ export const emitLogin = (email, password, onLoginSuccess) => {
 
   socket.on("login_success", (data) => {
     currentUser = data.user;
-    // localStorage에 이메일 저장
-    localStorage.setItem("userEmail", data.user.email);
+    // 닉네임 데이터가 있으면 사용하고, 없으면 이메일의 @ 앞부분 사용
+    const nickname =
+      data.user.name || data.user.username || email.split("@")[0];
+
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userNickname", nickname);
     localStorage.setItem("isLoggedIn", "true");
     console.log("✅ 로그인 성공");
-    if (onLoginSuccess) onLoginSuccess();
+    if (onLoginSuccess) onLoginSuccess(data.user);
   });
 
   socket.on("login_error", (data) => {
@@ -60,6 +64,11 @@ export const disconnectSocket = () => {
   // 현재 유저 정보 초기화
   currentUser = null;
   projects = {};
+
+  // localStorage에서도 정보 삭제
+  localStorage.removeItem("userEmail");
+  localStorage.removeItem("userNickname");
+  localStorage.removeItem("isLoggedIn");
 
   // 소켓 연결 해제
   if (socket.connected) {
