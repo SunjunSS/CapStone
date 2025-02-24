@@ -144,11 +144,14 @@ export default {
 
     const route = useRoute(); // ✅ 현재 라우트 정보 가져오기
     const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
-    // ✅ 방 ID 및 사용자 ID 관리
-    const roomId = "room-1"; // 특정 방 ID (동적으로 설정 가능)
+
+    // roomId를 paramProject_id 기반으로 동적으로 설정
+    const roomId = computed(() => `project-${paramProject_id.value}`);
+
     const userId = Math.random().toString(36).substring(2, 7); // 랜덤한 사용자 ID
 
     console.log("현재 프로젝트 ID:", paramProject_id.value); // ✅ 디버깅용 콘솔 출력
+    console.log("현재 방 ID:", roomId.value);
 
     // // roomId 값 업데이트 (project_id가 변경될 때마다 실행)
     // watchEffect(() => {
@@ -201,7 +204,8 @@ export default {
       // ✅ API 요청 → 서버에서 삭제 결정
       const success = await deleteMindmapNodes(
         selectedNode.value.key,
-        paramProject_id.value
+        paramProject_id.value,
+        roomId.value
       );
 
       if (!success) {
@@ -431,7 +435,8 @@ export default {
 
       const success = await saveMindmapToServer(
         addedNodes.value,
-        paramProject_id.value
+        paramProject_id.value,
+        roomId.value
       );
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
@@ -657,7 +662,8 @@ export default {
               // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
               const success = await updateMindmapNode(
                 node.data,
-                paramProject_id.value
+                paramProject_id.value,
+                roomId.value
               );
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
