@@ -142,6 +142,53 @@ export default {
 
     const sidebarOpen = ref(false);
 
+    // 현재 편집 중인 노드와 입력 필드를 추적하기 위한 refs
+    const activeEditNode = ref(null);
+    const activeInputField = ref(null);
+
+    // 입력 필드 위치와 크기를 업데이트하는 함수
+    const updateInputFieldPosition = () => {
+      if (!activeEditNode.value || !activeInputField.value || !myDiagram)
+        return;
+
+      const node = myDiagram.findNodeForKey(activeEditNode.value.key);
+      if (!node) return;
+
+      const nodeElement = node.findObject("NAME_TEXTBLOCK");
+      if (!nodeElement) return;
+
+      const nodeBounds = nodeElement.getDocumentBounds();
+      const diagramScale = myDiagram.scale;
+
+      const nodePanel = node.findObject("NODE_PANEL");
+      const nodePanelWidth = nodePanel.actualBounds.width * diagramScale;
+
+      const minWidth = 80 * diagramScale;
+      const inputWidth = Math.max(minWidth, nodePanelWidth + 30 * diagramScale);
+      const inputHeight = 35 * diagramScale;
+
+      const diagramPos = myDiagram.position;
+      const nodeCenterX =
+        (nodeBounds.x + nodeBounds.width / 2 - diagramPos.x) * diagramScale;
+      const nodeTopY = (nodeBounds.y - diagramPos.y) * diagramScale;
+      const x = nodeCenterX - inputWidth / 2;
+      const y = nodeTopY - inputHeight - 20 * diagramScale;
+
+      // 입력 필드 스타일 업데이트
+      const inputField = activeInputField.value;
+      inputField.style.left = `${x}px`;
+      inputField.style.top = `${y}px`;
+      inputField.style.width = `${inputWidth}px`;
+      inputField.style.minWidth = `${minWidth}px`;
+      inputField.style.padding = `${8 * diagramScale}px ${12 * diagramScale}px`;
+      inputField.style.border = `${2 * diagramScale}px solid #9C6CFE`;
+      inputField.style.borderRadius = `${6 * diagramScale}px`;
+      inputField.style.fontSize = `${14 * diagramScale}px`;
+      inputField.style.boxShadow = `0 ${2 * diagramScale}px ${
+        6 * diagramScale
+      }px rgba(0, 0, 0, 0.15)`;
+    };
+
     const route = useRoute(); // ✅ 현재 라우트 정보 가져오기
     const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
     // ✅ 방 ID 및 사용자 ID 관리
@@ -173,23 +220,60 @@ export default {
       return true;
     });
 
+    // 기존의 전역 handleKeyDown 함수에 TextField 관련 로직 추가
     const handleKeyDown = (event) => {
       // F5 키는 기본 동작 허용
       if (event.key === "F5") {
         return true;
       }
 
-      // 나머지 키 이벤트 처리
+      // 텍스트 필드가 활성화된 경우의 처리
+      if (activeInputField.value) {
+        const editEmoji = "✏️ ";
+
+        if (event.key === "Enter") {
+          event.preventDefault();
+          completeEditing();
+          return;
+        }
+
+        // 백스페이스 키 처리
+        if (event.key === "Backspace") {
+          const textContent = activeInputField.value.value.replace(
+            editEmoji,
+            ""
+          );
+          // 텍스트가 비어있고 커서가 이모지 바로 뒤에 있을 때
+          if (
+            textContent === "" &&
+            activeInputField.value.selectionStart <= editEmoji.length
+          ) {
+            event.preventDefault(); // 백스페이스 동작 막기
+            return;
+          }
+        }
+        return;
+      }
+
+      // 기존 마인드맵 노드 관련 키보드 단축키 처리
       if (!selectedNode.value || !myDiagram) return;
 
       if (event.key === "Tab") {
         event.preventDefault();
-        addNode(false); // ✅ 하위 레벨 추가
+        addNode(false); // 하위 레벨 추가
       }
 
       if (event.key === "Shift") {
         event.preventDefault();
-        addNode(true); // ✅ 동일 레벨 추가
+        addNode(true); // 동일 레벨 추가
+      }
+
+      if (event.key === "Delete") {
+        event.preventDefault();
+        // 루트 노드(parent가 0인 노드)는 삭제할 수 없도록 체크
+        if (selectedNode.value && selectedNode.value.parent !== 0) {
+          deleteSelectedNode();
+        }
       }
     };
 
@@ -206,7 +290,10 @@ export default {
 
       if (!success) {
         console.error("❌ 서버 삭제 실패");
+        return;
       }
+
+      selectedNode.value = null;
 
       // ✅ 삭제 요청만 보내고, 실제 삭제는 WebSocket 이벤트에서 처리됨 (socketHandlers.js)
     };
@@ -217,6 +304,9 @@ export default {
 
       if (elapsed >= duration) {
         applyZoom(targetZoom);
+        if (activeInputField.value) {
+          updateInputFieldPosition();
+        }
         zoomAnimationFrame = null;
         return;
       }
@@ -229,7 +319,15 @@ export default {
 
       const currentZoomLevel =
         startZoom + (targetZoom - startZoom) * easeProgress;
+
+      // 매 프레임마다 줌 레벨과 입력 필드 위치 함께 업데이트
       applyZoom(currentZoomLevel);
+      if (activeInputField.value) {
+        const inputField = activeInputField.value;
+        // transition 제거하여 즉시 적용되도록 함
+        inputField.style.transition = "none";
+        updateInputFieldPosition();
+      }
 
       zoomAnimationFrame = requestAnimationFrame(() => {
         animateZoom(startZoom, targetZoom, startTime, duration);
@@ -280,6 +378,19 @@ export default {
     const startZoomAnimation = (targetZoom) => {
       if (zoomAnimationFrame) {
         cancelAnimationFrame(zoomAnimationFrame);
+      }
+
+      // 줌 애니메이션 시작 시 바로 입력 필드 업데이트
+      if (activeInputField.value) {
+        const inputField = activeInputField.value;
+        const originalTransition = inputField.style.transition; // 기존 transition 값 저장
+        inputField.style.transition = `all ${ANIMATION_DURATION}ms ease`; // 줌 애니메이션용 transition 설정
+        updateInputFieldPosition();
+
+        // 애니메이션 종료 후 원래 transition으로 복원
+        setTimeout(() => {
+          inputField.style.transition = originalTransition;
+        }, ANIMATION_DURATION);
       }
 
       const startZoom = currentZoom.value;
@@ -521,140 +632,88 @@ export default {
             const nodeElement = node.findObject("NAME_TEXTBLOCK");
             if (!nodeElement) return;
 
-            const nodeBounds = nodeElement.getDocumentBounds();
-            const diagramScale = myDiagram.scale;
             const editEmoji = "✏️ ";
-
-            // 노드의 전체 너비를 가져옵니다
-            const nodePanel = node.findObject("NODE_PANEL");
-            const nodePanelWidth = nodePanel.actualBounds.width;
-
-            // 최소 너비 설정
-            const minWidth = 80;
-            // 노드의 너비에 패딩을 추가하여 입력 필드의 너비 계산
-            const inputWidth = Math.max(minWidth, nodePanelWidth + 30); // 24px는 좌우 패딩
-
             const inputField = document.createElement("input");
             inputField.value = editEmoji + node.data.name;
 
-            const diagramPos = myDiagram.position;
-            const inputHeight = 35;
-
-            const nodeCenterX =
-              (nodeBounds.x + nodeBounds.width / 2 - diagramPos.x) *
-              diagramScale;
-            const nodeTopY = (nodeBounds.y - diagramPos.y) * diagramScale;
-            const x = nodeCenterX - inputWidth / 2;
-            const y = nodeTopY - inputHeight - 20;
-
+            // 입력 필드 기본 스타일 설정
             inputField.style.position = "absolute";
-            inputField.style.left = `${x}px`;
-            inputField.style.top = `${y}px`;
-            inputField.style.padding = "8px 12px";
-            inputField.style.border = "2px solid #9C6CFE";
-            inputField.style.borderRadius = "6px";
-            inputField.style.fontSize = "14px";
-            inputField.style.fontFamily = "sans-serif";
             inputField.style.backgroundColor = "white";
-            inputField.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.15)";
             inputField.style.outline = "none";
-            inputField.style.width = `${inputWidth}px`;
-            inputField.style.minWidth = `${minWidth}px`;
-            inputField.style.maxWidth = "none"; // 최대 너비 제한 제거
+            inputField.style.maxWidth = "none";
             inputField.style.transition = "all 0.2s ease";
             inputField.style.zIndex = "9999";
+            inputField.style.fontFamily = "sans-serif";
 
             document.body.appendChild(inputField);
+
+            // 활성 노드와 입력 필드 참조 저장
+            activeEditNode.value = node.data;
+            activeInputField.value = inputField;
+
+            // 초기 위치와 크기 설정
+            updateInputFieldPosition();
+
             inputField.focus();
 
-            // 전체 선택 방지 + 커서를 맨 끝으로 이동
-            setTimeout(() => {
-              inputField.setSelectionRange(
-                inputField.value.length,
-                inputField.value.length
-              );
-            }, 0);
+            // 입력 필드 이벤트 핸들러
+            const handleInput = () => {
+              const editEmoji = "✏️ ";
+              // 현재 입력값에서 이모지를 제외한 텍스트 부분만 가져옴
+              const textContent = inputField.value.replace(editEmoji, "");
 
-            const originalWidth = node.actualBounds.width;
-            const directChildren = [];
-            const it = node.findTreeChildrenNodes();
-            while (it.next()) {
-              const child = it.value;
-              if (child.data.parent === node.data.key) {
-                directChildren.push(child);
-              }
-            }
-
-            let isBackspacePressed = false;
-
-            inputField.addEventListener("input", () => {
-              // 이모지가 삭제되지 않도록 처리
+              // 이모지가 없는 경우에만 추가
               if (!inputField.value.startsWith(editEmoji)) {
-                inputField.value =
-                  editEmoji + inputField.value.replace(editEmoji, "");
+                inputField.value = editEmoji + textContent;
+                // 커서 위치 조정
                 inputField.setSelectionRange(
                   editEmoji.length,
                   inputField.value.length
                 );
               }
-            });
+            };
 
-            inputField.addEventListener("keydown", (event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                inputField.blur();
+            // 이름을 handleTextFieldKeyDown으로 변경
+            const handleTextFieldKeyDown = (e) => {
+              const editEmoji = "✏️ ";
+
+              if (e.key === "Enter") {
+                e.preventDefault();
+                completeEditing();
               }
 
-              // 백스페이스가 눌렸을 때 텍스트가 비어있으면 아무것도 지워지지 않도록
-              if (event.key === "Backspace" && inputField.value === editEmoji) {
-                event.preventDefault(); // 아무것도 지워지지 않도록
+              // 백스페이스 키 처리
+              if (e.key === "Backspace") {
+                const textContent = inputField.value.replace(editEmoji, "");
+                // 텍스트가 비어있고 커서가 이모지 바로 뒤에 있을 때
+                if (
+                  textContent === "" &&
+                  inputField.selectionStart <= editEmoji.length
+                ) {
+                  e.preventDefault(); // 백스페이스 동작 막기
+                }
               }
-            });
-            inputField.addEventListener("blur", async () => {
-              myDiagram.startTransaction("update node and layout");
-              const wasSelected = node.data.isSelected;
-              myDiagram.model.setDataProperty(
-                node.data,
-                "isSelected",
-                !wasSelected
-              );
+            };
 
+            // 텍스트 편집 완료 처리를 위한 함수
+            const completeEditing = async () => {
               const updatedText = inputField.value
                 .replace(editEmoji, "")
                 .trim();
 
-              // 🔥 기존 이름과 같다면 API 요청하지 않고 종료
+              // 입력 필드와 참조 정리
+              document.body.removeChild(inputField);
+              activeEditNode.value = null;
+              activeInputField.value = null;
+
               if (node.data.name === updatedText) {
                 console.log("🔄 변경 없음: API 요청 스킵");
-                myDiagram.commitTransaction("update node and layout");
-                document.body.removeChild(inputField);
                 return;
               }
 
+              // 노드 이름 업데이트 및 저장 로직
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
-              const newWidth = node.actualBounds.width;
-              if (newWidth !== originalWidth) {
-                const widthDifference = newWidth - originalWidth;
-                directChildren.forEach((childNode) => {
-                  const currentPos = childNode.position;
-                  const updatedLocation = new go.Point(
-                    currentPos.x + widthDifference,
-                    currentPos.y
-                  );
-                  myDiagram.model.setDataProperty(
-                    childNode.data,
-                    "loc",
-                    go.Point.stringify(updatedLocation)
-                  );
-                });
-              }
-              myDiagram.layoutDiagram(true);
-              myDiagram.commitTransaction("update node and layout");
-
-              document.body.removeChild(inputField);
-
-              // ✅ API 요청: 이름이 변경되었으므로 서버에 업데이트 요청
               const success = await updateMindmapNode(
                 node.data,
                 paramProject_id.value
@@ -664,7 +723,19 @@ export default {
               } else {
                 console.error("❌ 서버에 노드 이름 업데이트 실패");
               }
-            });
+            };
+
+            // Enter 키 이벤트 핸들러 추가
+            const handleKeyDown = (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                completeEditing();
+              }
+            };
+
+            inputField.addEventListener("input", handleInput);
+            inputField.addEventListener("blur", completeEditing);
+            inputField.addEventListener("keydown", handleTextFieldKeyDown); // Enter 키 이벤트 리스너 추가
           },
         },
         new go.Binding("isSelected", "isSelected"),
@@ -764,6 +835,8 @@ export default {
 
       myDiagram.addDiagramListener("ViewportBoundsChanged", (e) => {
         currentZoom.value = myDiagram.scale;
+        // zoom이 변경될 때마다 입력 필드 위치 업데이트
+        updateInputFieldPosition();
       });
     };
 
@@ -817,6 +890,8 @@ export default {
       lastSaveTime,
       serverError,
       paramProject_id,
+      activeEditNode,
+      activeInputField,
     };
   },
 };
