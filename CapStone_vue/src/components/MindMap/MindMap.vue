@@ -12,7 +12,11 @@
 
     <!-- Main MindMap Content -->
     <div class="main-content" :class="{ 'main-expanded': !sidebarOpen }">
-      <mouseTracking class="mouse-tracking-layer" />
+      <mouseTracking
+        :roomId="roomId"
+        :userId="userId"
+        class="mouse-tracking-layer"
+      />
 
       <div
         class="mindmap-wrapper"
@@ -823,6 +827,8 @@ export default {
       lastSaveTime,
       serverError,
       paramProject_id,
+      roomId,
+      userId,
     };
   },
 };
