@@ -53,7 +53,7 @@ export const loadMindmapFromServer = async (myDiagram, project_id) => {
  * @param {Array} addedNodes - 추가할 노드 리스트
  * @returns {boolean} 성공 여부
  */
-export const saveMindmapToServer = async (addedNodes, project_id) => {
+export const saveMindmapToServer = async (addedNodes, project_id, roomId) => {
   if (!addedNodes || addedNodes.length === 0 || isSaving.value) {
     console.warn("🚨 서버로 보낼 새로운 노드가 없습니다.");
     return false;
@@ -71,7 +71,7 @@ export const saveMindmapToServer = async (addedNodes, project_id) => {
 
     const response = await axios.post(`${getMindmapUrl(project_id)}`, {
       addedNodes,
-      roomId: "room-1", // 🔥 반드시 포함!
+      roomId, // 🔥 반드시 포함!
     });
 
     console.log("🟢 서버 응답:", response.data);
@@ -97,7 +97,7 @@ export const saveMindmapToServer = async (addedNodes, project_id) => {
  * @param {Array} deletedNodes - 삭제할 노드 리스트
  * @returns {boolean} 성공 여부
  */
-export const deleteMindmapNodes = async (deletedKey, project_id) => {
+export const deleteMindmapNodes = async (deletedKey, project_id, roomId) => {
   if (!deletedKey || !project_id) {
     console.warn("🚨 삭제할 노드의 key 값 또는 project_id가 없습니다.");
     return false;
@@ -110,7 +110,7 @@ export const deleteMindmapNodes = async (deletedKey, project_id) => {
 
     // ✅ 서버에 삭제 요청만 보냄 (실제 삭제는 WebSocket 이벤트에서 처리)
     await axios.delete(`${getMindmapUrl(project_id)}/${deletedKey}`, {
-      data: { roomId: "room-1" }, // ✅ WebSocket과 동기화
+      data: { roomId }, // ✅ WebSocket과 동기화
     });
 
     console.log("🟢 서버에 삭제 요청 완료 (실제 삭제는 WebSocket에서 처리)");
@@ -127,7 +127,7 @@ export const deleteMindmapNodes = async (deletedKey, project_id) => {
  * @param {Object} updatedNode - 수정할 노드 정보
  * @returns {boolean} 성공 여부
  */
-export const updateMindmapNode = async (updatedNode, project_id) => {
+export const updateMindmapNode = async (updatedNode, project_id, roomId) => {
   if (!updatedNode || !updatedNode.key) {
     console.warn("🚨 수정할 노드 데이터가 없습니다.");
     return false;
@@ -144,7 +144,7 @@ export const updateMindmapNode = async (updatedNode, project_id) => {
       `${getMindmapUrl(project_id)}/${updatedNode.key}`,
       {
         name: updatedNode.name,
-        roomId: "room-1", // ✅ roomId 추가
+        roomId, // ✅ roomId 추가
       }
     );
 
