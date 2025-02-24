@@ -13,6 +13,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     return;
   }
 
+  // ✅ roomId가 computed 속성일 경우, .value 사용
+  const roomIdValue = roomId.value ? roomId.value : roomId;
+
   // ✅ 소켓이 연결되지 않았을 경우 연결 시도
   if (!socket.connected) {
     socket.connect();
@@ -20,8 +23,8 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
   }
 
   // ✅ 방에 입장하는 로직 추가
-  socket.emit("join-room", { roomId, userId });
-  console.log(`🏠 방 입장 요청: Room ID: ${roomId}, User ID: ${userId}`);
+  socket.emit("join-room", { roomId: roomIdValue, userId });
+  console.log(`🏠 방 입장 요청: Room ID: ${roomIdValue}, User ID: ${userId}`);
 
   // ✅ 새로운 노드 추가 이벤트
   socket.on("nodeAdded", (newNodes) => {
@@ -33,6 +36,8 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     });
     myDiagram.commitTransaction("add node");
   });
+
+  console.log("✅ WebSocket 이벤트 리스너 등록 완료");
 
   // ✅ 노드 수정 이벤트
   socket.on("nodeUpdated", (updatedNode) => {
@@ -93,9 +98,11 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
 
+  const roomIdValue = roomId.value ? roomId.value : roomId;
+
   // 방에서 나가기
-  socket.emit("leave-room", { roomId, userId });
-  console.log(`🚪 ${userId} 님이 ${roomId} 방에서 나감`);
+  socket.emit("leave-room", { roomId: roomIdValue, userId });
+  console.log(`🚪 ${userId} 님이 ${roomIdValue} 방에서 나감`);
 
   console.log("❌ WebSocket 이벤트 리스너 해제 완료");
 };
