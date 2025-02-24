@@ -16,6 +16,10 @@
 import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 
 export default {
+  props: {
+    roomId: String, // ✅ MindMap.vue에서 전달된 roomId
+    userId: String, // ✅ MindMap.vue에서 전달된 userId
+  },
   data() {
     return {
       cursors: {}, // 다른 사용자들의 마우스 위치 저장
@@ -47,20 +51,18 @@ export default {
     },
   },
   mounted() {
-    
     socket.on("update-mindmap-bounds", (bounds) => {
       this.mindmapBounds = bounds;
     });
 
-    
     // ✅ 마우스 이동 이벤트 감지 후 서버로 전송
     window.addEventListener("mousemove", (event) => {
-
       const relativePosition = this.getRelativePosition(event);
+      if (!this.roomId) return; // ✅ roomId가 없을 경우 방어 코드 추가
 
       socket.emit("mouse-move", {
-        roomId,
-        userId,
+        roomId: this.roomId, // ✅ 같은 방 ID 사용
+        userId: this.userId, // ✅ 같은 userId 유지
         x: relativePosition.x,
         y: relativePosition.y,
       });

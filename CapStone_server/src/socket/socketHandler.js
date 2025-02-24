@@ -1,6 +1,6 @@
 // socketHandler.js
 
-const loginHandler = require("./loginHandler");
+const loginHandler = require("./LoginHandler.js");
 const mainHomeHandler = require("./mainHomeHandler");
 
 const rooms = {};
@@ -23,14 +23,12 @@ module.exports = (io) => {
       socket.join(roomId);
       //socket.userId = userId;
 
-
       const userSocketId = socketSessions[userId]; // 로그인된 사용자의 socket.id 가져오기
       if (userSocketId) {
         // 이미 로그인된 사용자의 socket.id로 방 참여
         socket.join(roomId);
         console.log(`✅ ${userId} 님이 ${roomId} 방에 입장`);
       }
-      
 
       // 방이 없으면 생성
       if (!rooms[roomId]) {
