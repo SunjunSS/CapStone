@@ -198,19 +198,10 @@ export default {
 
     // roomId를 paramProject_id 기반으로 동적으로 설정
     const roomId = computed(() => `project-${paramProject_id.value}`);
-
     const userId = Math.random().toString(36).substring(2, 7); // 랜덤한 사용자 ID
 
     console.log("현재 프로젝트 ID:", paramProject_id.value); // ✅ 디버깅용 콘솔 출력
     console.log("현재 방 ID:", roomId.value);
-
-    // // roomId 값 업데이트 (project_id가 변경될 때마다 실행)
-    // watchEffect(() => {
-    //   if (paramProject_id.value) {
-    //     roomId.value = `project-${paramProject_id.value}`;
-    //     console.log("✅ 방 ID 설정 완료:", roomId.value);
-    //   }
-    // });
 
     const toggleSidebar = () => {
       sidebarOpen.value = !sidebarOpen.value;
@@ -459,13 +450,13 @@ export default {
         y: event.clientY,
       };
     };
-
+    //두 손가락 사이의 거리 계산 (줌 기능에 사용)
     const getTouchDistance = (touches) => {
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
       return Math.sqrt(dx * dx + dy * dy);
     };
-
+    //터치 시작 감지 (드래그 시작 or 줌 준비)
     const startTouch = (event) => {
       if (!myDiagram) return;
 
@@ -482,7 +473,7 @@ export default {
         initialTouchDistance.value = getTouchDistance(event.touches);
       }
     };
-
+    //터치 중 이동 감지 (드래그 or 줌 실행)
     const touchMove = (event) => {
       if (!myDiagram) return;
       event.preventDefault();
@@ -518,7 +509,7 @@ export default {
         }
       }
     };
-
+    //터치 종료 시 드래그/줌 초기화
     const stopTouch = () => {
       isDragging.value = false;
       initialTouchDistance.value = 0;
