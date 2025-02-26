@@ -14,11 +14,9 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL
 );
 
--- 팀 테이블 (리더 이메일 추가)
+-- 팀 테이블
 CREATE TABLE teams (
-    team_id INT PRIMARY KEY AUTO_INCREMENT,  
-    name VARCHAR(100) NOT NULL UNIQUE,
-    leader_email VARCHAR(100) NOT NULL -- 팀 리더의 이메일
+    team_id INT PRIMARY KEY AUTO_INCREMENT
 );
 
 -- 사용자-팀 관계 테이블 (다대다 관계 처리)
@@ -26,6 +24,7 @@ CREATE TABLE team_members (
     member_id INT PRIMARY KEY AUTO_INCREMENT,
     team_id INT NOT NULL,
     user_id INT NOT NULL,
+    isAdmin INT NOT NULL,
     FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
@@ -44,7 +43,8 @@ CREATE TABLE nodes (
     id INT PRIMARY KEY AUTO_INCREMENT,        -- 고유 ID
     project_id INT NOT NULL,                  -- 해당 노드가 속한 프로젝트
     parent_key INT DEFAULT NULL,          -- 부모 노드 (없으면 NULL)
-    content CHAR(255) NOT NULL,               -- 노드의 내용
+    content VARCHAR(255) NOT NULL,               -- 노드의 내용
+    isSelected TINYINT NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE, -- 프로젝트와 연결
     FOREIGN KEY (parent_key) REFERENCES nodes(id) ON DELETE CASCADE       -- 계층 구조 유지
 );
