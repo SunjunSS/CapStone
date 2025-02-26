@@ -11,6 +11,7 @@ import Project from "./components/MainHome/Project.vue";
 import TrashPage from "./components/MainHome/TrashPage.vue";
 import Favorite from "./components/MainHome/Favorite.vue";
 import LoginRequired from "./components/MainHome/LoginRequired.vue";
+import Drawing from "./components/MainHome/Drawing.vue";
 
 const routes = [
   {
@@ -60,6 +61,10 @@ const routes = [
   {
     path: "/LoginRequired",
     component: LoginRequired,
+  },
+  {
+    path: "/Drawing",
+    component: Drawing,
   },
 ];
 

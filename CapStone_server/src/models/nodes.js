@@ -24,8 +24,13 @@ const Node = sequelize.define(
       onDelete: "SET NULL",
     },
     content: {
-      type: DataTypes.CHAR(255),
+      type: DataTypes.STRING,
       allowNull: false,
+    },
+    isSelected: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

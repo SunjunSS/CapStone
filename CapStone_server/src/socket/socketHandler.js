@@ -7,6 +7,8 @@ const rooms = {};
 const roomAudioBuffers = {};
 const recordingStatus = {};
 const socketSessions = require("./socketSessions");
+const roomNodes = {}; // 노드 저장 객체 추가 (누락되어 있었음)
+const roomNicknames = {}; // 방별 닉네임 정보 저장 객체 추가
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -19,9 +21,8 @@ module.exports = (io) => {
     mainHomeHandler(socket);
 
     // 방 참가 처리
-    socket.on("join-room", ({ roomId, userId }) => {
+    socket.on("join-room", ({ roomId, userId, nickname }) => {
       socket.join(roomId);
-      //socket.userId = userId;
 
       const userSocketId = socketSessions[userId]; // 로그인된 사용자의 socket.id 가져오기
       if (userSocketId) {
@@ -36,19 +37,30 @@ module.exports = (io) => {
       }
       rooms[roomId][socket.id] = userId;
 
+      // 닉네임 정보 저장
+      if (!roomNicknames[roomId]) {
+        roomNicknames[roomId] = {};
+      }
+      if (nickname) {
+        roomNicknames[roomId][userId] = nickname;
+        console.log(`📝 닉네임 등록: ${userId} => ${nickname}`);
+      }
+
       // 방에 있는 참가자들의 오디오 데이터 저장
       if (!roomAudioBuffers[roomId]) {
         roomAudioBuffers[roomId] = [];
       }
 
-      // 새로운 참가자에게 기존 참가자 목록을 전송
+      // 새로운 참가자에게 기존 참가자 목록과 닉네임 정보를 전송
       socket.emit("existing-participants", {
         participants: Object.values(rooms[roomId]),
+        nicknames: roomNicknames[roomId],
       });
 
       // 기존 참가자들에게 새로운 참가자를 알림
       socket.to(roomId).emit("new-participant", {
         participantId: userId,
+        nickname: nickname,
       });
 
       // 방 참가자 목록 업데이트 브로드캐스트
@@ -56,8 +68,25 @@ module.exports = (io) => {
         participants: Object.values(rooms[roomId]),
       });
 
+      // 방 전체에 닉네임 정보 동기화
+      io.to(roomId).emit("sync-nicknames", roomNicknames[roomId]);
+
       console.log(`📢 ${userId} 님이 ${roomId} 방에 입장`);
       console.log(`Room ${roomId} participants:`, rooms[roomId]);
+    });
+
+    // 닉네임 업데이트 처리 핸들러 추가
+    socket.on("update-nickname", ({ roomId, userId, nickname }) => {
+      if (!roomNicknames[roomId]) {
+        roomNicknames[roomId] = {};
+      }
+
+      // 닉네임 정보 업데이트
+      roomNicknames[roomId][userId] = nickname;
+      console.log(`🔄 닉네임 업데이트: ${userId} => ${nickname}`);
+
+      // 방 전체에 닉네임 정보 동기화
+      io.to(roomId).emit("sync-nicknames", roomNicknames[roomId]);
     });
 
     // 녹음 시작 상태 수신
@@ -158,7 +187,17 @@ module.exports = (io) => {
     socket.on("leave-room", ({ roomId, userId }) => {
       if (rooms[roomId]) {
         delete rooms[roomId][socket.id];
+
+        // 닉네임 정보 삭제
+        if (roomNicknames[roomId] && roomNicknames[roomId][userId]) {
+          delete roomNicknames[roomId][userId];
+        }
+
         io.to(roomId).emit("user-disconnected", userId);
+
+        // 닉네임 정보 업데이트 브로드캐스트
+        io.to(roomId).emit("sync-nicknames", roomNicknames[roomId]);
+
         console.log(`❌ ${userId} 님이 ${roomId} 방에서 나감`);
       }
     });
@@ -170,12 +209,22 @@ module.exports = (io) => {
         if (rooms[roomId][socket.id]) {
           const userId = rooms[roomId][socket.id];
           delete rooms[roomId][socket.id];
+
+          // 닉네임 정보 삭제
+          if (roomNicknames[roomId] && roomNicknames[roomId][userId]) {
+            delete roomNicknames[roomId][userId];
+          }
+
           io.to(roomId).emit("user-disconnected", userId);
+
+          // 닉네임 정보 업데이트 브로드캐스트
+          io.to(roomId).emit("sync-nicknames", roomNicknames[roomId]);
 
           // 방이 비었으면 삭제
           if (Object.keys(rooms[roomId]).length === 0) {
             delete rooms[roomId];
             delete roomAudioBuffers[roomId];
+            delete roomNicknames[roomId]; // 닉네임 정보도 삭제
             console.log(`Room ${roomId} deleted`);
           }
         }

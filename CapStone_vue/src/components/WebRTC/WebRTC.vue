@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <div v-if="!joined" class="login-container">
+      <!-- 기존 로그인 컨테이너 코드는 그대로 유지 -->
       <div class="login-box">
         <h1 class="title">음성 회의실</h1>
         <p class="subtitle">
@@ -77,7 +78,9 @@
               <v-icon icon="mdi-account-circle" size="28px"></v-icon>
               <span class="status-dot"></span>
             </div>
-            {{ id }} {{ currentUserId && id === currentUserId ? "(나)" : "" }}
+            <!-- 여기를 수정하여 닉네임 표시 -->
+            {{ getUserDisplayName(id) }}
+            {{ id === currentUserId ? "(나)" : "" }}
             <span v-if="speakingParticipants[id]" class="speaking-indicator"
               >🎤</span
             >
@@ -180,9 +183,38 @@ export default {
       recordedChunks: [], // 녹음된 데이터
       temporaryChunks: [],
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
+      participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
     };
   },
+  computed: {
+    // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
+    userNickname() {
+      return (
+        sessionStorage.getItem("userNickname") ||
+        sessionStorage.getItem("userEmail") ||
+        "익명 사용자"
+      );
+    },
+
+    // 사용자가 로그인 상태인지 확인
+    isLoggedIn() {
+      return (
+        sessionStorage.getItem("isLoggedIn") === "true" &&
+        sessionStorage.getItem("userEmail") !== null
+      );
+    },
+  },
   methods: {
+    // 사용자의 닉네임을 가져오는 함수
+    getUserDisplayName(userId) {
+      // 현재 사용자인 경우 세션 스토리지에서 닉네임 가져오기
+      if (userId === this.currentUserId) {
+        return this.userNickname;
+      }
+      // 다른 참가자의 경우 저장된 닉네임 사용하거나 ID 표시
+      return this.participantNicknames[userId] || userId;
+    },
+
     async joinRoom() {
       try {
         this.joining = true;
@@ -321,7 +353,7 @@ export default {
 
         // 서버로 audio파일을 업로드함
         try {
-          await uploadAudio(blob, this.roomId);
+          await uploadAudio(blob, this.roomId, this.userNickname);
           console.log("✅ 업로드 성공!");
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
@@ -361,22 +393,36 @@ export default {
       this.socket = io(`${API_BASE_URL}`, {
         transports: ["websocket"],
         reconnection: true,
-
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       });
 
       return new Promise((resolve, reject) => {
-        //  const customId = Math.random().toString(36).substring(2, 7); // 4~5글자 ID 생성
-
+        // WebRTC.vue의 setupSignaling 메서드 내에서 수정
         this.socket.on("connect", () => {
           this.connectionStatus = "Connected";
           this.currentUserId = this.socket.id;
+
+          // 닉네임 정보를 방 참가 이벤트와 함께 전송
           this.socket.emit("join-room", {
             roomId: this.roomId,
             userId: this.currentUserId,
+            nickname: this.userNickname, // 닉네임 정보 포함
           });
+
+          // 추가: 입장 후 즉시 닉네임 정보를 방 전체에 공유
+          this.socket.emit("update-nickname", {
+            roomId: this.roomId,
+            userId: this.currentUserId,
+            nickname: this.userNickname,
+          });
+
           resolve();
+        });
+
+        // 닉네임 정보 동기화를 위한 이벤트 리스너 추가
+        this.socket.on("sync-nicknames", (nicknames) => {
+          this.participantNicknames = nicknames;
         });
 
         // 녹음 상태 동기화 (누군가 녹음을 시작했을 때, 종료했을때)
@@ -405,7 +451,10 @@ export default {
           }
 
           // 회의록 업데이트
-          const report = thisMeetingContent(processedData);
+          const report = thisMeetingContent(
+            processedData,
+            this.participantNicknames
+          );
 
           console.log("🟢 변환된 응답값:", report);
           this.meetingContent = report;
@@ -417,22 +466,40 @@ export default {
         });
 
         // 기존 참가자 목록을 받았을 때
-        this.socket.on("existing-participants", async ({ participants }) => {
-          console.log("Received existing participants:", participants);
-          for (const userId of participants) {
-            if (userId !== this.currentUserId) {
-              await this.createPeerConnection(userId, true);
+        this.socket.on(
+          "existing-participants",
+          async ({ participants, nicknames }) => {
+            console.log("Received existing participants:", participants);
+
+            // 닉네임 정보가 있으면 저장
+            if (nicknames) {
+              this.participantNicknames = nicknames;
+            }
+
+            for (const userId of participants) {
+              if (userId !== this.currentUserId) {
+                await this.createPeerConnection(userId, true);
+              }
             }
           }
-        });
+        );
 
         // 새로운 참가자가 들어왔을 때
-        this.socket.on("new-participant", async ({ participantId }) => {
-          console.log("New participant joined:", participantId);
-          if (participantId !== this.currentUserId) {
-            await this.createPeerConnection(participantId, false);
+        this.socket.on(
+          "new-participant",
+          async ({ participantId, nickname }) => {
+            console.log("New participant joined:", participantId);
+
+            // 새 참가자의 닉네임 저장
+            if (nickname) {
+              this.participantNicknames[participantId] = nickname;
+            }
+
+            if (participantId !== this.currentUserId) {
+              await this.createPeerConnection(participantId, false);
+            }
           }
-        });
+        );
 
         this.socket.on("room-update", ({ participants }) => {
           this.participants = participants;
@@ -627,6 +694,8 @@ export default {
     handleUserDisconnected(userId) {
       this.handlePeerConnectionFailure(userId);
       this.participants = this.participants.filter((id) => id !== userId);
+      // 닉네임 정보도 제거
+      delete this.participantNicknames[userId];
     },
 
     async toggleMute() {
@@ -743,6 +812,7 @@ export default {
       this.remoteStreams = {};
       this.audioElements = {};
       this.roomId = "";
+      this.participantNicknames = {}; // 참가자 닉네임 초기화 추가
 
       // 회의 기록 초기화 추가
       this.meetingContent =

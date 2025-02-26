@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export default function uploadAudio(blob, roomId) {
+export default function uploadAudio(blob, roomId, nickname) {
   return new Promise(async (resolve, reject) => {
     if (!blob || !roomId) {
       console.error("❌ Missing audio blob or roomId");
@@ -9,11 +9,12 @@ export default function uploadAudio(blob, roomId) {
 
     const formData = new FormData();
     formData.append("roomId", roomId);
+    formData.append("nickname", nickname);
     formData.append(
       "audio",
       new File([blob], "audio.wav", { type: "audio/wav" })
     );
-
+    console.log(`뷰에서의 닉네임: ${nickname}`);
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
       const response = await axios.post(

@@ -13,14 +13,6 @@ const Project = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    topic: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     team_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
