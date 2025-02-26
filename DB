@@ -33,7 +33,6 @@ CREATE TABLE team_members (
 CREATE TABLE projects (
     project_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
-    link VARCHAR(255) NOT NULL,
     team_id INT NOT NULL,
     FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 );
