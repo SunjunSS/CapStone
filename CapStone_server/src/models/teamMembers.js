@@ -9,6 +9,10 @@ const TeamMember = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    isAdmin: {
+      type: DataTypes.INTEGER,
+      allowNull : false,
+    },
     team_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
