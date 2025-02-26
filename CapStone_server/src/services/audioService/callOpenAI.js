@@ -8,17 +8,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // .env 파일에 API 키 저장 필요
 });
 
-async function askOpenAI(prompt, mindMap = null) {
+async function askOpenAI(prompt,speakerNames, mindMap = null) {
   try {
     if (!prompt) return;
 
     // 📝 mindMap 데이터 여부에 따라 프롬프트 선택
     let finalPrompt = "";
 
-    if (mindMap) {
+    if (mindMap != null) {
       // ✅ mindMap 데이터가 있을 경우 (노드 생성 요청)
       finalPrompt = `
       이 음성 텍스트는 회의 중 기록된 대화입니다. 또한 아래의 마인드맵 노드는 회의 중 작성된 노드입니다.
+
       마인드맵 노드의 텍스트를 키워드로 고려하고, 음성 텍스트의 내용을 반영하여 **새롭게 추가할 만한 노드를 최대 2개까지만** 생성해주세요.
 
       음성 텍스트:
@@ -26,6 +27,7 @@ async function askOpenAI(prompt, mindMap = null) {
 
       마인드맵 노드:
       ${mindMap}
+
 
       응답은 아래 형식으로 반환해주세요:
       ---
@@ -42,14 +44,19 @@ async function askOpenAI(prompt, mindMap = null) {
       - **음성 텍스트를 분석하여 회의의 목적을 파악**하세요.
 
       ### 🔍 **입력 데이터**
+
+      #### **화자 목록**
+      ${speakerNames}
+
       #### **음성 텍스트**
       ${prompt}
 
       --- 
 
       ### **📌 작업 내용**
-      1. **SRT 음성 텍스트 파일을 그대로 반환하세요 (수정하면 안됨!)**
+      1. **SRT 음성 텍스트 파일을 자연스럽게 수정해주세요.(새로운 내용 창작은 안됩니다!!)**
       2. **SRT 파일을 기반으로 회의록을 작성하세요:**
+        - ** 'A:,B:' 등 형식의 화자를 화자목록으로 바꿔주세요. (A: -> speakerNames[0], B: -> speakerNAmes[1])** 
         - **회의 목적**
         - **주요 주제**
         - **다음 할 일**

@@ -41,7 +41,9 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
 exports.processAudioFile = async (mp3Path) => {
   try {
     const fileName = path.basename(mp3Path, ".mp3"); // .mp3 제외한 파일명 추출
-    const speakerNames = fileName.split("+").join(", "); // +를 ,로 변경하여 화자 이름을 순서대로 나열
+    let speakerNames = fileName.includes("+")
+      ? fileName.split("+").join(", ")
+      : fileName; // 화자 이름 변환
 
     deleteFiles(tempAudioFolder);
     const clovaResponse = await callClovaSpeechAPI(mp3Path);
@@ -57,11 +59,11 @@ exports.processAudioFile = async (mp3Path) => {
 
 exports.processRealTimeAudio = async (mp3Path, mindMap) => {
   try {
-    deleteFiles(tempAudioFolder);
+    // deleteFiles(tempAudioFolder);
     const clovaResponse = await callClovaSpeechAPI(mp3Path);
     const nodeOpenAIResponse = await nodeOpenAI(clovaResponse, mindmap);
 
-    deleteFiles(audioFolder);
+    // deleteFiles(audioFolder);
     return { clovaResponse, nodeOpenAIResponse };
   } catch (error) {
     console.error("❌ 음성 인식 및 분석 오류:", error);

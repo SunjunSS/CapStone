@@ -57,7 +57,11 @@ async function mixAudio(folderPath, outputPath) {
         // 변환된 파일 저장
         const convertedFiles = await Promise.all(
           inputPaths.map((file) => {
-            const outputFile = path.join(folderPath, path.basename(file)); // 원래 이름 유지
+            const fileName = path.basename(outputPath, ".wav");
+            const outputFile = path.join(
+              folderPath,
+              `${fileName}_.wav`
+            ); // 원래 이름 유지
             return convertAudio(file, outputFile);
           })
         );

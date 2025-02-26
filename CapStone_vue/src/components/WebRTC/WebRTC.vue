@@ -371,7 +371,7 @@ export default {
           const recordedData = this.temporaryChunks.slice(); // 25초 데이터 복사
           this.temporaryChunks = []; // 업로드 후 초기화
 
-          realTimeUpload(recordedData, this.roomId);
+          // realTimeUpload(recordedData, this.roomId);
         }
       }, 25000);
     },
