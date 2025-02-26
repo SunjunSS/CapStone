@@ -8,8 +8,15 @@ module.exports = (io) => {
   const router = express.Router();
   const { uploadAudio } = audioController(io);
 
-  // ✅ POST 요청을 통해 음성 파일 업로드 처리
-  router.post("/upload", upload.single("audio"), uploadAudio);
+  // ✅ 회의록 업로드 (일반 모드)
+  router.post("/upload", upload.single("audio"), (req, res) =>
+    uploadAudio(req, res, "upload")
+  );
+
+  // ✅ 실시간 업로드
+  router.post("/realTime", upload.single("audio"), (req, res) =>
+    uploadAudio(req, res, "realTime")
+  );
 
   return router;
 };

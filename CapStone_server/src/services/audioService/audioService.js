@@ -44,3 +44,18 @@ exports.processAudioFile = async (mp3Path) => {
     throw new Error("음성 인식 및 분석 중 오류 발생");
   }
 };
+
+exports.processRealTimeAudio = async (mp3Path, mindMap) => {
+  try {
+    deleteFiles(tempAudioFolder);
+    const clovaResponse = await callClovaSpeechAPI(mp3Path);
+    const nodeOpenAIResponse = await nodeOpenAI(clovaResponse, mindmap);
+
+    deleteFiles(audioFolder);
+    return { clovaResponse, nodeOpenAIResponse };
+  } catch (error) {
+    
+    console.error("❌ 음성 인식 및 분석 오류:", error);
+    throw new Error("음성 인식 및 분석 중 오류 발생");
+  }
+};
