@@ -24,6 +24,7 @@ module.exports = (io) => {
         }
 
         const roomId = req.body.roomId;
+        const nickname = req.body.nickname;
         const inputPath = req.file.path;
 
         console.log(`🎤 파일 저장 완료: ${inputPath}`);

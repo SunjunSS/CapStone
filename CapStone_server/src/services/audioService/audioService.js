@@ -11,7 +11,8 @@ const tempAudioFolder = path.join(__dirname, "../../../storage/temp_audio");
 
 // .wav -> .mp3 변환
 exports.convertToMP3 = async (inputPath) => {
-  const outputPath = path.join(audioFolder, `${Date.now()}.mp3`);
+  const fileName = path.basename(inputPath, ".wav"); // 원본 파일명 가져오기
+  const outputPath = path.join(audioFolder, `${fileName}.mp3`);
   try {
     return await convertToMP3(inputPath, outputPath);
   } catch (error) {
@@ -33,9 +34,14 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
 
 exports.processAudioFile = async (mp3Path) => {
   try {
+
+    const fileName = path.basename(mp3Path, ".mp3"); // .mp3 제외한 파일명 추출
+    const speakerNames = fileName.split("+").join(", "); // +를 ,로 변경하여 화자 이름을 순서대로 나열
+
+
     deleteFiles(tempAudioFolder);
     const clovaResponse = await callClovaSpeechAPI(mp3Path);
-    const openAIResponse = await askOpenAI(clovaResponse);
+    const openAIResponse = await askOpenAI(clovaResponse, speakerNames);
 
     deleteFiles(audioFolder);
     return { clovaResponse, openAIResponse };

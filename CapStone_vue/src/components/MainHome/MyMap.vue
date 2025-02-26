@@ -13,7 +13,7 @@
       <section class="create-map">
         <h3>지도 만들기</h3>
         <div class="map-options">
-          <div class="map-item empty-map">
+          <div class="map-item empty-map"> <!--  @click="newProject() -->
             <span class="icon">➕</span>
             <span class="text">빈 지도</span>
           </div>
@@ -131,6 +131,7 @@
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
 import { getCurrentUser, getProject, connectSocket } from '../socket/socket'; // connectSocket 추가
+import { createProject } from "../../services/projectService";
 
 export default {
   name: "MyMap",
@@ -171,6 +172,12 @@ export default {
   },
   methods: {
 
+    newProject() {
+      const userId = this.currentUser.user_id;
+      const response = createProject(userId);
+      this.$router.push(`/${response.link}`);
+    },
+
     handleLogout() {
         emitLogout(() => {
           console.log("✔️ 로그아웃 후 UI 업데이트");
@@ -191,8 +198,6 @@ export default {
           this.mapItems = projects.map((project) => ({
             project_id: project.project_id,
             name: project.name,
-            description: project.description,
-            topic: project.topic,
             tema_id: project.team_id,
             selected: false,
             showMenu: false,

@@ -1,14 +1,15 @@
 import axios from "axios";
 
-export default function uploadAudio(blob, roomId) {
+export default function uploadAudio(blob, roomId, nickname) {
   return new Promise(async (resolve, reject) => {
     if (!blob || !roomId) {
       console.error("❌ Missing audio blob or roomId");
       return reject("Missing audio blob or roomId");
     }
-
+    
     const formData = new FormData();
     formData.append("roomId", roomId);
+    formData.append("nickname", nickname);
     formData.append(
       "audio",
       new File([blob], "audio.wav", { type: "audio/wav" })

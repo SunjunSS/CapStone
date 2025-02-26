@@ -28,10 +28,6 @@ export default {
   name: "ProjectCreation",
   data() {
     return {
-      projectName: "",
-      projectDescription: "",
-      projectTopic: "",
-      topics: "",  // 예시 주제
       currentUser: null,
     };
   },
@@ -62,8 +58,6 @@ export default {
         const response = await axios.post(`${API_BASE_URL}/api/project`, {
           user_id: this.currentUser.user_id, // 실제 로그인된 사용자의 ID로 변경 필요
           name: this.projectName,
-          description: this.projectDescription,
-          topic: this.projectTopic,
         });
 
         alert(`프로젝트 생성 완료: ${response.data.project.name}`);

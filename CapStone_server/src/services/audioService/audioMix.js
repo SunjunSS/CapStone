@@ -20,26 +20,17 @@ function convertAudio(inputPath, outputPath) {
   });
 }
 
-// 오디오 길이 측정 함수
-function getAudioDuration(filePath) {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, metadata) => {
-      if (err) return reject(err);
-      resolve(metadata.format.duration); // 오디오 길이(초)
-    });
-  });
-}
-
 // mixAudio 함수: 모든 오디오 변환 후 병렬 믹싱
 async function mixAudio(folderPath, outputPath) {
   return new Promise(async (resolve, reject) => {
     fs.readdir(folderPath, async (err, files) => {
       if (err) return reject(err);
 
-      // .wav 파일 필터링
+      // .wav 파일 필터링 후 알파벳순 정렬
       const inputPaths = files
         .filter((file) => path.extname(file).toLowerCase() === ".wav")
-        .map((file) => path.join(folderPath, file));
+        .map((file) => path.join(folderPath, file))
+        .sort((a, b) => path.basename(a).localeCompare(path.basename(b), "ko"));
 
       if (inputPaths.length === 0) {
         return reject(
@@ -47,54 +38,46 @@ async function mixAudio(folderPath, outputPath) {
         );
       }
 
-      // 1명일 경우 로직 처리
+      // 파일 이름 가져오기
+      const fileNames = inputPaths.map((file) => path.basename(file, ".wav"));
+
+      // 1명일 경우 변환 후 리턴
       if (inputPaths.length === 1) {
-         try {
-
-           const outputFile = path.join(folderPath, `converted_0.wav`);
-           await convertAudio(inputPaths[0], outputFile);
-           console.log(`Converted to MP3: ${outputFile}`);
-           return resolve(outputFile);
-
-         } catch (error) {
-
-           return reject(error);
-
-         }
-        
+        try {
+          const outputFile = path.join(folderPath, `${fileNames[0]}(1).wav`);
+          await convertAudio(inputPaths[0], outputFile);
+          console.log(`Converted: ${outputFile}`);
+          return resolve(outputFile);
+        } catch (error) {
+          return reject(error);
+        }
       }
 
-
-      
       try {
-        // 변환된 파일 저장 경로
+        // 변환된 파일 저장
         const convertedFiles = await Promise.all(
-          inputPaths.map((file, index) => {
-            const outputFile = path.join(folderPath, `converted_${index}.wav`);
+          inputPaths.map((file) => {
+            const outputFile = path.join(folderPath, path.basename(file)); // 원래 이름 유지
             return convertAudio(file, outputFile);
           })
         );
 
-        
-
+        // 변환된 파일 확인
         convertedFiles.forEach((file) => {
           if (!fs.existsSync(file)) {
             console.log(`File does not exist: ${file}`);
           }
         });
 
+        // 믹싱된 파일 이름 생성 (예: "기업+선준+희찬.wav")
+        const outputFileName = `${fileNames.join("+")}.wav`;
+        const outputFilePath = path.join(outputPath, outputFileName);
+
         // 병렬 믹싱 시작
         const command = ffmpeg();
         convertedFiles.forEach((file) => command.input(file));
 
-        convertedFiles.forEach((file) => console.log(file)); // 각 파일 경로 출력
-
-        // 믹싱된 파일 저장 경로 설정
-        const outputFileName = `audioMixed${Date.now()}.wav`;
-        const outputFilePath = path.join(outputPath, outputFileName);
-        
-
-        // 병렬 믹싱 (amix 필터 적용)
+        // 믹싱된 파일 저장
         command
           .complexFilter([
             {
@@ -110,14 +93,13 @@ async function mixAudio(folderPath, outputPath) {
           .format("wav")
           .on("end", () => {
             console.log(`Mixing finished. Output file: ${outputFilePath}`);
-
             resolve(outputFilePath);
           })
           .on("error", (err) => {
             console.error("Error during mixing:", err);
             reject(err);
           })
-          .save(outputFilePath); // 믹싱된 오디오를 파일로 저장
+          .save(outputFilePath);
       } catch (error) {
         reject(error);
       }
