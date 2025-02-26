@@ -47,13 +47,19 @@ const TeamMember = require("./teamMembers");
 const Project = require("./projects");
 const Node = require("./nodes");
 
-// ✅ 관계 설정 (One-To-Many, Many-To-Many 설정)
+// ✅ User와 TeamMember 관계 (1:N)
+User.hasMany(TeamMember, { foreignKey: "user_id", onDelete: "CASCADE" });
+TeamMember.belongsTo(User, { foreignKey: "user_id" });
+
+// ✅ Team과 TeamMember 관계 (1:N)
+Team.hasMany(TeamMember, { foreignKey: "team_id", onDelete: "CASCADE" });
+TeamMember.belongsTo(Team, { foreignKey: "team_id" });
+
+// ✅ Team과 Project 관계
 Team.hasMany(Project, { foreignKey: "team_id" });
 Project.belongsTo(Team, { foreignKey: "team_id" });
 
-User.belongsToMany(Team, { through: TeamMember, foreignKey: "user_id" });
-Team.belongsToMany(User, { through: TeamMember, foreignKey: "team_id" });
-
+// ✅ Project와 Node 관계
 Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
 Node.belongsTo(Project, { foreignKey: "project_id" });
 
