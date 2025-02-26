@@ -1,6 +1,6 @@
 // socketHandler.js
 
-const loginHandler = require("./LoginHandler.js");
+const loginHandler = require("./loginHandler.js");
 const mainHomeHandler = require("./mainHomeHandler");
 
 const rooms = {};
