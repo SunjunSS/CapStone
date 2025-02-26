@@ -15,7 +15,7 @@ module.exports = (io) => {
     /**
      * 음성 파일 업로드 및 처리
      */
-    uploadAudio: async (req, res) => {
+    uploadAudio: async (req, res, mode) => {
       try {
         if (!req.file || !req.body.roomId) {
           return res
@@ -24,6 +24,7 @@ module.exports = (io) => {
         }
 
         const roomId = req.body.roomId;
+        const nickname = req.body.nickname;
         const inputPath = req.file.path;
 
         console.log(`🎤 파일 저장 완료: ${inputPath}`);
@@ -33,6 +34,21 @@ module.exports = (io) => {
           return res
             .status(500)
             .send({ message: "Error: Input file not found" });
+        }
+
+        if (mode === "realTime") {
+          // ✅ 실시간 모드: 변환 후 실시간 API 호출
+          const mp3Path = await convertToMP3(inputPath);
+          console.log(`✅ 실시간 MP3 변환 성공: ${mp3Path}`);
+
+          const realTimeResponse = await processRealTimeAudio(mp3Path);
+
+          io.to(roomId).emit("real-time-analysis", { realTimeResponse });
+
+          return res.send({
+            message: "✅ 실시간 분석 완료!",
+            realTimeResponse,
+          });
         }
 
         // ✅ Socket.io의 방 정보에서 참여자 수 확인
@@ -77,7 +93,6 @@ module.exports = (io) => {
           mp3Path
         );
 
-       
         io.to(roomId).emit("return-recording", {
           openAIResponse,
         });
