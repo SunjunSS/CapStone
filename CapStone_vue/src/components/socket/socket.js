@@ -17,10 +17,10 @@ export const connectSocket = (callback) => {
       console.log("🟢 소켓 연결됨:", socket.id);
 
       // localStorage에서 이메일 가져오기
-      const storedEmail = localStorage.getItem("userEmail");
+      const storedEmail = sessionStorage.getItem("userEmail");
 
       if (storedEmail) {
-        // 자동 재연결 시 사용자 정보 복구
+        // 자동 재연결 시 사용자 정보 복구 ( 현재로그인한 사용자 )
         currentUser = { email: storedEmail };
         if (callback) callback();
       }
@@ -37,13 +37,9 @@ export const emitLogin = (email, password, onLoginSuccess) => {
 
   socket.on("login_success", (data) => {
     currentUser = data.user;
-    // 닉네임 데이터가 있으면 사용하고, 없으면 이메일의 @ 앞부분 사용
-    const nickname =
-      data.user.name || data.user.username || email.split("@")[0];
 
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userNickname", nickname);
-    localStorage.setItem("isLoggedIn", "true");
+    sessionStorage.setItem("userId", data.user.user_id); // ✅ 세션 스토리지에 저장
+
     console.log("✅ 로그인 성공");
     if (onLoginSuccess) onLoginSuccess(data.user);
   });
@@ -65,10 +61,8 @@ export const disconnectSocket = () => {
   currentUser = null;
   projects = {};
 
-  // localStorage에서도 정보 삭제
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userNickname");
-  localStorage.removeItem("isLoggedIn");
+  // ✅ 세션 스토리지에서 userId 제거
+  sessionStorage.removeItem("userId");
 
   // 소켓 연결 해제
   if (socket.connected) {
