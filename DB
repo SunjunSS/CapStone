@@ -34,8 +34,10 @@ CREATE TABLE projects (
     project_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     team_id INT NOT NULL,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 );
+
 
 -- 노드 테이블 (프로젝트와 연결)
 CREATE TABLE nodes (
