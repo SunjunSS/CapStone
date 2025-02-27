@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/localDB");
 
-const projectmembers = sequelize.define(
+const ProjectMembers = sequelize.define(
   "projectmembers",
   {
     user_id: {
@@ -27,4 +27,4 @@ const projectmembers = sequelize.define(
   }
 );
 
-module.exports = projectmembers;
+module.exports = ProjectMembers;
