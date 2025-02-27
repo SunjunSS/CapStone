@@ -94,15 +94,23 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
  * @param {string} userId - 사용자 ID
  */
 export const unregisterSocketHandlers = (roomId, userId) => {
+  if (!roomId || !userId) {
+    console.warn("🚨 unregisterSocketHandlers: roomId 또는 userId가 없음.");
+    return;
+  }
+
+  const roomIdValue =
+    typeof roomId === "object" && roomId.value ? roomId.value : roomId;
+
   socket.off("nodeAdded");
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
 
-  const roomIdValue = roomId.value ? roomId.value : roomId;
-
   // 방에서 나가기
-  socket.emit("leave-room", { roomId: roomIdValue, userId });
-  console.log(`🚪 ${userId} 님이 ${roomIdValue} 방에서 나감`);
-
-  console.log("❌ WebSocket 이벤트 리스너 해제 완료");
+  if (roomIdValue) {
+    socket.emit("leave-room", { roomId: roomIdValue, userId });
+    console.log(`🚪 ${userId} 님이 ${roomIdValue} 방에서 나감`);
+  } else {
+    console.warn("⚠️ unregisterSocketHandlers: roomIdValue가 없음.");
+  }
 };
