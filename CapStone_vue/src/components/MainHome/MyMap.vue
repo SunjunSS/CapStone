@@ -55,7 +55,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in mapItems" :key="index">
+              <tr
+                v-for="(item, index) in mapItems"
+                :key="index"
+                :class="{ 'selected-row': item.selected }"
+              >
                 <td class="name-column">
                   <div
                     class="hover-checkbox"
