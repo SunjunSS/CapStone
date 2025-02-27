@@ -27,10 +27,18 @@ export const createProject = async (userId) => {
 
 export const getUserProjects = async (userId) => {
   try {
-    const response = await axios.get(`/api/projects?user_id=${userId}`);
-    return response.data; // 프로젝트 리스트 반환
+    const response = await axios.get(`${getProjectUrl()}/${userId}`); // ✅ params 방식 사용
+    console.log("🟢 프로젝트 리스트 응답:", response.data);
+
+    if (!response.data.projects) {
+      throw new Error(
+        "❌ 프로젝트 조회 실패: 응답 데이터에 projects가 없습니다."
+      );
+    }
+
+    return response.data.projects; // ✅ projects 배열만 반환
   } catch (error) {
-    console.error("프로젝트 조회 오류:", error);
+    console.error("❌ 프로젝트 조회 오류:", error);
     throw error;
   }
 };

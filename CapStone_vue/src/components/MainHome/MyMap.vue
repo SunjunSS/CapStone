@@ -58,7 +58,7 @@
               <tr
                 v-for="(item, index) in mapItems"
                 :key="index"
-                :class="{ 'selected-row': item.selected }"
+                @click="openMindMap(item.project_id)"
               >
                 <td class="name-column">
                   <div
@@ -128,10 +128,11 @@
 </template>
 
 <script>
+import { ref, onMounted } from "vue"; // ✅ ref와 onMounted 추가
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
 import { getCurrentUser, getProject, connectSocket } from "../socket/socket"; // connectSocket 추가
-import { createProject } from "../../api/projectApi"; // 프로젝트 생성 API 불러오기
+import { createProject, getUserProjects } from "../../api/projectApi"; // 프로젝트 생성 API 불러오기
 import { useRouter } from "vue-router"; // Vue Router 사용
 
 export default {
@@ -141,7 +142,7 @@ export default {
   },
   data() {
     return {
-      mapItems: [],
+      // mapItems: [],
       isProjectDialogOpen: false,
       teamName: "",
       teamDescription: "",
@@ -273,10 +274,40 @@ export default {
   },
   setup() {
     const router = useRouter(); // Vue Router 인스턴스 가져오기
+    const mapItems = ref([]); // ✅ 프로젝트 목록을 ref로 선언
+    // const currentUser = ref(null);
+
+    // ✅ 서버에서 프로젝트 목록 불러오기
+    const loadProjects = async () => {
+      try {
+        // if (!currentUser.value) return;
+
+        const userId = 1; // 실제 로그인된 사용자 ID로 변경 필요
+        const projects = await getUserProjects(userId);
+
+        mapItems.value = projects.map((p) => ({
+          project_id: p.id,
+          name: p.name,
+          // creator: "kim", // 🔥 서버에서 만든 사람 정보도 같이 가져오도록 수정 필요
+          // date: "Jan 22, 2025", // 🔥 서버에서 수정 날짜 데이터 추가 필요
+        }));
+
+        console.log("🟢 프로젝트 불러오기 성공:", mapItems.value);
+      } catch (error) {
+        console.error("❌ 프로젝트 목록 불러오기 오류:", error);
+      }
+    };
 
     const createAndOpenMap = async () => {
       try {
+        // const userId = currentUser.value?.id;
+        // if (!userId) {
+        //   console.error("❌ 사용자 ID가 없습니다.");
+        //   return;
+        // }
+
         const userId = 1; // 현재 로그인된 사용자 ID 가져오기
+
         const newProject = await createProject(userId); // 프로젝트 생성 요청
 
         if (newProject && newProject.project_id) {
@@ -288,7 +319,25 @@ export default {
       }
     };
 
-    return { createAndOpenMap };
+    // ✅ 기존 프로젝트 클릭 시 MindMap 이동
+    const openMindMap = (projectId) => {
+      console.log("🔗 MindMap으로 이동:", projectId);
+      router.push(`/MindMap/${projectId}`);
+    };
+
+    onMounted(() => {
+      connectSocket(() => {
+        // currentUser.value = getCurrentUser();
+        // console.log("🟢 로그인된 사용자:", currentUser.value);
+        loadProjects();
+      });
+    });
+
+    return {
+      mapItems,
+      createAndOpenMap,
+      openMindMap,
+    };
   },
   mounted() {
     // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
