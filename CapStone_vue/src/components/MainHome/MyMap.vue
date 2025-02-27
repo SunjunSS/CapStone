@@ -55,11 +55,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="(item, index) in mapItems"
-                :key="index"
-                @click="openMindMap(item.project_id)"
-              >
+              <tr v-for="(item, index) in mapItems" :key="index">
                 <td class="name-column">
                   <div
                     class="hover-checkbox"
@@ -72,7 +68,11 @@
                     />
                   </div>
                   <span class="map-icon">🌟</span>
-                  {{ item.name }}
+                  <span
+                    @click="openMindMap(item.project_id)"
+                    style="cursor: pointer"
+                    >{{ item.name }}</span
+                  >
                 </td>
                 <td class="creator-column">{{ item.creator }}</td>
                 <td class="date-column">{{ item.date }}</td>
@@ -86,7 +86,7 @@
                     ref="menuDropdown"
                   >
                     <ul>
-                      <li @click="openMap(index)">🗝️ 열기</li>
+                      <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
                       <li @click="duplicateMap(index)">📋 복제</li>
                       <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
                       <li @click="moveToTrash(index)" class="delete-option">
