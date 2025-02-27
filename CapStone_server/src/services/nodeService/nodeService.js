@@ -9,29 +9,29 @@ exports.addNodes = async (addedNodes, project_id) => {
   try {
     const projectIdAsNumber = parseInt(project_id, 10); // ✅ project_id를 숫자로 변환
 
-    // 🔥 새로운 노드 데이터 생성
-    const newNodes = addedNodes.map(({ name, parent }) => ({
-      content: name || "새 노드", // ✅ 기본값 설정
-      parent_key: parent > 0 ? parent : null, // ✅ 부모 ID가 유효하지 않으면 NULL로 설정
+    // ✅ 배열이지만 한 개만 받으므로 0번 인덱스를 사용
+    const { name, parent, isSelected } = addedNodes[0];
+
+    // 🔥 단일 노드 추가 (create 사용)
+    const newNode = await Node.create({
+      content: name || "새 노드",
+      parent_key: parent > 0 ? parent : null,
       project_id: projectIdAsNumber,
-    }));
+      isSelected: isSelected, // ✅ isSelected 필드를 addedNodes[0] 값과 동일하게 설정
+    });
 
-    // 🔥 DB에 저장
-    const createdNodes = await Node.bulkCreate(newNodes, { validate: true });
+    console.log("✅ 성공적으로 추가된 노드:", newNode.toJSON());
 
-    console.log(
-      "✅ 성공적으로 추가된 노드:",
-      JSON.stringify(createdNodes, null, 2)
-    );
-
-    return createdNodes.map(({ id, content, parent_key, project_id }) => ({
-      id,
-      key: id, // ✅ key 필드를 id 값과 동일하게 설정
-      name: content,
-      parent: parent_key ?? 0, // 부모가 없으면 0으로 설정
-      project_id,
-      isSelected: false,
-    }));
+    return [
+      {
+        id: newNode.id,
+        key: newNode.id, // ✅ key 필드를 id 값과 동일하게 설정
+        name: newNode.content, // ✅ DB의 `content` 값을 `name`으로 반환
+        parent: newNode.parent_key ?? 0, // 부모가 없으면 0으로 설정
+        project_id: newNode.project_id,
+        isSelected: isSelected,
+      },
+    ];
   } catch (error) {
     console.error("❌ 노드 추가 중 오류 발생:", error.message);
     throw new Error(`노드 추가 중 오류 발생: ${error.message}`);
@@ -121,14 +121,16 @@ exports.getMindmapByProjectId = async (project_id) => {
 
     return {
       success: true,
-      data: nodes.map(({ id, content, parent_key, project_id }) => ({
-        id, // 🔥 `node_key` 제거
-        key: id, // ✅ key 필드를 id 값과 동일하게 설정
-        name: content,
-        parent: parent_key ?? 0, // 부모 없으면 0
-        project_id,
-        isSelected: false,
-      })),
+      data: nodes.map(
+        ({ id, content, parent_key, project_id, isSelected }) => ({
+          id, // 🔥 `node_key` 제거
+          key: id, // ✅ key 필드를 id 값과 동일하게 설정
+          name: content,
+          parent: parent_key ?? 0, // 부모 없으면 0
+          project_id,
+          isSelected: isSelected,
+        })
+      ),
     };
   } catch (error) {
     console.error("❌ 프로젝트별 마인드맵 조회 실패:", error);

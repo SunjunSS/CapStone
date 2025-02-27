@@ -1,13 +1,12 @@
 import { ref } from "vue";
 import * as go from "gojs";
 import axios from "axios"; // 📌 axios 추가
+import API_BASE_URL from "../config/apiConfig"; // ✅ 설정 파일에서 가져오기
 
 const isSaving = ref(false);
 const lastSaveTime = ref(null);
 const serverError = ref(null);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
-// const API_MINDMAP_URL = `${API_BASE_URL}/api/mindmap`;
 // ✅ project_id를 기반으로 API URL 생성하는 함수
 const getMindmapUrl = (project_id) =>
   `${API_BASE_URL}/api/mindmap/${project_id}`;

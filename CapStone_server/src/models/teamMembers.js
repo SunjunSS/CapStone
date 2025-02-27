@@ -4,20 +4,17 @@ const sequelize = require("../config/localDB");
 const TeamMember = sequelize.define(
   "TeamMember",
   {
-    member_id: {
+    user_id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    isAdmin: {
-      type: DataTypes.INTEGER,
-      allowNull : false,
+      allowNull: false,
+      primaryKey: true, // ✅ 복합 키 설정
     },
     team_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      primaryKey: true, // ✅ 복합 키 설정
     },
-    user_id: {
+    isAdmin: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
