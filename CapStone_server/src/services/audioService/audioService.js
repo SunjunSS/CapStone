@@ -31,7 +31,7 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
 
     // 2개 이상일 경우 믹싱 후 변환
     const mixedAudioPath = await mixAudio(tempAudioFolder, audioFolder);
-    return await exports.convertToMP3(mixedAudioPath);
+    return mixedAudioPath;
   } catch (error) {
     console.error("❌ 오디오 믹싱 및 변환 오류:", error);
     throw new Error("오디오 믹싱 및 변환 중 오류 발생");
