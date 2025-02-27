@@ -91,7 +91,7 @@ import { useRoute } from "vue-router"; // ✅ useRoute 추가
 import {
   registerSocketHandlers,
   unregisterSocketHandlers,
-} from "../socket/socketHandlers.js"; // ✅ WebSocket 핸들러 모듈 import
+} from "../socket/nodeSocket.js"; // ✅ WebSocket 핸들러 모듈 import
 
 export default {
   components: {
