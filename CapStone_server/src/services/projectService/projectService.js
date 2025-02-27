@@ -53,7 +53,7 @@ exports.getUserProjects = async (user_id) => {
     });
 
     return projects.map((project) => ({
-      id: project.project_id,
+      project_id: project.project_id,
       name: project.name,
     }));
   } catch (error) {
