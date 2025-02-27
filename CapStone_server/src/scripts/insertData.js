@@ -6,7 +6,7 @@ const {
   sequelize,
   User,
   Project,
-  projectmembers,
+  ProjectMembers,
   Node,
   initDB,
 } = require("../models");
@@ -31,7 +31,7 @@ const insertData = async () => {
     console.log(`✅ 프로젝트 추가됨: ${project.name}`);
 
     // ✅ 2. projectmembers 테이블에 추가
-    await projectmembers.create({
+    await ProjectMembers.create({
       user_id: user.user_id, // User의 user_id
       project_id: project.project_id,
       isAdmin: 3,

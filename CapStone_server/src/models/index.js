@@ -40,18 +40,18 @@ const createDatabaseIfNotExists = async () => {
 const User = require("./users");
 const Project = require("./projects");
 const Node = require("./nodes");
-const projectmembers = require("./projectMembers");
+const ProjectMembers = require("./projectMembers");
 
 // ✅ User와 projectmembers 관계 (1:N)
-User.hasMany(projectmembers, { foreignKey: "user_id", onDelete: "CASCADE" });
-projectmembers.belongsTo(User, { foreignKey: "user_id" });
+User.hasMany(ProjectMembers, { foreignKey: "user_id", onDelete: "CASCADE" });
+ProjectMembers.belongsTo(User, { foreignKey: "user_id" });
 
 // ✅ Project와 projectmembers 관계 (1:N)
-Project.hasMany(projectmembers, {
+Project.hasMany(ProjectMembers, {
   foreignKey: "project_id",
   onDelete: "CASCADE",
 });
-projectmembers.belongsTo(Project, { foreignKey: "project_id" });
+ProjectMembers.belongsTo(Project, { foreignKey: "project_id" });
 
 // ✅ Project와 Node 관계
 Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
@@ -80,6 +80,6 @@ module.exports = {
   User,
   Project,
   Node,
-  projectmembers,
+  ProjectMembers,
   initDB,
 };
