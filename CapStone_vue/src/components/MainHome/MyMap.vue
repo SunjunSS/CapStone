@@ -275,21 +275,25 @@ export default {
   setup() {
     const router = useRouter(); // Vue Router 인스턴스 가져오기
     const mapItems = ref([]); // ✅ 프로젝트 목록을 ref로 선언
-    // const currentUser = ref(null);
+
+    // ✅ 세션에서 userId 가져오기
+    const userId = sessionStorage.getItem("userId");
 
     // ✅ 서버에서 프로젝트 목록 불러오기
     const loadProjects = async () => {
       try {
-        // if (!currentUser.value) return;
+        if (!userId) {
+          console.error("❌ 사용자 ID가 없습니다.");
+          return;
+        }
 
-        const userId = 1; // 실제 로그인된 사용자 ID로 변경 필요
         const projects = await getUserProjects(userId);
 
         mapItems.value = projects.map((p) => ({
-          project_id: p.id,
+          project_id: p.project_id,
           name: p.name,
-          // creator: "kim", // 🔥 서버에서 만든 사람 정보도 같이 가져오도록 수정 필요
-          // date: "Jan 22, 2025", // 🔥 서버에서 수정 날짜 데이터 추가 필요
+          creator: p.creator, // 서버에서 만든 사람 정보
+          date: p.date, // 서버에서 수정 날짜 정보
         }));
 
         console.log("🟢 프로젝트 불러오기 성공:", mapItems.value);
@@ -300,19 +304,16 @@ export default {
 
     const createAndOpenMap = async () => {
       try {
-        // const userId = currentUser.value?.id;
-        // if (!userId) {
-        //   console.error("❌ 사용자 ID가 없습니다.");
-        //   return;
-        // }
+        if (!userId) {
+          console.error("❌ 사용자 ID가 없습니다.");
+          return;
+        }
 
-        const userId = 1; // 현재 로그인된 사용자 ID 가져오기
-
-        const newProject = await createProject(userId); // 프로젝트 생성 요청
+        const newProject = await createProject(userId); // ✅ userId 사용
 
         if (newProject && newProject.project_id) {
           console.log("🟢 새 프로젝트 생성 완료:", newProject.project_id);
-          router.push(`/MindMap/${newProject.project_id}`); // 프로젝트 ID로 MindMap 페이지 이동
+          router.push(`/MindMap/${newProject.project_id}`);
         }
       } catch (error) {
         console.error("❌ 프로젝트 생성 중 오류 발생:", error);
@@ -327,8 +328,6 @@ export default {
 
     onMounted(() => {
       connectSocket(() => {
-        // currentUser.value = getCurrentUser();
-        // console.log("🟢 로그인된 사용자:", currentUser.value);
         loadProjects();
       });
     });
