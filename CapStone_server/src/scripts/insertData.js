@@ -27,7 +27,6 @@ const insertData = async () => {
     // ✅ 2. teams 테이블에 팀 추가
     const team = await Team.create({
       name: "Capstone Team",
-      leader_email: user.email, // 리더 이메일
     });
     console.log(`✅ 팀 추가됨: ${team.name}`);
 
@@ -35,14 +34,13 @@ const insertData = async () => {
     await TeamMember.create({
       user_id: user.user_id, // User의 user_id
       team_id: team.team_id, // Team의 team_id
+      isAdmin: 2
     });
     console.log(`✅ 팀 멤버 추가됨: ${user.name} -> ${team.name}`);
 
     // ✅ 4. projects 테이블에 프로젝트 추가
     const project = await Project.create({
       name: "새 프로젝트",
-      description: "캡스톤",
-      topic: "라면면", // topic 필드 추가
       team_id: team.team_id,
     });
     console.log(`✅ 프로젝트 추가됨: ${project.name}`);
@@ -52,6 +50,7 @@ const insertData = async () => {
       project_id: project.project_id,
       parent_key: null,
       content: "자식",
+      isSelected : false,
     });
     console.log(`✅ 노드 추가됨: ${node.content}`);
 

@@ -64,6 +64,8 @@ module.exports = (socket) => {
 
       console.log(`❌ User ${userId} logged out`);
       socket.emit("logout_success", { message: "로그아웃 성공!" });
+    } else {
+      socket.emit("logout_error", { message: "로그인된 상태가 아닙니다." });
     }
   });
 

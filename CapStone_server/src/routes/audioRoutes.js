@@ -1,15 +1,21 @@
 const express = require("express");
-const { upload } = require("../config/multerConfig"); // ✅ multerConfig.js에서 불러오기
+const { upload } = require("../config/multerConfig");
 const audioController = require("../controllers/audioController");
-
-const router = express.Router();
 
 module.exports = (io) => {
   const router = express.Router();
   const { uploadAudio } = audioController(io);
 
-  // ✅ POST 요청을 통해 음성 파일 업로드 처리
-  router.post("/upload", upload.single("audio"), uploadAudio);
+  // 올바른 미들웨어 체인 구성
+  router.post(
+    "/upload",
+    upload.single("audio"),
+    (req, res, next) => {
+      console.log(`닉네임: ${req.body.nickname}`); // 오타 수정(boby → body)
+      next(); // 다음 미들웨어로 제어 전달
+    },
+    uploadAudio // 함수 참조만 전달, 즉시 호출하지 않음
+  );
 
   return router;
 };

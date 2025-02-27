@@ -171,6 +171,19 @@ export default {
   },
   methods: {
 
+    handleLogout() {
+        emitLogout(() => {
+          console.log("✔️ 로그아웃 후 UI 업데이트");
+          
+          this.currentUser = null; // 로그인한 사용자 정보 초기화
+          this.email = null; // 이메일 초기화
+          this.mapItems = []; // 지도 아이템 목록 초기화
+
+          this.$router.push('/'); // 홈 화면으로 이동
+          
+        });
+    },
+
     loadProjects() {
       if (this.currentUser) {
         getProject(this.currentUser.email, (projects) => {

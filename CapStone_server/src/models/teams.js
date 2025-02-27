@@ -9,14 +9,6 @@ const Team = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    leader_email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
   },
   {
     tableName: "teams", // 테이블명 지정
