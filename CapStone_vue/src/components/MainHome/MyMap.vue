@@ -13,7 +13,7 @@
       <section class="create-map">
         <h3>지도 만들기</h3>
         <div class="map-options">
-          <div class="map-item empty-map">
+          <div class="map-item empty-map" @click="createAndOpenMap">
             <span class="icon">➕</span>
             <span class="text">빈 지도</span>
           </div>
@@ -130,7 +130,9 @@
 <script>
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
-import { getCurrentUser, getProject, connectSocket } from '../socket/socket'; // connectSocket 추가
+import { getCurrentUser, getProject, connectSocket } from "../socket/socket"; // connectSocket 추가
+import { createProject } from "../../api/projectApi"; // 프로젝트 생성 API 불러오기
+import { useRouter } from "vue-router"; // Vue Router 사용
 
 export default {
   name: "MyMap",
@@ -160,28 +162,26 @@ export default {
   watch: {
     currentUser: {
       handler(newUser) {
-        console.log("실행됨 --- 유저")
+        console.log("실행됨 --- 유저");
         if (newUser && newUser.email) {
-          console.log(`프로젝트 요청 실행 --`)
+          console.log(`프로젝트 요청 실행 --`);
           this.loadProjects();
         }
       },
-      deep: true
-    }
+      deep: true,
+    },
   },
   methods: {
-
     handleLogout() {
-        emitLogout(() => {
-          console.log("✔️ 로그아웃 후 UI 업데이트");
-          
-          this.currentUser = null; // 로그인한 사용자 정보 초기화
-          this.email = null; // 이메일 초기화
-          this.mapItems = []; // 지도 아이템 목록 초기화
+      emitLogout(() => {
+        console.log("✔️ 로그아웃 후 UI 업데이트");
 
-          this.$router.push('/'); // 홈 화면으로 이동
-          
-        });
+        this.currentUser = null; // 로그인한 사용자 정보 초기화
+        this.email = null; // 이메일 초기화
+        this.mapItems = []; // 지도 아이템 목록 초기화
+
+        this.$router.push("/"); // 홈 화면으로 이동
+      });
     },
 
     loadProjects() {
@@ -214,12 +214,12 @@ export default {
     },
 
     openProjectDialog() {
-      this.$router.push('/Project')
+      this.$router.push("/Project");
     },
     close() {
       this.isProjectDialogOpen = false;
     },
-    
+
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -271,16 +271,34 @@ export default {
       this.closeAllMenus();
     },
   },
-  mounted() {
-    
-  // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
-  connectSocket(() => {
-    this.loadCurrentUser();
-  });
+  setup() {
+    const router = useRouter(); // Vue Router 인스턴스 가져오기
 
-  // 메뉴 외부 클릭 시 메뉴 닫기
-  document.addEventListener("click", this.closeAllMenus);
-},
+    const createAndOpenMap = async () => {
+      try {
+        const userId = 1; // 현재 로그인된 사용자 ID 가져오기
+        const newProject = await createProject(userId); // 프로젝트 생성 요청
+
+        if (newProject && newProject.project_id) {
+          console.log("🟢 새 프로젝트 생성 완료:", newProject.project_id);
+          router.push(`/MindMap/${newProject.project_id}`); // 프로젝트 ID로 MindMap 페이지 이동
+        }
+      } catch (error) {
+        console.error("❌ 프로젝트 생성 중 오류 발생:", error);
+      }
+    };
+
+    return { createAndOpenMap };
+  },
+  mounted() {
+    // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
+    connectSocket(() => {
+      this.loadCurrentUser();
+    });
+
+    // 메뉴 외부 클릭 시 메뉴 닫기
+    document.addEventListener("click", this.closeAllMenus);
+  },
   beforeDestroy() {
     document.removeEventListener("click", this.closeAllMenus);
   },

@@ -85,7 +85,7 @@ import {
   saveMindmapToServer,
   deleteMindmapNodes,
   updateMindmapNode,
-} from "@/services/nodeService";
+} from "@/api/nodeApi";
 import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 import { useRoute } from "vue-router"; // ✅ useRoute 추가
 import {
