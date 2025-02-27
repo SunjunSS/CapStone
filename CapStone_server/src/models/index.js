@@ -47,13 +47,19 @@ const TeamMember = require("./teamMembers");
 const Project = require("./projects");
 const Node = require("./nodes");
 
-// ✅ 관계 설정 (One-To-Many, Many-To-Many 설정)
+// ✅ User와 TeamMember 관계 (1:N)
+User.hasMany(TeamMember, { foreignKey: "user_id", onDelete: "CASCADE" });
+TeamMember.belongsTo(User, { foreignKey: "user_id" });
+
+// ✅ Team과 TeamMember 관계 (1:N)
+Team.hasMany(TeamMember, { foreignKey: "team_id", onDelete: "CASCADE" });
+TeamMember.belongsTo(Team, { foreignKey: "team_id" });
+
+// ✅ Team과 Project 관계
 Team.hasMany(Project, { foreignKey: "team_id" });
 Project.belongsTo(Team, { foreignKey: "team_id" });
 
-User.belongsToMany(Team, { through: TeamMember, foreignKey: "user_id" });
-Team.belongsToMany(User, { through: TeamMember, foreignKey: "team_id" });
-
+// ✅ Project와 Node 관계
 Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
 Node.belongsTo(Project, { foreignKey: "project_id" });
 
@@ -66,7 +72,7 @@ const initDB = async () => {
     console.log("✅ MySQL 데이터베이스 연결 성공");
 
     // ✅ 테이블 동기화
-    await sequelize.sync({ force: false });
+    await sequelize.sync({ force: false }); // true면 데이터베이스 다시 만들기, false면 기존 데이터베이스를 바꾸지 않고 동기화
     console.log("✅ 데이터베이스 동기화 완료");
   } catch (error) {
     console.error("❌ 데이터베이스 동기화 실패:", error);
