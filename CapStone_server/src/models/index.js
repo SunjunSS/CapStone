@@ -1,17 +1,13 @@
 const mysql = require("mysql2/promise"); // ✅ MySQL2 Promise 기반 사용
 const sequelize = require("../config/localDB"); // ✅ Sequelize 인스턴스 가져오기
-const dotenv = require("dotenv");
-const path = require("path");
+const config = require("../config/envConfig"); // ✅ 환경 변수 로드
 
-dotenv.config({ path: path.join(__dirname, "../.env") });
-
-// ✅ MySQL 연결 정보
 const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
+  host: config.db.host,
+  user: config.db.user,
+  password: config.db.password,
+  port: config.db.port,
+  database: config.db.name,
 };
 
 // ✅ 데이터베이스가 없으면 생성하는 함수
