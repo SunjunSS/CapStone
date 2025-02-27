@@ -1,28 +1,30 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/localDB");
 
-const TeamMember = sequelize.define(
-  "TeamMember",
+const projectmembers = sequelize.define(
+  "projectmembers",
   {
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true, // ✅ 복합 키 설정
     },
-    team_id: {
+
+    project_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true, // ✅ 복합 키 설정
     },
+
     isAdmin: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
   },
   {
-    tableName: "team_members",
+    tableName: "project_members",
     timestamps: false,
   }
 );
 
-module.exports = TeamMember;
+module.exports = projectmembers;

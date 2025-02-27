@@ -13,10 +13,6 @@ const Project = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    team_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
   },
   {
     tableName: "projects",
