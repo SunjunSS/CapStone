@@ -1,4 +1,4 @@
---Drawing(보라색 선택 핸들 -> 투명색 변화)--
+--Drawing(S키를 눌러서 선택버튼을 활성화[검정색 테두리 제거])--
 
 <template>
   <div class="drawing-app">
@@ -771,6 +771,14 @@ export default {
           }
         }
       }
+
+      // 's' 키가 눌렸을 때 선택 모드로 전환
+      if (event.key === "s" || event.key === "S") {
+        // 컬러 피커가 열려있지 않을 때만 작동
+        if (!this.showColorPicker) {
+          this.setMode("select");
+        }
+      }
     },
   },
   watch: {
@@ -1040,5 +1048,9 @@ canvas {
 .color-swatch.disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+button:focus {
+  outline: none; /* 포커스 테두리 제거 */
 }
 </style>
