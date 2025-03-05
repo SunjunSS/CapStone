@@ -5,9 +5,8 @@ dotenv.config({ path: path.join(__dirname, "../../.env") });
 const {
   sequelize,
   User,
-  Team,
-  TeamMember,
   Project,
+  ProjectMembers,
   Node,
   initDB,
 } = require("../models");
@@ -24,33 +23,27 @@ const insertData = async () => {
     });
     console.log(`✅ 사용자 추가됨: ${user.name} (${user.email})`);
 
-    // ✅ 2. teams 테이블에 팀 추가
-    const team = await Team.create({
-      name: "Capstone Team",
-    });
-    console.log(`✅ 팀 추가됨: ${team.name}`);
-
-    // ✅ 3. team_members 테이블에 추가
-    await TeamMember.create({
-      user_id: user.user_id, // User의 user_id
-      team_id: team.team_id, // Team의 team_id
-      isAdmin: 2
-    });
-    console.log(`✅ 팀 멤버 추가됨: ${user.name} -> ${team.name}`);
-
-    // ✅ 4. projects 테이블에 프로젝트 추가
+    // ✅ 3. projects 테이블에 프로젝트 추가
     const project = await Project.create({
       name: "새 프로젝트",
-      team_id: team.team_id,
+      updateAt: null,
     });
     console.log(`✅ 프로젝트 추가됨: ${project.name}`);
 
-    // ✅ 5. nodes 테이블에 루트 노드 추가
+    // ✅ 2. projectmembers 테이블에 추가
+    await ProjectMembers.create({
+      user_id: user.user_id, // User의 user_id
+      project_id: project.project_id,
+      isAdmin: 3,
+    });
+    console.log(`✅프로젝트 멤버 추가됨: ${user.name} -> ${project.name}`);
+
+    // ✅ 4. nodes 테이블에 루트 노드 추가
     const node = await Node.create({
       project_id: project.project_id,
       parent_key: null,
       content: "자식",
-      isSelected : false,
+      isSelected: false,
     });
     console.log(`✅ 노드 추가됨: ${node.content}`);
 

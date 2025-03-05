@@ -1,17 +1,13 @@
 const mysql = require("mysql2/promise"); // ✅ MySQL2 Promise 기반 사용
 const sequelize = require("../config/localDB"); // ✅ Sequelize 인스턴스 가져오기
-const dotenv = require("dotenv");
-const path = require("path");
+const config = require("../config/envConfig"); // ✅ 환경 변수 로드
 
-dotenv.config({ path: path.join(__dirname, "../.env") });
-
-// ✅ MySQL 연결 정보
 const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
+  host: config.db.host,
+  user: config.db.user,
+  password: config.db.password,
+  port: config.db.port,
+  database: config.db.name,
 };
 
 // ✅ 데이터베이스가 없으면 생성하는 함수
@@ -42,22 +38,20 @@ const createDatabaseIfNotExists = async () => {
 
 // 모델 불러오기
 const User = require("./users");
-const Team = require("./teams");
-const TeamMember = require("./teamMembers");
 const Project = require("./projects");
 const Node = require("./nodes");
+const ProjectMembers = require("./projectMembers");
 
-// ✅ User와 TeamMember 관계 (1:N)
-User.hasMany(TeamMember, { foreignKey: "user_id", onDelete: "CASCADE" });
-TeamMember.belongsTo(User, { foreignKey: "user_id" });
+// ✅ User와 projectmembers 관계 (1:N)
+User.hasMany(ProjectMembers, { foreignKey: "user_id", onDelete: "CASCADE" });
+ProjectMembers.belongsTo(User, { foreignKey: "user_id" });
 
-// ✅ Team과 TeamMember 관계 (1:N)
-Team.hasMany(TeamMember, { foreignKey: "team_id", onDelete: "CASCADE" });
-TeamMember.belongsTo(Team, { foreignKey: "team_id" });
-
-// ✅ Team과 Project 관계
-Team.hasMany(Project, { foreignKey: "team_id" });
-Project.belongsTo(Team, { foreignKey: "team_id" });
+// ✅ Project와 projectmembers 관계 (1:N)
+Project.hasMany(ProjectMembers, {
+  foreignKey: "project_id",
+  onDelete: "CASCADE",
+});
+ProjectMembers.belongsTo(Project, { foreignKey: "project_id" });
 
 // ✅ Project와 Node 관계
 Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
@@ -81,4 +75,11 @@ const initDB = async () => {
 };
 
 // ✅ 내보내기 (모든 모델 포함)
-module.exports = { sequelize, User, Team, TeamMember, Project, Node, initDB };
+module.exports = {
+  sequelize,
+  User,
+  Project,
+  Node,
+  ProjectMembers,
+  initDB,
+};

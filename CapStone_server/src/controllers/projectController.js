@@ -8,7 +8,7 @@ exports.createProject = async (req, res) => {
       return res.status(400).json({ message: "user_id가가 필요합니다." });
     }
 
-    const project = await projectService.createProjectWithTeamAndNodes(user_id);
+    const project = await projectService.createProjectWithUser(user_id);
     res.status(201).json({ message: "프로젝트 생성 성공", project });
   } catch (error) {
     console.error("프로젝트 생성 중 오류:", error);

@@ -679,7 +679,7 @@ export default {
 
               if (e.key === "Enter") {
                 e.preventDefault();
-                completeEditing();
+                activeInputField.value?.blur(); // ✅ 먼저 blur()를 실행하여 중복 실행 방지
               }
 
               // 백스페이스 키 처리
@@ -697,12 +697,16 @@ export default {
 
             // 텍스트 편집 완료 처리를 위한 함수
             const completeEditing = async () => {
-              const updatedText = inputField.value
+              if (!activeInputField.value) return;
+
+              const updatedText = activeInputField.value.value
                 .replace(editEmoji, "")
                 .trim();
 
-              // 입력 필드와 참조 정리
-              document.body.removeChild(inputField);
+              if (document.body.contains(activeInputField.value)) {
+                document.body.removeChild(activeInputField.value); // ✅ DOM에 있는 경우만 삭제
+              }
+
               activeEditNode.value = null;
               activeInputField.value = null;
 

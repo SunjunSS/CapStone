@@ -1,4 +1,5 @@
 const { Node } = require("../../models");
+const { updateProjectName } = require("../projectService/projectService"); // ✅ projectService에서 함수 가져오기
 
 // 🟢 특정 프로젝트의 노드 추가
 exports.addNodes = async (addedNodes, project_id) => {
@@ -89,23 +90,47 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
 };
 
 // ✏️ 특정 프로젝트의 특정 노드 수정
+const { Node, sequelize } = require("../../models");
+const { updateProjectName } = require("../services/projectService"); // ✅ 프로젝트 서비스 불러오기
+
+// ✏️ 특정 프로젝트의 특정 노드 수정 (트랜잭션 적용)
 exports.updateNode = async (id, project_id, name) => {
   if (!id || !name) {
     throw new Error("수정할 노드의 id 값과 name 값이 필요합니다.");
   }
 
+  const transaction = await sequelize.transaction(); // ✅ 트랜잭션 시작
+
   try {
+    // ✅ 수정할 노드를 트랜잭션 내에서 조회
+    const node = await Node.findOne({ where: { id, project_id }, transaction });
+
+    if (!node) {
+      throw new Error("수정할 노드를 찾을 수 없습니다.");
+    }
+
+    // ✅ 노드 내용 업데이트 (트랜잭션 포함)
     const [updatedCount] = await Node.update(
       { content: name },
-      { where: { id, project_id } } // 🔥 `node_key` → `id`
+      { where: { id, project_id }, transaction }
     );
 
     if (updatedCount === 0) {
       throw new Error("노드를 찾을 수 없거나 수정할 수 없습니다.");
     }
 
+    console.log(`✅ 노드(${id}) 수정 완료:`, name);
+
+    // ✅ 루트 노드일 경우 프로젝트 테이블의 이름도 변경
+    if (node.parent_key === 0 || node.parent_key === null) {
+      console.log(`🔄 루트 노드 감지. 프로젝트(${project_id}) 이름도 변경`);
+      await updateProjectName(project_id, name, transaction); // ✅ 트랜잭션 포함
+    }
+
+    await transaction.commit(); // ✅ 모든 작업이 성공하면 커밋
     return { id: parseInt(id, 10), key: parseInt(id, 10), name };
   } catch (error) {
+    await transaction.rollback(); // ❌ 오류 발생 시 롤백
     console.error("❌ 노드 수정 실패:", error.message);
     throw new Error("노드 수정 중 오류 발생");
   }

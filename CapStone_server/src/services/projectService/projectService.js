@@ -1,63 +1,89 @@
-const { Project, Team, TeamMember, Node } = require("../../models");
-const sequelize = require("../../config/localDB");
+const { Project, sequelize } = require("../../models"); // ✅ `Project` 테이블만 사용
+const {
+  addProjectMember,
+  getUserProjectIds,
+} = require("../projectMembersService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
+const { createRootNode } = require("../nodeService/nodeService"); // ✅ Node 관련 로직 분리
 
-exports.createProjectWithTeamAndNodes = async (user_id) => {
+// 🔹 기본 프로젝트 이름 설정
+const defaultProjectName = "나의 새 마인드맵";
+
+// ✅ 프로젝트 생성 + 사용자 매핑 + 루트 노드 추가
+exports.createProjectWithUser = async (user_id) => {
   const transaction = await sequelize.transaction(); // 트랜잭션 시작
   try {
-    // 1️⃣ 새로운 팀 생성
-    const team = await Team.create({}, { transaction });
-
-    // 2️⃣ 생성된 team_id를 기반으로 프로젝트 생성 (name을 "나의 새 마인드맵"으로 고정)
+    // 1️⃣ 프로젝트 생성 (기본 이름 사용)
     const project = await Project.create(
-      { name: "나의 새 마인드맵", team_id: team.team_id },
+      { name: defaultProjectName },
       { transaction }
     );
 
-    // 3️⃣ TeamMember 테이블에 user_id와 team_id 매핑 추가 (isAdmin = 2)
-    await TeamMember.create(
-      { user_id, team_id: team.team_id, isAdmin: 2 },
-      { transaction }
-    );
+    // 2️⃣ 사용자 추가 (ProjectMembers 테이블 관리)
+    await addProjectMember(user_id, project.project_id, 3, transaction); // ✅ 별도 서비스에서 처리
 
-    // 4️⃣ Nodes 테이블에 초기 노드 추가 (parent는 null, content는 "나의 새 마인드맵")
-    await Node.create(
-      {
-        project_id: project.project_id,
-        parent: null,
-        content: "나의 새 마인드맵",
-      },
-      { transaction }
-    );
+    // 3️⃣ 루트 노드 생성 (Node 테이블 관리)
+    await createRootNode(project.project_id, defaultProjectName, transaction); // ✅ 별도 서비스에서 처리
 
-    await transaction.commit(); // 트랜잭션 커밋
+    await transaction.commit(); // ✅ 트랜잭션 커밋
     return project;
   } catch (error) {
-    await transaction.rollback(); // 오류 발생 시 롤백
+    await transaction.rollback(); // ❌ 오류 발생 시 롤백
+    console.error("❌ 프로젝트 생성 중 오류:", error);
+    throw error;
+  }
+};
+exports.getUserProjects = async (user_id) => {
+  try {
+    // ✅ 프로젝트 멤버 서비스에서 사용자의 프로젝트 ID 목록 가져오기
+    const userProjects = await getUserProjectIds(user_id);
+    if (!userProjects || userProjects.length === 0) {
+      return [];
+    }
+
+    // ✅ 프로젝트 ID 목록을 사용하여 프로젝트 정보 조회
+    const projects = await Project.findAll({
+      attributes: ["project_id", "name"],
+      where: { project_id: userProjects.map((p) => p.project_id) }, // 🔥 `IN` 조건 사용
+      raw: true,
+    });
+
+    // ✅ `isAdmin` 정보를 추가하여 반환
+    return projects.map((project) => ({
+      project_id: project.project_id,
+      name: project.name,
+      isAdmin:
+        userProjects.find((p) => p.project_id === project.project_id)
+          ?.isAdmin || 0, // ✅ isAdmin 값 추가
+    }));
+  } catch (error) {
+    console.error("❌ 유저의 프로젝트 조회 중 오류 발생:", error);
     throw error;
   }
 };
 
-exports.getUserProjects = async (user_id) => {
-  try {
-    const projects = await Project.findAll({
-      attributes: ["project_id", "name"], // ✅ ID와 NAME만 선택적으로 가져오기
-      include: {
-        model: Team,
-        required: true, // ✅ Team이 필수적으로 연결되어 있어야 함
-        include: {
-          model: TeamMember,
-          where: { user_id }, // ✅ 특정 user_id가 속한 팀만 필터링
-          required: true, // ✅ TeamMember가 존재해야만 해당 Team 포함
-        },
-      },
-    });
+// ✅ 프로젝트 이름 수정 (트랜잭션 지원)
+exports.updateProjectName = async (project_id, newName, transaction = null) => {
+  if (!project_id || !newName) {
+    throw new Error("프로젝트 ID와 새 이름이 필요합니다.");
+  }
 
-    return projects.map((project) => ({
-      project_id: project.project_id,
-      name: project.name,
-    }));
+  // ✅ 트랜잭션 옵션 설정 (기존 트랜잭션이 있으면 사용, 없으면 새로 생성)
+  const options = { where: { project_id } };
+  if (transaction) {
+    options.transaction = transaction; // ✅ 기존 트랜잭션을 이어서 사용
+  }
+
+  try {
+    const [updatedCount] = await Project.update({ name: newName }, options);
+
+    if (updatedCount === 0) {
+      throw new Error("프로젝트를 찾을 수 없거나 수정할 수 없습니다.");
+    }
+
+    console.log(`✅ 프로젝트(${project_id}) 이름 수정 완료:`, newName);
+    return true;
   } catch (error) {
-    console.error("유저의 프로젝트 조회 오류:", error);
-    throw error;
+    console.error("❌ 프로젝트 이름 수정 실패:", error.message);
+    throw new Error("프로젝트 이름 수정 중 오류 발생");
   }
 };
