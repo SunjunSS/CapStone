@@ -1,3 +1,5 @@
+--Register.vue--
+
 <template>
   <v-container class="fill-height" fluid>
     <v-row align="center" justify="center">
@@ -65,7 +67,13 @@
       </v-col>
     </v-row>
 
-    <v-snackbar v-model="snackbar" :timeout="3000" color="info" rounded="pill">
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="3000"
+      :color="snackbarColor"
+      rounded="pill"
+      location="top"
+    >
       <div class="snackbar-text">
         {{ snackbarText }}
       </div>
@@ -90,6 +98,7 @@ export default {
       password: "",
       snackbar: false,
       snackbarText: "",
+      snackbarColor: "info", // Default color
       valid: false,
     };
   },
@@ -102,6 +111,9 @@ export default {
           email: this.email,
           password: this.password,
         });
+
+        // Set color to info for successful registration
+        this.snackbarColor = "info";
         this.snackbarText = response.data.message;
         console.log(response.data.message);
 
@@ -111,6 +123,9 @@ export default {
         }, 700); // 700ms 후 이동
       } catch (error) {
         console.error("서버 응답 오류:", error.response); // 전체 응답 확인
+
+        // Set color to error for existing email or other errors
+        this.snackbarColor = "error";
         this.snackbarText =
           error.response?.data.message || "오류가 발생했습니다.";
         this.snackbar = true;

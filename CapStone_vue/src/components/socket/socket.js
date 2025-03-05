@@ -31,7 +31,7 @@ export const connectSocket = (callback) => {
 };
 
 // 로그인 함수 수정
-export const emitLogin = (email, password, onLoginSuccess) => {
+export const emitLogin = (email, password, onLoginSuccess, onLoginError) => {
   socket.off("login_success");
   socket.off("login_error");
 
@@ -46,6 +46,8 @@ export const emitLogin = (email, password, onLoginSuccess) => {
 
   socket.on("login_error", (data) => {
     console.log("❌ 로그인 실패:", data);
+    const errorMessage = data.message || "로그인에 실패했습니다.";
+    if (onLoginError) onLoginError(errorMessage);
   });
 
   socket.emit("login", { email, password });
