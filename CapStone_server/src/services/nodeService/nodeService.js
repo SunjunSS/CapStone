@@ -39,6 +39,26 @@ exports.addNodes = async (addedNodes, project_id) => {
   }
 };
 
+exports.createRootNode = async (project_id, project_name, transaction) => {
+  try {
+    const newNode = await Node.create(
+      {
+        content: project_name, // ✅ 프로젝트 이름을 루트 노드 내용으로 사용
+        parent_key: null, // 루트 노드는 부모 없음
+        project_id: project_id,
+        isSelected: false,
+      },
+      { transaction }
+    );
+
+    console.log("✅ 루트 노드 생성 완료:", newNode.toJSON());
+    return newNode;
+  } catch (error) {
+    console.error("❌ 루트 노드 생성 중 오류:", error.message);
+    throw new Error("루트 노드 생성 중 오류 발생");
+  }
+};
+
 // 🔴 특정 프로젝트의 특정 노드 삭제 (자식 노드 포함)
 exports.deleteNodeWithChildren = async (id, project_id) => {
   if (!id) {
