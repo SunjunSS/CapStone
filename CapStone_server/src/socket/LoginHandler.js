@@ -13,7 +13,6 @@ module.exports = (socket) => {
 
   // 로그인 처리
   socket.on("login", async ({ email, password }) => {
-
     if (isLoggedIn) {
       console.log("❌ 이미 로그인 된 사용자입니다.");
       return socket.emit("login_error", {
@@ -21,10 +20,10 @@ module.exports = (socket) => {
       });
     }
 
-
     try {
       const user = await User.findOne({ where: { email } });
-      const userId = user.user_id;
+
+      // user가 null인 경우 먼저 체크
       if (!user) {
         return socket.emit("login_error", {
           message: "존재하지 않는 이메일입니다.",
@@ -37,17 +36,19 @@ module.exports = (socket) => {
         });
       }
 
-      // 로그인 성공 시, 소켓 세션에 저장
+      // 나머지 로그인 성공 로직은 동일
+      const userId = user.user_id;
       socketSessions[userId] = socket.id;
       console.log(`🟢 ${email} logged in with socket ID: ${socket.id}`);
 
       activeUsers[userId] = email;
-
-      isLoggedIn = true; // 로그인 상태로 설정
+      isLoggedIn = true;
 
       socket.emit("login_success", { user: user, message: "로그인 성공!" });
       console.log(`✅ User ${email} logged in`);
     } catch (error) {
+      // 이제 진정한 데이터베이스 오류만 여기서 처리됩니다.
+      console.error("데이터베이스 오류:", error);
       socket.emit("login_error", {
         message: "로그인 처리 중 오류가 발생했습니다.",
       });
@@ -86,6 +87,5 @@ module.exports = (socket) => {
         console.log(`❌ User ${userId} session ended`);
       }
     }
-
   });
 };

@@ -1,3 +1,5 @@
+--Login.vue--
+
 <template>
   <v-container class="fill-height" fluid>
     <v-row align="center" justify="center">
@@ -57,7 +59,13 @@
       </v-col>
     </v-row>
 
-    <v-snackbar v-model="snackbar" :timeout="3000" color="info" rounded="pill">
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="3000"
+      :color="snackbarColor"
+      rounded="pill"
+      location="top"
+    >
       <span class="snackbar-text">{{ snackbarText }}</span>
       <template v-slot:action="{ attrs }">
         <v-btn color="white" text v-bind="attrs" @click="snackbar = false">
@@ -80,6 +88,7 @@ export default {
       valid: false,
       snackbar: false,
       snackbarText: "",
+      snackbarColor: "info", // 기본값
       emailRules: [
         (v) => !!v || "이메일을 입력하세요.",
         (v) => /.+@.+\..+/.test(v) || "유효한 이메일을 입력하세요.",
@@ -102,13 +111,23 @@ export default {
     },
     login() {
       // 소켓을 사용한 로그인 요청
-      emitLogin(this.email, this.password, this.handleLoginSuccess);
+      emitLogin(
+        this.email,
+        this.password,
+        this.handleLoginSuccess,
+        this.handleLoginError
+      );
     },
     goToRegister() {
       this.$router.push("/Register");
     },
-    handleLoginSuccess(userData) {
+    handleLoginSuccess(response) {
+      // response에서 메시지 추출
+      const message = response.message || "로그인 성공!";
+
       // userData가 user 객체 전체를 포함하는지 확인
+      const userData = response.user || response;
+
       if (userData && userData.name) {
         sessionStorage.setItem("userNickname", userData.name);
       } else if (userData && userData.username) {
@@ -121,7 +140,44 @@ export default {
 
       sessionStorage.setItem("userEmail", this.email);
       sessionStorage.setItem("isLoggedIn", "true");
-      this.$router.push("/MyMap");
+
+      // 서버에서 전달받은 메시지 사용
+      this.snackbarText = message;
+      this.snackbarColor = "info";
+      this.snackbar = true;
+
+      setTimeout(() => {
+        this.$router.push("/MyMap");
+      }, 700);
+    },
+    handleLoginError(errorResponse) {
+      // 에러 응답 구조 디버깅을 위해 전체 객체 출력
+      console.log("Full Error Response:", errorResponse);
+
+      // 에러 메시지 추출 로직 개선
+      let errorMessage;
+      if (typeof errorResponse === "string") {
+        errorMessage = errorResponse;
+      } else if (errorResponse.message) {
+        errorMessage = errorResponse.message;
+      } else if (errorResponse.error) {
+        errorMessage = errorResponse.error;
+      } else {
+        errorMessage = "로그인 중 오류가 발생했습니다.";
+      }
+
+      // 에러 메시지에 따라 색상 변경
+      if (
+        errorMessage === "존재하지 않는 이메일입니다." ||
+        errorMessage === "비밀번호가 일치하지 않습니다."
+      ) {
+        this.snackbarColor = "error"; // 빨간색
+      } else {
+        this.snackbarColor = "info"; // 기본 파란색
+      }
+
+      this.snackbarText = errorMessage;
+      this.snackbar = true;
     },
   },
   beforeDestroy() {
