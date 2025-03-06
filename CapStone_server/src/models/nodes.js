@@ -21,7 +21,7 @@ const Node = sequelize.define(
         key: "id",
       },
       onUpdate: "CASCADE",
-      onDelete: "SET NULL",
+      onDelete: "CASCADE",
     },
     content: {
       type: DataTypes.STRING,

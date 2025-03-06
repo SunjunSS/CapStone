@@ -1,0 +1,40 @@
+const { Node } = require("../models");
+
+exports.createNode = async (
+  content,
+  parent_key,
+  project_id,
+  isSelected,
+  transaction
+) => {
+  return await Node.create(
+    { content, parent_key, project_id, isSelected },
+    { transaction }
+  );
+};
+
+exports.findNodeById = async (id, project_id, transaction = null) => {
+  return await Node.findOne({ where: { id, project_id }, transaction });
+};
+
+exports.updateNodeContent = async (
+  id,
+  project_id,
+  content,
+  transaction = null
+) => {
+  return await Node.update(
+    { content },
+    { where: { id, project_id }, transaction }
+  );
+};
+
+exports.deleteNodesByIds = async (ids, project_id) => {
+  return await Node.destroy({
+    where: { id: ids, project_id },
+  });
+};
+
+exports.getAllNodesByProject = async (project_id) => {
+  return await Node.findAll({ where: { project_id }, order: [["id", "ASC"]] });
+};
