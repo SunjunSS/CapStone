@@ -2,7 +2,7 @@ const { Project, sequelize } = require("../../models"); // ✅ `Project` 테이�
 const {
   addProjectMember,
   getUserProjectIds,
-} = require("../projectMembersService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
+} = require("../projectMemberService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
 const { createRootNode } = require("../nodeService/nodeService"); // ✅ Node 관련 로직 분리
 
 // 🔹 기본 프로젝트 이름 설정

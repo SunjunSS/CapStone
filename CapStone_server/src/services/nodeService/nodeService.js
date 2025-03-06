@@ -1,4 +1,4 @@
-const { Node } = require("../../models");
+const { Node, sequelize } = require("../../models"); // ✅ 한 번만 선언
 const { updateProjectName } = require("../projectService/projectService"); // ✅ projectService에서 함수 가져오기
 
 // 🟢 특정 프로젝트의 노드 추가
@@ -88,10 +88,6 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
     throw new Error("노드 삭제 중 오류 발생");
   }
 };
-
-// ✏️ 특정 프로젝트의 특정 노드 수정
-const { Node, sequelize } = require("../../models");
-const { updateProjectName } = require("../services/projectService"); // ✅ 프로젝트 서비스 불러오기
 
 // ✏️ 특정 프로젝트의 특정 노드 수정 (트랜잭션 적용)
 exports.updateNode = async (id, project_id, name) => {
