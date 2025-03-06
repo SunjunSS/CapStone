@@ -1,5 +1,5 @@
 const { Node, sequelize } = require("../../models"); // ✅ 한 번만 선언
-const { updateProjectName } = require("../projectService/projectService"); // ✅ projectService에서 함수 가져오기
+const projectService = require("../projectService/projectService");
 
 // 🟢 특정 프로젝트의 노드 추가
 exports.addNodes = async (addedNodes, project_id) => {
@@ -137,10 +137,12 @@ exports.updateNode = async (id, project_id, name) => {
 
     console.log(`✅ 노드(${id}) 수정 완료:`, name);
 
+    console.log("📌 updateProjectName:", projectService.updateProjectName); // ✅ 여기서 확인
+
     // ✅ 루트 노드일 경우 프로젝트 테이블의 이름도 변경
     if (node.parent_key === 0 || node.parent_key === null) {
       console.log(`🔄 루트 노드 감지. 프로젝트(${project_id}) 이름도 변경`);
-      await updateProjectName(project_id, name, transaction); // ✅ 트랜잭션 포함
+      await projectService.updateProjectName(project_id, name, transaction); // ✅ 트랜잭션 포함
     }
 
     await transaction.commit(); // ✅ 모든 작업이 성공하면 커밋
