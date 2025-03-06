@@ -1,27 +1,33 @@
-const { createProject } = require("../services/projectService/projectService");
-const { createTeamController } = require("../controllers/teamController");
-const  User  = require("../models/users");
+const projectService = require("../services/projectService/projectService.js");
 
-exports.createProjectController = async (user_id, name, description, topic) => {
+exports.createProject = async (req, res) => {
   try {
-    // 요청한 유저가 존재하는지 확인
-    console.log("User 모델 경로 확인:", require("../models/users"));
-    console.log("User 모델:", User);
-    console.log(`유저 id: ${user_id}`);
-    const user = await User.findOne({ where: { user_id } });
-    if (!user) throw new Error("유저를 찾을 수 없습니다.");
+    const { user_id } = req.body;
 
-    // 팀 생성 및 연결을 teamController로 분리하여 호출
-    const team = await createTeamController(user, name);
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가가 필요합니다." });
+    }
 
-    // 프로젝트 생성
-    const project = await createProject(name, description, topic, team.team_id);
-
-    // 생성된 팀을 프로젝트에 연결
-    await project.update({ team_id: team.team_id });
-
-    return { project, team };
+    const project = await projectService.createProjectWithUser(user_id);
+    res.status(201).json({ message: "프로젝트 생성 성공", project });
   } catch (error) {
-    throw error;
+    console.error("프로젝트 생성 중 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+exports.getUserProjects = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    const projectIds = await projectService.getUserProjects(user_id);
+    res.status(200).json({ projects: projectIds });
+  } catch (error) {
+    console.error("프로젝트 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };

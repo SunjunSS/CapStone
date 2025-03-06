@@ -1,10 +1,16 @@
---Drawing(컬러 피커 박스 현재 선택된 색상 실시간 반영 / 취소 -> 기존 색상표시 /
-preview, slider 새로 방향)--
+--Drawing(S키를 눌러서 선택버튼을 활성화[검정색 테두리 제거])--
 
 <template>
   <div class="drawing-app">
     <h1>그림판</h1>
     <div class="toolbar">
+      <button
+        @click="setMode('select')"
+        :class="{ active: mode === 'select' }"
+        :disabled="showColorPicker"
+      >
+        선택
+      </button>
       <button
         @click="setMode('pencil')"
         :class="{ active: mode === 'pencil' }"
@@ -201,10 +207,13 @@ export default {
     // 컴포넌트가 마운트되면 캔버스 초기화 및 윈도우 리사이즈 이벤트 추가
     this.initCanvas();
     window.addEventListener("resize", this.resizeCanvas);
+
+    document.addEventListener("keydown", this.handleKeyDown);
   },
   beforeDestroy() {
     // 컴포넌트 제거 시 이벤트 리스너 정리
     window.removeEventListener("resize", this.resizeCanvas);
+    document.removeEventListener("keydown", this.handleKeyDown);
     if (this.canvas) {
       this.canvas.off("mouse:down", this.onMouseDown);
       this.canvas.off("mouse:move", this.onMouseMove);
@@ -238,7 +247,16 @@ export default {
           backgroundColor: "#ffffff",
           width: containerWidth,
           height: containerHeight,
+          selectionColor: "transparent",
+          selectionBorderColor: "black", // 선택 영역 테두리 색상을 검정색으로 설정
+          selectionLineWidth: 1.1, // 선택 영역 테두리 두께를 얇게 설정
+          selectionDashArray: [3, 3], // 선택 영역 테두리를 점선으로 설정 (3px 선, 3px 간격)
+          selectionFullyContained: false, // 객체가 선택 영역에 완전히 포함되지 않아도 선택되도록
         });
+
+        // 초기에는 객체 선택 비활성화 (연필 모드이므로)
+        this.canvas.skipTargetFind = true;
+        this.canvas.selection = false;
 
         console.log("Canvas created:", this.canvas);
 
@@ -293,9 +311,41 @@ export default {
 
     setMode(mode) {
       this.mode = mode;
+      // 선택 스타일 설정
       if (this.canvas) {
+        // 먼저 그리기 모드 설정
         this.canvas.isDrawingMode = mode === "pencil";
-        this.canvas.selection = true;
+
+        // 선택 모드 처리
+        if (mode === "select") {
+          this.canvas.selection = true; // 영역 선택 활성화
+          this.canvas.skipTargetFind = false; // 객체 선택 가능하게 설정
+
+          // 모든 객체를 선택 가능하도록 설정
+          this.canvas.forEachObject(function (obj) {
+            obj.selectable = true;
+            obj.evented = true; // 이벤트 응답 활성화
+          });
+
+          // 캔버스 선택 속성 강화
+          this.canvas.defaultCursor = "default";
+          this.canvas.hoverCursor = "move";
+
+          // 선택 스타일 설정
+          this.canvas.selectionColor = "transparent"; // 투명 배경으로 변경
+          this.canvas.selectionBorderColor = "black"; // 검정색 테두리로 변경
+
+          // 캔버스 재설정 및 갱신
+          this.canvas.requestRenderAll();
+        } else {
+          this.canvas.selection = false; // 다른 모드에서는 영역 선택 비활성화
+          this.canvas.skipTargetFind = true; // 다른 모드에서는 객체 선택 불가능하게 설정
+          this.canvas.defaultCursor = "crosshair"; // 그리기 모드에서 커서 변경
+
+          // 활성 객체 선택 해제
+          this.canvas.discardActiveObject();
+          this.canvas.requestRenderAll();
+        }
       }
     },
 
@@ -577,6 +627,8 @@ export default {
             stroke: this.color,
             strokeWidth: parseInt(this.brushSize, 10),
             selectable: true,
+            evented: true, // 이벤트 수신 활성화
+            hoverCursor: "pointer", // 마우스 오버 시 커서 변경
           }
         );
       } else if (this.mode === "rect") {
@@ -589,6 +641,8 @@ export default {
           stroke: this.color,
           strokeWidth: parseInt(this.brushSize, 10),
           selectable: true,
+          evented: true, // 이벤트 수신 활성화
+          hoverCursor: "pointer",
         });
       } else if (this.mode === "circle") {
         this.currentObject = new fabric.Circle({
@@ -599,6 +653,8 @@ export default {
           stroke: this.color,
           strokeWidth: parseInt(this.brushSize, 10),
           selectable: true,
+          evented: true, // 이벤트 수신 활성화
+          hoverCursor: "pointer",
         });
       }
 
@@ -661,7 +717,68 @@ export default {
       if (this.showColorPicker) return;
 
       this.isDrawing = false;
+
+      // 그리기 완료 후 객체의 속성 설정
+      if (this.currentObject) {
+        // 빈 객체인지 확인 (크기가 너무 작은 경우)
+        const isEmptyObject =
+          (this.mode === "rect" &&
+            (this.currentObject.width < 2 || this.currentObject.height < 2)) ||
+          (this.mode === "circle" && this.currentObject.radius < 1) ||
+          (this.mode === "line" &&
+            Math.abs(this.currentObject.x1 - this.currentObject.x2) < 2 &&
+            Math.abs(this.currentObject.y1 - this.currentObject.y2) < 2);
+
+        if (isEmptyObject) {
+          // 너무 작은 객체는 제거
+          this.canvas.remove(this.currentObject);
+        } else {
+          // 적절한 크기의 객체는 속성 설정
+          this.currentObject.set({
+            selectable: true,
+            evented: true,
+            hasBorders: true,
+            hasControls: true,
+            perPixelTargetFind: false,
+            lockMovementX: false,
+            lockMovementY: false,
+          });
+
+          // 객체 캐싱 업데이트
+          this.currentObject.setCoords();
+          this.canvas.renderAll();
+        }
+      }
+
       this.currentObject = null;
+    },
+
+    handleKeyDown(event) {
+      // Delete 키가 눌렸을 때 (Delete 키 코드는 46)
+      if (event.keyCode === 46 || event.key === "Delete") {
+        // 컬러 피커가 열려있지 않고, 선택 모드일 때만 작동
+        if (!this.showColorPicker && this.mode === "select") {
+          // 다중 선택된 객체들 확인
+          const activeObjects = this.canvas.getActiveObjects();
+          if (activeObjects && activeObjects.length > 0) {
+            // 선택된 각 객체 제거
+            activeObjects.forEach((obj) => {
+              this.canvas.remove(obj);
+            });
+            // 선택 그룹 초기화
+            this.canvas.discardActiveObject();
+            this.canvas.renderAll();
+          }
+        }
+      }
+
+      // 's' 키가 눌렸을 때 선택 모드로 전환
+      if (event.key === "s" || event.key === "S") {
+        // 컬러 피커가 열려있지 않을 때만 작동
+        if (!this.showColorPicker) {
+          this.setMode("select");
+        }
+      }
     },
   },
   watch: {
@@ -875,6 +992,7 @@ h1 {
   width: 100%; /* 전체 너비 사용 */
   height: 40px; /* 높이 조정 */
   border: 1px solid #ccc;
+  border-radius: 6px;
 }
 
 .color-inputs {
@@ -930,5 +1048,9 @@ canvas {
 .color-swatch.disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+button:focus {
+  outline: none; /* 포커스 테두리 제거 */
 }
 </style>

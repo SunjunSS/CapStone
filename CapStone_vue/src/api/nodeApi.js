@@ -1,13 +1,12 @@
 import { ref } from "vue";
 import * as go from "gojs";
 import axios from "axios"; // 📌 axios 추가
+import API_BASE_URL from "../config/apiConfig"; // ✅ 설정 파일에서 가져오기
 
 const isSaving = ref(false);
 const lastSaveTime = ref(null);
 const serverError = ref(null);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
-// const API_MINDMAP_URL = `${API_BASE_URL}/api/mindmap`;
 // ✅ project_id를 기반으로 API URL 생성하는 함수
 const getMindmapUrl = (project_id) =>
   `${API_BASE_URL}/api/mindmap/${project_id}`;
@@ -98,17 +97,21 @@ export const saveMindmapToServer = async (addedNodes, project_id, roomId) => {
  * @returns {boolean} 성공 여부
  */
 export const deleteMindmapNodes = async (deletedKey, project_id, roomId) => {
-  if (!deletedKey || !project_id) {
-    console.warn("🚨 삭제할 노드의 key 값 또는 project_id가 없습니다.");
+  if (!deletedKey || deletedKey === undefined || deletedKey === null) {
+    console.warn("🚨 삭제할 노드의 key 값이 올바르지 않습니다.");
     return false;
   }
 
-  try {
-    console.log(
-      `🗑️ 서버로 삭제 요청 (project_id=${project_id}, key=${deletedKey})`
-    );
+  if (!project_id) {
+    console.warn("🚨 project_id가 없습니다.");
+    return false;
+  }
 
-    // ✅ 서버에 삭제 요청만 보냄 (실제 삭제는 WebSocket 이벤트에서 처리)
+  console.log(
+    `🗑️ 서버로 삭제 요청 (project_id=${project_id}, key=${deletedKey})`
+  );
+
+  try {
     await axios.delete(`${getMindmapUrl(project_id)}/${deletedKey}`, {
       data: { roomId }, // ✅ WebSocket과 동기화
     });
@@ -117,7 +120,6 @@ export const deleteMindmapNodes = async (deletedKey, project_id, roomId) => {
     return true;
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error);
-    serverError.value = error.message;
     return false;
   }
 };
