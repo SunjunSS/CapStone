@@ -1,9 +1,25 @@
---Drawing(S키를 눌러서 선택버튼을 활성화[검정색 테두리 제거])--
+--Drawing(그림판 타이틀 제거, 캔버스 영역 확대)--
 
 <template>
   <div class="drawing-app">
-    <h1>그림판</h1>
     <div class="toolbar">
+      <button
+        @click="triggerImageUpload"
+        :disabled="showColorPicker"
+        :class="{
+          active: mode === 'imageUpload',
+          'image-upload': mode === 'imageUpload',
+        }"
+      >
+        이미지 업로드
+      </button>
+      <input
+        type="file"
+        ref="imageInput"
+        accept="image/*"
+        style="display: none"
+        @change="handleImageUpload"
+      />
       <button
         @click="setMode('select')"
         :class="{ active: mode === 'select' }"
@@ -179,6 +195,7 @@ export default {
       startPoint: null,
       currentObject: null,
       showColorPicker: false,
+      lastSelectedObject: null,
       // 기본 색상들 (이미지와 유사하게 조정)
       basicColors: [
         "#000000", // 검정
@@ -209,11 +226,20 @@ export default {
     window.addEventListener("resize", this.resizeCanvas);
 
     document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("keyup", this.handleKeyUp);
+
+    // 여기에 클립보드 붙여넣기 이벤트 리스너 추가
+    document.addEventListener("paste", this.handlePaste);
   },
   beforeDestroy() {
     // 컴포넌트 제거 시 이벤트 리스너 정리
     window.removeEventListener("resize", this.resizeCanvas);
     document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("keyup", this.handleKeyUp);
+
+    // 여기에 클립보드 이벤트 리스너 제거 코드 추가
+    document.removeEventListener("paste", this.handlePaste);
+
     if (this.canvas) {
       this.canvas.off("mouse:down", this.onMouseDown);
       this.canvas.off("mouse:move", this.onMouseMove);
@@ -227,50 +253,43 @@ export default {
       console.log("Fabric object:", fabric);
 
       try {
-        // 캔버스 크기를 화면 크기에 맞게 설정
         const canvasContainer = document.querySelector(".canvas-container");
         const containerWidth = canvasContainer.clientWidth;
 
-        // 툴바와 헤더, 팔레트 높이 계산 (대략적인 값)
-        const toolbarHeight = document.querySelector(".toolbar").offsetHeight;
-        const headerHeight = document.querySelector("h1").offsetHeight;
-        const paletteHeight = 100; // 색상 팔레트의 대략적인 높이
-        const totalHeaderHeight =
-          toolbarHeight + headerHeight + paletteHeight + 40; // 마진과 패딩 추가
+        const toolbarHeight =
+          document.querySelector(".toolbar")?.offsetHeight || 0;
+        const paletteHeight = 100; // 색상 팔레트 높이 (필요하면 조정)
 
-        // 뷰포트의 남은 공간을 계산하여 캔버스 높이 설정
+        // 🔹 headerHeight 제거 후 바로 계산 가능
+        const totalHeaderHeight = toolbarHeight + paletteHeight + 40; // 마진 추가
         const containerHeight = window.innerHeight - totalHeaderHeight;
 
-        // ref를 사용하여 캔버스 요소에 접근
         this.canvas = new fabric.Canvas(this.$refs.canvas, {
           isDrawingMode: true,
           backgroundColor: "#ffffff",
           width: containerWidth,
           height: containerHeight,
+          selection: false,
+          skipTargetFind: false,
           selectionColor: "transparent",
-          selectionBorderColor: "black", // 선택 영역 테두리 색상을 검정색으로 설정
-          selectionLineWidth: 1.1, // 선택 영역 테두리 두께를 얇게 설정
-          selectionDashArray: [3, 3], // 선택 영역 테두리를 점선으로 설정 (3px 선, 3px 간격)
-          selectionFullyContained: false, // 객체가 선택 영역에 완전히 포함되지 않아도 선택되도록
+          selectionBorderColor: "transparent",
+          selectionLineWidth: 0,
+          selectionDashArray: [],
+          selectionFullyContained: false,
         });
 
-        // 초기에는 객체 선택 비활성화 (연필 모드이므로)
-        this.canvas.skipTargetFind = true;
-        this.canvas.selection = false;
+        this.canvas.skipTargetFind = false;
 
         console.log("Canvas created:", this.canvas);
 
-        // freeDrawingBrush가 존재하는지 확인하고 없으면 생성
         if (!this.canvas.freeDrawingBrush) {
           console.log("Creating PencilBrush...");
           this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
         }
 
-        // 이제 브러시 속성 설정
         this.canvas.freeDrawingBrush.color = this.color;
         this.canvas.freeDrawingBrush.width = parseInt(this.brushSize, 10);
 
-        // 캔버스 이벤트 설정
         this.canvas.on("mouse:down", this.onMouseDown);
         this.canvas.on("mouse:move", this.onMouseMove);
         this.canvas.on("mouse:up", this.onMouseUp);
@@ -282,21 +301,22 @@ export default {
     },
 
     resizeCanvas() {
-      if (!this.canvas) return;
+      if (!this.canvas) return; // 🔹 캔버스가 없으면 실행하지 않음
 
       // 현재 캔버스 내용을 저장
       const json = this.canvas.toJSON();
 
       // 캔버스 컨테이너의 새 크기 가져오기
       const canvasContainer = document.querySelector(".canvas-container");
-      const containerWidth = canvasContainer.clientWidth;
+      const containerWidth = canvasContainer
+        ? canvasContainer.clientWidth
+        : window.innerWidth;
 
-      // 툴바와 헤더 높이 계산
-      const toolbarHeight = document.querySelector(".toolbar").offsetHeight;
-      const headerHeight = document.querySelector("h1").offsetHeight;
+      // 툴바 높이 가져오기 (존재하지 않으면 0)
+      const toolbarHeight =
+        document.querySelector(".toolbar")?.offsetHeight || 0;
       const paletteHeight = 100; // 색상 팔레트의 대략적인 높이
-      const totalHeaderHeight =
-        toolbarHeight + headerHeight + paletteHeight + 40; // 마진과 패딩 추가
+      const totalHeaderHeight = toolbarHeight + paletteHeight + 40; // 마진과 패딩 추가
 
       // 뷰포트의 남은 공간을 계산하여 캔버스 높이 설정
       const containerHeight = window.innerHeight - totalHeaderHeight;
@@ -309,43 +329,33 @@ export default {
       this.canvas.loadFromJSON(json, this.canvas.renderAll.bind(this.canvas));
     },
 
+    // setMode 메소드 수정
     setMode(mode) {
       this.mode = mode;
-      // 선택 스타일 설정
       if (this.canvas) {
-        // 먼저 그리기 모드 설정
         this.canvas.isDrawingMode = mode === "pencil";
 
-        // 선택 모드 처리
-        if (mode === "select") {
-          this.canvas.selection = true; // 영역 선택 활성화
-          this.canvas.skipTargetFind = false; // 객체 선택 가능하게 설정
+        const isSelectable = mode === "select";
 
-          // 모든 객체를 선택 가능하도록 설정
-          this.canvas.forEachObject(function (obj) {
-            obj.selectable = true;
-            obj.evented = true; // 이벤트 응답 활성화
-          });
+        // 🔹 중요: 기본적으로 드래그 선택은 비활성화
+        this.canvas.selection = false;
 
-          // 캔버스 선택 속성 강화
-          this.canvas.defaultCursor = "default";
-          this.canvas.hoverCursor = "move";
+        // 개별 객체의 선택 기능 설정
+        this.canvas.forEachObject((obj) => {
+          obj.selectable = isSelectable;
+          obj.evented = isSelectable;
+          obj.hasBorders = isSelectable;
+          obj.hasControls = isSelectable;
+        });
 
-          // 선택 스타일 설정
-          this.canvas.selectionColor = "transparent"; // 투명 배경으로 변경
-          this.canvas.selectionBorderColor = "black"; // 검정색 테두리로 변경
-
-          // 캔버스 재설정 및 갱신
-          this.canvas.requestRenderAll();
-        } else {
-          this.canvas.selection = false; // 다른 모드에서는 영역 선택 비활성화
-          this.canvas.skipTargetFind = true; // 다른 모드에서는 객체 선택 불가능하게 설정
-          this.canvas.defaultCursor = "crosshair"; // 그리기 모드에서 커서 변경
-
-          // 활성 객체 선택 해제
+        if (!isSelectable) {
           this.canvas.discardActiveObject();
-          this.canvas.requestRenderAll();
+          this.lastSelectedObject = null;
         }
+
+        this.canvas.defaultCursor = isSelectable ? "default" : "crosshair";
+        this.canvas.hoverCursor = isSelectable ? "move" : "crosshair";
+        this.canvas.requestRenderAll();
       }
     },
 
@@ -615,6 +625,9 @@ export default {
       const pointer = this.canvas.getPointer(o.e);
       this.startPoint = { x: pointer.x, y: pointer.y };
 
+      // 선택 모드 여부에 따라 설정
+      const isSelectable = this.mode === "select";
+
       if (this.mode === "line") {
         this.currentObject = new fabric.Line(
           [
@@ -626,9 +639,12 @@ export default {
           {
             stroke: this.color,
             strokeWidth: parseInt(this.brushSize, 10),
-            selectable: true,
-            evented: true, // 이벤트 수신 활성화
-            hoverCursor: "pointer", // 마우스 오버 시 커서 변경
+            // 현재 모드에 따라 설정
+            selectable: isSelectable,
+            evented: isSelectable,
+            hasBorders: isSelectable,
+            hasControls: isSelectable,
+            hoverCursor: "pointer",
           }
         );
       } else if (this.mode === "rect") {
@@ -640,8 +656,11 @@ export default {
           fill: "transparent",
           stroke: this.color,
           strokeWidth: parseInt(this.brushSize, 10),
-          selectable: true,
-          evented: true, // 이벤트 수신 활성화
+          // 현재 모드에 따라 설정
+          selectable: isSelectable,
+          evented: isSelectable,
+          hasBorders: isSelectable,
+          hasControls: isSelectable,
           hoverCursor: "pointer",
         });
       } else if (this.mode === "circle") {
@@ -652,8 +671,11 @@ export default {
           fill: "transparent",
           stroke: this.color,
           strokeWidth: parseInt(this.brushSize, 10),
-          selectable: true,
-          evented: true, // 이벤트 수신 활성화
+          // 현재 모드에 따라 설정
+          selectable: isSelectable,
+          evented: isSelectable,
+          hasBorders: isSelectable,
+          hasControls: isSelectable,
           hoverCursor: "pointer",
         });
       }
@@ -715,44 +737,41 @@ export default {
 
     onMouseUp() {
       if (this.showColorPicker) return;
-
       this.isDrawing = false;
 
-      // 그리기 완료 후 객체의 속성 설정
+      // 객체가 방금 생성됐다면
       if (this.currentObject) {
-        // 빈 객체인지 확인 (크기가 너무 작은 경우)
-        const isEmptyObject =
-          (this.mode === "rect" &&
-            (this.currentObject.width < 2 || this.currentObject.height < 2)) ||
-          (this.mode === "circle" && this.currentObject.radius < 1) ||
-          (this.mode === "line" &&
-            Math.abs(this.currentObject.x1 - this.currentObject.x2) < 2 &&
-            Math.abs(this.currentObject.y1 - this.currentObject.y2) < 2);
+        // 선택 모드일 때만 객체 선택 가능하게
+        const isSelectable = this.mode === "select";
+        this.currentObject.set({
+          selectable: isSelectable,
+          evented: isSelectable,
+          hasBorders: isSelectable,
+          hasControls: isSelectable,
+          lockScalingX: false,
+          lockScalingY: false,
+          lockRotation: false,
+        });
 
-        if (isEmptyObject) {
-          // 너무 작은 객체는 제거
-          this.canvas.remove(this.currentObject);
-        } else {
-          // 적절한 크기의 객체는 속성 설정
-          this.currentObject.set({
-            selectable: true,
-            evented: true,
-            hasBorders: true,
-            hasControls: true,
-            perPixelTargetFind: false,
-            lockMovementX: false,
-            lockMovementY: false,
-          });
+        // 선택 모드라면 현재 객체를 활성 객체로 설정
+        if (isSelectable) {
+          this.canvas.setActiveObject(this.currentObject);
+          this.lastSelectedObject = this.currentObject;
+        }
 
-          // 객체 캐싱 업데이트
-          this.currentObject.setCoords();
-          this.canvas.renderAll();
+        this.currentObject.setCoords();
+        this.canvas.requestRenderAll();
+        this.currentObject = null;
+      } else {
+        // 객체를 선택하는 경우 (드래그 아닌 경우)
+        const activeObject = this.canvas.getActiveObject();
+        if (activeObject && this.mode === "select") {
+          this.lastSelectedObject = activeObject;
         }
       }
-
-      this.currentObject = null;
     },
 
+    // handleKeyDown 메소드를 수정합니다
     handleKeyDown(event) {
       // Delete 키가 눌렸을 때 (Delete 키 코드는 46)
       if (event.keyCode === 46 || event.key === "Delete") {
@@ -760,14 +779,109 @@ export default {
         if (!this.showColorPicker && this.mode === "select") {
           // 다중 선택된 객체들 확인
           const activeObjects = this.canvas.getActiveObjects();
+
           if (activeObjects && activeObjects.length > 0) {
+            // 삭제 전 객체 정보 저장
+            const objectsToDelete = activeObjects.map((obj) => ({
+              type: obj.type,
+              isImage: obj.type === "image" || obj.isImage,
+              isCurrentObject: obj === this.currentObject,
+              isLastSelected: obj === this.lastSelectedObject,
+            }));
+
+            console.log("삭제 전 객체:", objectsToDelete);
+
+            // 이미지 객체가 포함되어 있는지 확인
+            const containsImage = objectsToDelete.some((obj) => obj.isImage);
+
+            // 삭제 전 남은 객체 배열 저장
+            const allObjects = [...this.canvas.getObjects()];
+
+            // 현재 선택된 객체들의 인덱스 찾기
+            const selectedObjectIndices = activeObjects.map((activeObj) =>
+              allObjects.findIndex((obj) => obj === activeObj)
+            );
+
+            // 최소 인덱스 찾기 (여러 객체 중 가장 먼저 추가된 객체의 위치)
+            const minSelectedIndex = Math.min(...selectedObjectIndices);
+
             // 선택된 각 객체 제거
             activeObjects.forEach((obj) => {
               this.canvas.remove(obj);
             });
+
             // 선택 그룹 초기화
             this.canvas.discardActiveObject();
             this.canvas.renderAll();
+
+            // 객체가 삭제된 후 남은 객체들 확인
+            const remainingObjects = this.canvas.getObjects();
+            console.log("남은 객체 수:", remainingObjects.length);
+
+            // 객체가 남아있고 이미지 객체가 포함되어 있었다면 추가 삭제 시도
+            if (remainingObjects.length > 0 && containsImage) {
+              // 다음 객체 선택 (가능하면 같은 위치의 객체, 없으면 마지막 객체)
+              let nextObjectIndex = minSelectedIndex;
+
+              // 같은 인덱스에 객체가 없으면 인덱스 조정
+              if (nextObjectIndex >= remainingObjects.length) {
+                nextObjectIndex = remainingObjects.length - 1;
+              }
+
+              // 다음 삭제할 객체
+              const nextObjects = [];
+
+              // 다중 선택 삭제 후 동일한 수의 객체를 삭제하려고 시도
+              // 단, 남은 객체 수를 초과하지 않도록 함
+              const objectsToSelectCount = Math.min(
+                objectsToDelete.length,
+                remainingObjects.length
+              );
+
+              for (let i = 0; i < objectsToSelectCount; i++) {
+                let indexToSelect = nextObjectIndex + i;
+
+                // 인덱스가 범위를 벗어나면 처음부터 다시 시작
+                if (indexToSelect >= remainingObjects.length) {
+                  indexToSelect = indexToSelect - remainingObjects.length;
+                }
+
+                nextObjects.push(remainingObjects[indexToSelect]);
+              }
+
+              if (nextObjects.length > 0) {
+                console.log("다음 객체 자동 선택:", nextObjects.length, "개");
+
+                if (nextObjects.length === 1) {
+                  // 단일 객체 선택
+                  this.canvas.setActiveObject(nextObjects[0]);
+                } else {
+                  // 다중 객체 선택
+                  const activeSelection = new fabric.ActiveSelection(
+                    nextObjects,
+                    {
+                      canvas: this.canvas,
+                    }
+                  );
+                  this.canvas.setActiveObject(activeSelection);
+                }
+
+                this.canvas.renderAll();
+
+                // 선택된 객체들 즉시 삭제
+                nextObjects.forEach((obj) => {
+                  this.canvas.remove(obj);
+                });
+
+                this.canvas.discardActiveObject();
+                this.canvas.renderAll();
+
+                console.log(
+                  "자동 삭제 완료, 남은 객체 수:",
+                  this.canvas.getObjects().length
+                );
+              }
+            }
           }
         }
       }
@@ -777,6 +891,173 @@ export default {
         // 컬러 피커가 열려있지 않을 때만 작동
         if (!this.showColorPicker) {
           this.setMode("select");
+        }
+      }
+
+      // Shift 키가 눌렸을 때 (선택 모드에서만)
+      if (
+        event.key === "Shift" &&
+        this.mode === "select" &&
+        !this.showColorPicker
+      ) {
+        // Shift 키 누르면 다중 선택 활성화
+        if (this.canvas) {
+          this.canvas.selection = true; // 드래그 선택 활성화
+        }
+      }
+    },
+
+    handleKeyUp(event) {
+      // Shift 키가 떼어졌을 때
+      if (
+        event.key === "Shift" &&
+        this.mode === "select" &&
+        !this.showColorPicker
+      ) {
+        // Shift 키 떼면 드래그 선택 다시 비활성화
+        if (this.canvas) {
+          this.canvas.selection = false;
+        }
+      }
+    },
+
+    // 이미지 업로드 input 트리거
+    triggerImageUpload() {
+      this.setMode("imageUpload");
+      this.$refs.imageInput.click();
+    },
+
+    // 파일 선택 시 이미지 업로드 처리
+    handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imgObj = new Image();
+        imgObj.src = event.target.result;
+        imgObj.onload = () => {
+          this.setMode("select"); // 🔹 자동으로 선택 모드 변경
+
+          const image = new fabric.Image(imgObj, {
+            left: 50,
+            top: 50,
+            scaleX: 0.5,
+            scaleY: 0.5,
+            selectable: true, // 🔹 클릭으로 선택 가능
+            evented: true, // 🔹 클릭 이벤트 활성화
+            hasBorders: true,
+            hasControls: true,
+            lockScalingX: false,
+            lockScalingY: false,
+            lockRotation: false,
+          });
+
+          this.canvas.add(image);
+          this.canvas.setActiveObject(image); // 🔹 이미지 자동 선택
+          this.currentObject = image; // 현재 객체 저장
+          this.canvas.requestRenderAll();
+
+          // 🔹 시간 간격 없이 즉시 마우스 이벤트 발생
+          const canvasEl = this.canvas.upperCanvasEl;
+
+          // 🔹 마우스 다운 이벤트 즉시 발생
+          canvasEl.dispatchEvent(
+            new MouseEvent("mousedown", {
+              bubbles: true,
+              cancelable: true,
+              clientX: image.left + 10,
+              clientY: image.top + 10,
+            })
+          );
+
+          // 🔹 마우스 업 이벤트 즉시 발생 (시간 간격 없음)
+          canvasEl.dispatchEvent(
+            new MouseEvent("mouseup", {
+              bubbles: true,
+              cancelable: true,
+              clientX: image.left + 10,
+              clientY: image.top + 10,
+            })
+          );
+
+          console.log(
+            "Image added, selected, and click fully simulated (no delay):",
+            image
+          );
+        };
+      };
+      reader.readAsDataURL(file);
+      e.target.value = ""; // 파일 선택 초기화
+    },
+
+    handlePaste(e) {
+      if (e.clipboardData && e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+
+          if (item.type.indexOf("image") !== -1) {
+            const blob = item.getAsFile();
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+              const imgObj = new Image();
+              imgObj.src = event.target.result;
+
+              imgObj.onload = () => {
+                this.setMode("select"); // 🔹 자동으로 선택 모드 변경
+
+                const image = new fabric.Image(imgObj, {
+                  left: 50,
+                  top: 50,
+                  scaleX: 0.5,
+                  scaleY: 0.5,
+                  selectable: true, // 🔹 클릭으로 선택 가능
+                  evented: true, // 🔹 클릭 이벤트 활성화
+                  hasBorders: true,
+                  hasControls: true,
+                  lockScalingX: false,
+                  lockScalingY: false,
+                  lockRotation: false,
+                });
+
+                this.canvas.add(image);
+                this.canvas.setActiveObject(image); // 🔹 이미지 자동 선택
+                this.currentObject = image; // 현재 객체 저장
+                this.canvas.requestRenderAll();
+
+                // 🔹 시간 간격 없이 즉시 마우스 이벤트 발생
+                const canvasEl = this.canvas.upperCanvasEl;
+
+                // 🔹 마우스 다운 이벤트 즉시 발생
+                canvasEl.dispatchEvent(
+                  new MouseEvent("mousedown", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: image.left + 10,
+                    clientY: image.top + 10,
+                  })
+                );
+
+                // 🔹 마우스 업 이벤트 즉시 발생 (시간 간격 없음)
+                canvasEl.dispatchEvent(
+                  new MouseEvent("mouseup", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: image.left + 10,
+                    clientY: image.top + 10,
+                  })
+                );
+
+                console.log(
+                  "Pasted Image added, selected, and click fully simulated:",
+                  image
+                );
+              };
+            };
+            reader.readAsDataURL(blob);
+            break;
+          }
         }
       }
     },
@@ -854,6 +1135,11 @@ h1 {
 
 .toolbar button.active {
   background-color: #4caf50;
+  color: white;
+}
+
+.toolbar button.active.image-upload {
+  background-color: #4d88ff;
   color: white;
 }
 
@@ -1030,7 +1316,9 @@ h1 {
   flex-grow: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
   overflow: hidden;
+  height: calc(100vh - 60px); /* 툴바 높이를 뺀 캔버스 높이 */
 }
 
 canvas {
