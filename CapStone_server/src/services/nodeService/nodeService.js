@@ -1,5 +1,5 @@
-const { Node } = require("../../models");
-const { updateProjectName } = require("../projectService/projectService"); // ✅ projectService에서 함수 가져오기
+const { Node, sequelize } = require("../../models"); // ✅ 한 번만 선언
+const projectService = require("../projectService/projectService");
 
 // 🟢 특정 프로젝트의 노드 추가
 exports.addNodes = async (addedNodes, project_id) => {
@@ -36,6 +36,26 @@ exports.addNodes = async (addedNodes, project_id) => {
   } catch (error) {
     console.error("❌ 노드 추가 중 오류 발생:", error.message);
     throw new Error(`노드 추가 중 오류 발생: ${error.message}`);
+  }
+};
+
+exports.createRootNode = async (project_id, project_name, transaction) => {
+  try {
+    const newNode = await Node.create(
+      {
+        content: project_name, // ✅ 프로젝트 이름을 루트 노드 내용으로 사용
+        parent_key: null, // 루트 노드는 부모 없음
+        project_id: project_id,
+        isSelected: false,
+      },
+      { transaction }
+    );
+
+    console.log("✅ 루트 노드 생성 완료:", newNode.toJSON());
+    return newNode;
+  } catch (error) {
+    console.error("❌ 루트 노드 생성 중 오류:", error.message);
+    throw new Error("루트 노드 생성 중 오류 발생");
   }
 };
 
@@ -89,10 +109,6 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
   }
 };
 
-// ✏️ 특정 프로젝트의 특정 노드 수정
-const { Node, sequelize } = require("../../models");
-const { updateProjectName } = require("../services/projectService"); // ✅ 프로젝트 서비스 불러오기
-
 // ✏️ 특정 프로젝트의 특정 노드 수정 (트랜잭션 적용)
 exports.updateNode = async (id, project_id, name) => {
   if (!id || !name) {
@@ -121,10 +137,12 @@ exports.updateNode = async (id, project_id, name) => {
 
     console.log(`✅ 노드(${id}) 수정 완료:`, name);
 
+    console.log("📌 updateProjectName:", projectService.updateProjectName); // ✅ 여기서 확인
+
     // ✅ 루트 노드일 경우 프로젝트 테이블의 이름도 변경
     if (node.parent_key === 0 || node.parent_key === null) {
       console.log(`🔄 루트 노드 감지. 프로젝트(${project_id}) 이름도 변경`);
-      await updateProjectName(project_id, name, transaction); // ✅ 트랜잭션 포함
+      await projectService.updateProjectName(project_id, name, transaction); // ✅ 트랜잭션 포함
     }
 
     await transaction.commit(); // ✅ 모든 작업이 성공하면 커밋

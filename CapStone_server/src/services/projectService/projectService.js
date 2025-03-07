@@ -2,8 +2,8 @@ const { Project, sequelize } = require("../../models"); // ✅ `Project` 테이�
 const {
   addProjectMember,
   getUserProjectIds,
-} = require("../projectMembersService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
-const { createRootNode } = require("../nodeService/nodeService"); // ✅ Node 관련 로직 분리
+} = require("../projectMemberService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
+const nodeService = require("../nodeService/nodeService"); // ✅ Node 관련 로직 분리
 
 // 🔹 기본 프로젝트 이름 설정
 const defaultProjectName = "나의 새 마인드맵";
@@ -22,7 +22,11 @@ exports.createProjectWithUser = async (user_id) => {
     await addProjectMember(user_id, project.project_id, 3, transaction); // ✅ 별도 서비스에서 처리
 
     // 3️⃣ 루트 노드 생성 (Node 테이블 관리)
-    await createRootNode(project.project_id, defaultProjectName, transaction); // ✅ 별도 서비스에서 처리
+    await nodeService.createRootNode(
+      project.project_id,
+      defaultProjectName,
+      transaction
+    ); // ✅ 별도 서비스에서 처리
 
     await transaction.commit(); // ✅ 트랜잭션 커밋
     return project;
