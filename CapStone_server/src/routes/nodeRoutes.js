@@ -8,6 +8,10 @@ module.exports = (io) => {
   router.delete("/:project_id/:key", nodeController.deleteNode); // ✅ key 추가
   router.patch("/:project_id/:key", nodeController.updateNode); // ✅ key 추가
   router.get("/:project_id", nodeController.getMindmapByProjectId);
+  router.post(
+    "/:project_id/:key/ai-suggest",
+    nodeController.suggestChildNodesFromRoot
+  );
 
   return router;
 };
