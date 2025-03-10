@@ -22,12 +22,17 @@ async function getMindmapSuggestions(
     The main topic of this project (root node) is: "${rootTopic}".
     The selected node is: "${selectedNode}".
     This node is under the parent node: "${parentNode}".
-    Existing nodes in the mind map: ${relatedNodes.join(", ")}.
+    The mind map currently contains the following existing nodes: ${relatedNodes.join(
+      ", "
+    )}.
 
-    Please suggest three subtopics for "${selectedNode}" that logically follow from its context.
-    Ensure that the suggested subtopics are relevant to both "${selectedNode}" and its parent node "${parentNode}".
-
-    Respond in Korean.
+    Please suggest three subtopics that logically fit under "${selectedNode}" while considering the existing nodes.
+    The suggested subtopics should:
+    - Be directly related to both "${selectedNode}" and its parent node "${parentNode}".
+    - Represent meaningful categories, themes, or important concepts related to "${selectedNode}".
+    - Be concise and provided as keywords only (avoid long sentences or explanations).
+  
+    Respond in Korean, listing only the keywords as the final output.
   `;
 
   try {
