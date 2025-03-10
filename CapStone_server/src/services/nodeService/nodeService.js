@@ -169,6 +169,7 @@ exports.getMindmapByProjectId = async (project_id) => {
   }
 };
 
+// 선택된 노드의 하위 노드 ai요청을 위한 서비스 로직
 exports.getSuggestedChildNodes = async (project_id, key) => {
   const nodes = await nodeRepository.getAllNodesByProject(project_id);
 
