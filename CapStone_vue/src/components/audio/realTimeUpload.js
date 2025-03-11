@@ -1,24 +1,26 @@
-import axios from "axios";
+export async function realTimeUpload(recordedChunks, roomId) {
+  
+  if (recordedChunks.length === 0) return;
 
-export default function uploadAudio(blob, roomId, nickname) {
-  return new Promise(async (resolve, reject) => {
-    if (!blob || !roomId) {
+  const blob = new Blob(recordedChunks, { type: "audio/wav" });
+  console.log("📤 25초마다 자동 업로드 진행 중...");
+
+  if (!blob || !roomId) {
       console.error("❌ Missing audio blob or roomId");
       return reject("Missing audio blob or roomId");
     }
 
     const formData = new FormData();
     formData.append("roomId", roomId);
-    formData.append("nickname", nickname);
     formData.append(
       "audio",
-      new File([blob], "audio.mp3", { type: "audio/mp3" })
+      new File([blob], "audio.wav", { type: "audio/wav" })
     );
-    console.log(`뷰에서의 닉네임: ${nickname}`);
+
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
       const response = await axios.post(
-        `${API_BASE_URL}/api/audio/upload`, // ✅ API URL 수정
+        `${API_BASE_URL}/api/audio/realTime`, // ✅ API URL 수정
         formData,
         {
           headers: {
@@ -28,10 +30,17 @@ export default function uploadAudio(blob, roomId, nickname) {
       );
 
       console.log("✅ 업로드 성공!");
+
+       if (response.data && response.data.nodes) {
+         updateMindMap(response.data.nodes);
+       }
+
+       
       resolve(response);
     } catch (error) {
       console.error("❌ 업로드 오류:", error);
       reject(error);
     }
-  });
+  
 }
+
