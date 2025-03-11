@@ -1,7 +1,7 @@
 const { sequelize } = require("../../models");
 const nodeRepository = require("../../repositories/nodeRepository");
 const projectRepository = require("../../repositories/projectRepository");
-const { getMindmapSuggestions } = require("./openaiService");
+const openaiService = require("./openaiService");
 
 // 🟢 특정 프로젝트의 노드 추가
 exports.addNodes = async (addedNodes, project_id) => {
@@ -203,7 +203,7 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
   console.log("모든 노드들은 ", relatedNodes);
 
   // open ai에 노드 추천 요청
-  const aiSuggestions = await getMindmapSuggestions(
+  const aiSuggestions = await openaiService.getMindmapSuggestions(
     rootNode.content, // 주제
     selectedNode.content, // 클릭한 노드
     parentName, // 부모 노드 (없으면 "없음")
@@ -212,4 +212,30 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
   console.log("💡 OpenAI 추천 아이디어:", aiSuggestions);
 
   return aiSuggestions;
+};
+
+exports.getBestMindmapIdea = async (project_id) => {
+  try {
+    const nodes = await nodeRepository.getAllNodesByProject(project_id);
+    if (!nodes || nodes.length === 0) {
+      throw new Error("해당 프로젝트에 노드가 없습니다.");
+    }
+    
+    // 🔥 노드 리스트에서 루트 노드 찾기
+    const rootNode = nodes.find(node => node.parent_key === null || node.parent_key === 0);
+    if (!rootNode) {
+      throw new Error("루트 노드를 찾을 수 없습니다.");
+    }
+
+    const nodeList = nodes.map(node => node.content);
+    
+    // 🔥 루트 노드를 제외하고 AI 요청
+    const aiResponse = await openaiService.getBestMindmapIdea(nodeList, rootNode.content);
+
+    console.log("💡 OpenAI 프로젝트 분석 결과:", aiResponse);
+    return aiResponse;
+  } catch (error) {
+    console.error("❌ AI 프로젝트 분석 중 오류 발생:", error);
+    throw new Error("AI 프로젝트 분석 중 오류 발생");
+  }
 };
