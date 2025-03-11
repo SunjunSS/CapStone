@@ -23,10 +23,12 @@ exports.convertToMP3 = async (inputPath) => {
 
 exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
   try {
+
     if (roomAudioBuffers.length === 1) {
       // 저장된 파일이 1개일 경우 바로 변환
       console.log(`1명입니다~`);
-      return await exports.convertToMP3(roomAudioBuffers[0]);
+      // return await exports.convertToMP3(roomAudioBuffers[0]);
+      return roomAudioBuffers[0];
     }
 
     // 2개 이상일 경우 믹싱 후 변환
@@ -38,18 +40,26 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
   }
 };
 
-exports.processAudioFile = async (mp3Path) => {
+exports.processAudioFile = async (mp3Path, speakerCount) => {
   try {
     const fileName = path.basename(mp3Path, ".mp3"); // .mp3 제외한 파일명 추출
     let speakerNames = fileName.includes("+")
       ? fileName.split("+").join(", ")
       : fileName; // 화자 이름 변환
 
-    deleteFiles(tempAudioFolder);
-    const clovaResponse = await callClovaSpeechAPI(mp3Path);
+    
+    // 클로바에서 화자 수 명확하게 전달 
+    const clovaResponse = await callClovaSpeechAPI(mp3Path, speakerCount);
+
+    // 클로바 응답과 함께 현재 프로젝트의 노드 데이터도 전달해주기
+    
+
+
     const openAIResponse = await askOpenAI(clovaResponse, speakerNames);
 
+    deleteFiles(tempAudioFolder);
     deleteFiles(audioFolder);
+
     return { clovaResponse, openAIResponse };
   } catch (error) {
     console.error("❌ 음성 인식 및 분석 오류:", error);

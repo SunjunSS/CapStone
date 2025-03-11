@@ -12,7 +12,7 @@ export default function uploadAudio(blob, roomId, nickname) {
     formData.append("nickname", nickname);
     formData.append(
       "audio",
-      new File([blob], "audio.wav", { type: "audio/wav" })
+      new File([blob], "audio.mp3", { type: "audio/mp3" })
     );
     console.log(`뷰에서의 닉네임: ${nickname}`);
     try {

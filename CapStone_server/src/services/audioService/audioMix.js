@@ -10,7 +10,7 @@ async function mixAudio(folderPath, outputPath) {
 
       // .wav 파일 필터링 후 알파벳순 정렬
       const inputPaths = files
-        .filter((file) => path.extname(file).toLowerCase() === ".wav")
+        .filter((file) => path.extname(file).toLowerCase() === ".mp3")
         .map((file) => path.join(folderPath, file))
         .sort((a, b) => path.basename(a).localeCompare(path.basename(b), "ko"));
 
@@ -21,12 +21,13 @@ async function mixAudio(folderPath, outputPath) {
       }
 
       // 파일 이름 가져오기
-      const fileNames = inputPaths.map((file) => path.basename(file, ".wav"));
+      const fileNames = inputPaths.map((file) => path.basename(file, ".mp3"));
 
       // 믹싱된 파일 이름 생성 (예: "기업+선준+희찬.mp3")
       const outputFileName = `${fileNames.join("+")}.mp3`;
       const outputFilePath = path.join(outputPath, outputFileName);
 
+      
       console.log(`🔹 Mixing files: ${inputPaths.join(", ")}`);
       console.log(`🔹 Output file: ${outputFilePath}`);
 
