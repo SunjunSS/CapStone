@@ -125,5 +125,36 @@ module.exports = (io) => {
     }
   };
 
-  return { addNodes, deleteNode, updateNode, getMindmapByProjectId };
+  // 🟢 특정 노드를 클릭하면, 해당 프로젝트의 루트 노드를 기준으로 OpenAI 추천 요청
+  const suggestChildNodesFromRoot = async (req, res) => {
+    try {
+      const { project_id, key } = req.params;
+      const { roomId } = req.body;
+
+      if (!project_id || !key) {
+        return res.status(400).json({
+          success: false,
+          message: "project_id와 key 값이 필요합니다.",
+        });
+      }
+
+      // 🔥 서비스에 프로젝트 ID와 key 값 전달
+      const aiNodes = await nodeService.getSuggestedChildNodes(project_id, key);
+
+      // ✅ 실시간 업데이트 (Socket.io)
+      io.to(roomId).emit("nodeSuggested", { parentNode: key, aiNodes });
+
+      res.status(200).json({ success: true, data: aiNodes });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
+  return {
+    addNodes,
+    deleteNode,
+    updateNode,
+    getMindmapByProjectId,
+    suggestChildNodesFromRoot,
+  };
 };

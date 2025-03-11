@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
     console.log(`닉네임: ${nickname}`);
 
     // 파일명: nickname.wav 형식으로 저장
-    const fileName = `${nickname}.wav`;
+    const fileName = `${nickname}.mp3`;
     req.fileName = fileName;
     cb(null, fileName);
   },

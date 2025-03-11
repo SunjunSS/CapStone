@@ -8,6 +8,10 @@ module.exports = (io) => {
   router.delete("/:project_id/:key", nodeController.deleteNode); // ✅ key 추가
   router.patch("/:project_id/:key", nodeController.updateNode); // ✅ key 추가
   router.get("/:project_id", nodeController.getMindmapByProjectId);
+  router.post(
+    "/:project_id/:key/ai-suggest",
+    nodeController.suggestChildNodesFromRoot
+  ); // 선택된 노드의 하위 노드 ai 추천 요청 라우터
 
   return router;
 };

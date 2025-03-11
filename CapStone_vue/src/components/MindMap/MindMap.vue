@@ -19,6 +19,14 @@
       />
 
       <div
+        v-if="isToastVisible"
+        class="toast-message"
+        :class="{ 'toast-error': isToastError }"
+      >
+        {{ toastMessage }}
+      </div>
+
+      <div
         class="mindmap-wrapper"
         @mousedown="startDrag"
         @mouseup="stopDrag"
@@ -68,6 +76,10 @@
           >
             동일레벨 추가
           </button>
+          <button @click="captureMindmap" class="capture-btn">
+            마인드맵 캡처
+          </button>
+          <button @click="goToDrawing" class="drawing-btn">그림판</button>
         </div>
       </div>
     </div>
@@ -79,6 +91,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watchEffect } from "vue";
 import WebRTC from "..//WebRTC/WebRTC.vue";
 import mouseTracking from "../WebRTC/mouseTracking.vue";
 import * as go from "gojs";
+import html2canvas from "html2canvas";
 import {
   loadMindmapFromServer,
   serverError,
@@ -87,7 +100,7 @@ import {
   updateMindmapNode,
 } from "@/api/nodeApi";
 import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
-import { useRoute } from "vue-router"; // ✅ useRoute 추가
+import { useRoute, useRouter } from "vue-router"; // ✅ useRoute 추가
 import {
   registerSocketHandlers,
   unregisterSocketHandlers,
@@ -194,6 +207,13 @@ export default {
     };
 
     const route = useRoute(); // ✅ 현재 라우트 정보 가져오기
+    const router = useRouter();
+
+    // 드로잉 페이지로 이동하는 함수
+    const goToDrawing = () => {
+      router.push("/Drawing");
+    };
+
     const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
 
     // roomId를 paramProject_id 기반으로 동적으로 설정
@@ -551,6 +571,73 @@ export default {
       }
     };
 
+    // 토스트 메시지 상태 변수
+    const isToastVisible = ref(false);
+    const toastMessage = ref("");
+    const isToastError = ref(false);
+
+    // 토스트 메시지 표시 함수
+    const showToast = (message, isError = false) => {
+      toastMessage.value = message;
+      isToastError.value = isError;
+      isToastVisible.value = true;
+
+      // 3초 후 자동으로 토스트 메시지 숨기기
+      setTimeout(() => {
+        isToastVisible.value = false;
+      }, 3000);
+    };
+
+    const captureMindmap = async () => {
+      if (!myDiagram) return;
+
+      // 캡처 전 토스트 메시지 표시
+      showToast("마인드맵을 캡처 중입니다...");
+
+      try {
+        // 현재 다이어그램 영역 가져오기
+        const diagramDiv = document.querySelector(".mindmap-content");
+
+        // 루트 노드 찾기 (parent가 0인 노드)
+        const rootNode = myDiagram.model.nodeDataArray.find(
+          (node) => node.parent === 0
+        );
+        const rootNodeName = rootNode ? rootNode.name : "마인드맵";
+
+        // 현재 날짜를 YYYY.MM.DD 형식으로 포맷팅
+        const today = new Date();
+        const formattedDate = `${today.getFullYear()}.${String(
+          today.getMonth() + 1
+        ).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+
+        // html2canvas로 캡처
+        const canvas = await html2canvas(diagramDiv, {
+          backgroundColor: "#fafafa", // 배경색 설정
+          scale: 1.3, // 고해상도 캡처를 위한 스케일 설정
+          useCORS: true, // 외부 이미지 로딩을 위한 설정
+          logging: false, // 디버그 로그 비활성화
+        });
+
+        // 캡처된 이미지를 다운로드할 수 있도록 변환
+        const imageUrl = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = imageUrl;
+
+        // 새로운 파일명 형식 적용: YYYY.MM.DD-루트노드이름.png
+        link.download = `${formattedDate}-${rootNodeName}.png`;
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 성공 메시지 표시
+        showToast("마인드맵 캡처가 완료되었습니다.");
+      } catch (error) {
+        console.error("마인드맵 캡처 실패:", error);
+        showToast("마인드맵 캡처에 실패했습니다.", true);
+      }
+    };
+
     const initDiagram = () => {
       const $ = go.GraphObject.make;
 
@@ -891,6 +978,11 @@ export default {
       stopTouch,
       deleteSelectedNode,
       addNode,
+      captureMindmap, // 캡처 함수 추가
+      goToDrawing,
+      isToastVisible, // 토스트 가시성 상태 추가
+      toastMessage, // 토스트 메시지 추가
+      isToastError, // 토스트 에러 상태 추가
       isSaving,
       lastSaveTime,
       serverError,
@@ -1127,5 +1219,76 @@ export default {
 /* Webkit (Chrome, Safari, Opera) 브라우저용 스크롤바 숨기기 */
 .sidebar-content::-webkit-scrollbar {
   display: none;
+}
+
+/* 캡처 버튼 스타일 */
+
+.capture-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #4caf50;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.capture-btn:hover {
+  background: #45a049;
+}
+
+/* 토스트 메시지 스타일 */
+.toast-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  z-index: 10000;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+}
+
+.toast-error {
+  background-color: #ff3333;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 드로잉 버튼 스타일 */
+.drawing-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #2196f3;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.drawing-btn:hover {
+  background: #0b7dda;
 }
 </style>

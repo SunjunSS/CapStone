@@ -149,9 +149,10 @@
 <script>
 import io from "socket.io-client";
 import axios from "axios";
-//import { updateMeetingReport } from "../audio/updateMeetingReport";
 import uploadAudio from "../audio/uploadAudio";
 import thisMeetingContent from "../audio/meetingContent";
+// import { realTimeUpload } from "./realTimeUpload.js";
+
 
 export default {
   name: "AudioMeetingApp",
@@ -180,6 +181,7 @@ export default {
       isRecording: false, // 녹음 상태 관리
       mediaRecorder: null, // MediaRecorder 인스턴스
       recordedChunks: [], // 녹음된 데이터
+      temporaryChunks: [],
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
     };
@@ -337,6 +339,7 @@ export default {
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.recordedChunks.push(event.data);
+        this.temporaryChunks.push(event.data);
       };
 
       this.mediaRecorder.onstop = async () => {
@@ -355,11 +358,26 @@ export default {
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
         }
+        clearInterval(this.uploadInterval);
       };
 
       this.mediaRecorder.start();
       this.isRecording = true;
+
+      
+      // 25초마다 realTimeUpload 호출
+      this.uploadInterval = setInterval(() => {
+        if (this.temporaryChunks.length > 0) {
+          const recordedData = this.temporaryChunks.slice(); // 25초 데이터 복사
+          this.temporaryChunks = []; // 업로드 후 초기화
+
+          // realTimeUpload(recordedData, this.roomId);
+        }
+      }, 25000);
     },
+
+
+    
 
     // 녹음 중지 메서드
     stopRecording() {

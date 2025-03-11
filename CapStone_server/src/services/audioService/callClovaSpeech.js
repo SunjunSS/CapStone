@@ -43,21 +43,27 @@ const invokeUrl = process.env.INVOKE_URL;
 
 //const media = "WAV";
 
-// 요청 설정
-const requestEntity = {
-  language: "ko-KR",
-  completion: "sync",
-  wordAlignment: true,
-  fullText: true,
-  noiseFiltering: true,
-  diarization: { enable: true }, 
-  format: "SRT",
-};    
+  
 
-async function callClovaSpeechAPI(filePath) {
+async function callClovaSpeechAPI(filePath, speakerCount) {
   try {
 
-    
+    console.log(`현재 화자 수 : ${speakerCount}`);
+
+    // 요청 설정
+    const requestEntity = {
+      language: "ko-KR",
+      completion: "sync",
+      wordAlignment: true,
+      fullText: true,
+      noiseFiltering: true,
+      diarization: {
+        enable: true,
+        speakerCountMin: speakerCount, // 예상 화자 수
+        speakerCountMax: speakerCount,
+      },
+      format: "SRT",
+    };
 
     // 파일이 존재하는지 확인
     if (!fs.existsSync(filePath)) {
@@ -65,7 +71,6 @@ async function callClovaSpeechAPI(filePath) {
     }
 
     console.log(`filePath -------- ${filePath}`);
-
 
     if (!invokeUrl) {
       console.log("INVOKE_URL:", invokeUrl);
@@ -81,7 +86,6 @@ async function callClovaSpeechAPI(filePath) {
     formData.append("media", fs.createReadStream(filePath));
     // formData.append("format", SRT);
 
-    
     // API 호출
     const response = await axios.post(
       `${invokeUrl}/recognizer/upload`,
