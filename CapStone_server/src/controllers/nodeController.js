@@ -153,11 +153,34 @@ module.exports = (io) => {
     }
   };
 
+  // ✅ 프로젝트 내 가장 중요한 노드 및 보완 아이디어 추천 요청
+  const getBestMindmapIdea = async (req, res) => {
+    try {
+      const { project_id } = req.params;
+      if (!project_id) {
+        return res.status(400).json({
+          success: false,
+          message: "project_id가 필요합니다.",
+        });
+      }
+
+      // 🔥 서비스 호출하여 가장 중요한 노드 및 보완 아이디어 가져오기
+      const bestIdea = await nodeService.getBestMindmapIdea(project_id);
+
+      console.log("🔍 가장 중요한 노드 AI 분석 결과:", bestIdea);
+
+      res.status(200).json({ success: true, data: bestIdea });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
   return {
     addNodes,
     deleteNode,
     updateNode,
     getMindmapByProjectId,
     suggestChildNodesFromRoot,
+    getBestMindmapIdea,
   };
 };
