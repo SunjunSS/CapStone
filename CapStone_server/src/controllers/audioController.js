@@ -87,10 +87,10 @@ module.exports = (io) => {
           `🎶 ${expectedUsers}명 모두 업로드 완료 - 오디오 믹싱 실행`
         );
         const mp3Path = await mixAndConvertAudio(roomId, roomAudioBuffers);
-        console.log(`✅ 믹싱 및 MP3 변환 성공: ${mp3Path}`);
+        console.log(`✅ 믹싱 성공: ${mp3Path}`);
 
-        const { clovaResponse, openAIResponse } = await processAudioFile(
-          mp3Path
+        const { openAIResponse } = await processAudioFile(
+          mp3Path, roomAudioBuffers[roomId].length
         );
 
         io.to(roomId).emit("return-recording", {
@@ -109,5 +109,7 @@ module.exports = (io) => {
         res.status(500).send({ message: "Error processing file." });
       }
     },
+
+    
   };
 };
