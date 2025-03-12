@@ -80,6 +80,14 @@
             마인드맵 캡처
           </button>
           <button @click="goToDrawing" class="drawing-btn">그림판</button>
+          <button
+            @click="suggestNodes"
+            class="ai-suggest-btn"
+            :class="{ 'ai-suggest-btn-enabled': selectedNode }"
+            :disabled="!selectedNode"
+          >
+            AI 추천
+          </button>
         </div>
       </div>
     </div>
@@ -98,6 +106,7 @@ import {
   saveMindmapToServer,
   deleteMindmapNodes,
   updateMindmapNode,
+  suggestChildNodes,
 } from "@/api/nodeApi";
 import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
 import { useRoute, useRouter } from "vue-router"; // ✅ useRoute 추가
@@ -535,6 +544,125 @@ export default {
       initialTouchDistance.value = 0;
     };
 
+    // 특정 이름으로 노드를 추가하는 메소드
+    const addNodeWithName = async (nodeName, parentKey) => {
+      const newNode = {
+        name: nodeName,
+        parent: parentKey || 0,
+        isSelected: false,
+        project_id: paramProject_id.value,
+      };
+
+      const success = await saveMindmapToServer(
+        [newNode],
+        paramProject_id.value,
+        roomId.value
+      );
+
+      if (success) {
+        console.log("✅ 추천 노드 추가 성공:", newNode);
+      } else {
+        console.warn("❌ 추천 노드 추가 실패");
+      }
+    };
+
+    const addNodeWithAnimation = async (nodeData) => {
+      if (!myDiagram) return;
+
+      // 새 노드를 모델에 추가
+      myDiagram.startTransaction("add node");
+      myDiagram.model.addNodeData(nodeData);
+      myDiagram.commitTransaction("add node");
+
+      // 새로 추가된 노드의 위치 애니메이션 적용
+      const newNode = myDiagram.findNodeForKey(nodeData.key);
+      if (newNode) {
+        const startOpacity = newNode.opacity;
+        newNode.opacity = 0; // 처음엔 투명하게 설정
+
+        const fadeIn = () => {
+          let opacity = 0;
+          const fadeInterval = setInterval(() => {
+            if (opacity >= startOpacity) {
+              clearInterval(fadeInterval);
+            } else {
+              opacity += 0.1;
+              newNode.opacity = opacity;
+            }
+          }, 30);
+        };
+
+        fadeIn();
+      }
+    };
+
+    // AI 추천 후 노드를 추가하는 메소드
+    const addSuggestedNode = async (suggestedName) => {
+      if (!selectedNode.value || !myDiagram) return;
+
+      const newNode = {
+        id: `temp-${Date.now()}`,
+        key: `temp-${Date.now()}`,
+        name: suggestedName,
+        parent: selectedNode.value.key,
+        isSelected: false,
+        project_id: paramProject_id.value,
+        isSuggested: true, // ✅ AI 추천 여부 추가
+      };
+
+      myDiagram.startTransaction("add suggested node");
+      myDiagram.model.addNodeData(newNode);
+
+      // ✅ AI 추천 노드의 간선에도 isSuggested 추가
+      myDiagram.model.addLinkData({
+        from: selectedNode.value.key,
+        to: newNode.key,
+        isSuggested: true, // ✅ 간선 데이터에 AI 추천 여부 추가
+      });
+
+      myDiagram.commitTransaction("add suggested node");
+    };
+
+    const suggestNodes = async () => {
+      console.log("🟢 AI 추천 버튼 클릭됨", selectedNode.value);
+
+      if (!selectedNode.value) {
+        console.warn("🚨 선택된 노드가 없습니다.");
+        return;
+      }
+
+      const suggestedNodes = await suggestChildNodes(
+        paramProject_id.value,
+        selectedNode.value.key,
+        roomId.value
+      );
+
+      if (suggestedNodes && suggestedNodes.length > 0) {
+        // **숫자를 제거하고 텍스트만 추출**
+        const individualSuggestions = suggestedNodes
+          .flatMap(
+            (s) => s.split(",").map((s) => s.trim().replace(/^\d+\.\s*/, "")) // 🔥 정규식 추가
+          )
+          .filter(Boolean);
+
+        for (const suggestedName of individualSuggestions) {
+          const newNode = {
+            id: `temp-${Date.now()}`,
+            key: `temp-${Date.now()}`,
+            name: suggestedName,
+            parent: selectedNode.value.key,
+            isSelected: false,
+            project_id: paramProject_id.value,
+            isSuggested: true,
+          };
+
+          await addNodeWithAnimation(newNode);
+        }
+      } else {
+        console.error("❌ 추천된 노드를 받아오지 못했습니다.");
+      }
+    };
+
     const addNode = async (isSibling = false) => {
       if (!selectedNode.value || !myDiagram) return;
       // ✅ 동일 레벨 추가일 때만 canAddSibling 체크
@@ -693,12 +821,57 @@ export default {
       // ✅ API 호출하여 서버에서 마인드맵 데이터 불러오기
       loadMindmapFromServer(myDiagram, paramProject_id.value);
 
-      myDiagram.addDiagramListener("ObjectSingleClicked", (e) => {
+      myDiagram.addDiagramListener("ObjectSingleClicked", async (e) => {
         const part = e.subject.part;
         if (part instanceof go.Node) {
           const node = part.data;
           console.log("Selected Node:", node);
           selectedNode.value = node;
+
+          // 🔥 AI 추천 노드 클릭 시 확인 버튼을 눌렀을 때만 저장
+          if (node.isSuggested) {
+            const confirmed = confirm("AI 추천 노드를 저장하시겠습니까?");
+
+            if (confirmed) {
+              const newNode = {
+                name: node.name,
+                parent: node.parent,
+                isSelected: false,
+                project_id: paramProject_id.value,
+              };
+
+              // ✅ AI 추천 노드 삭제 후 새로운 노드 추가
+              myDiagram.startTransaction("replace suggested node");
+              myDiagram.model.removeNodeData(node); // 기존 추천 노드 삭제
+              myDiagram.commitTransaction("replace suggested node");
+
+              // **🔥 기존 selectedNode를 null로 초기화하여 UI가 정상 동작하도록 설정**
+              selectedNode.value = null;
+
+              // 서버 저장 호출
+              const success = await saveMindmapToServer(
+                [newNode],
+                paramProject_id.value,
+                roomId.value
+              );
+
+              if (success) {
+                console.log("✅ AI 추천 노드가 저장되었습니다.");
+              } else {
+                alert("서버에 저장하는데 실패했습니다.");
+              }
+            } else {
+              // 🔴 취소 버튼 클릭 시, 해당 AI 추천 노드를 프론트에서 삭제
+              myDiagram.startTransaction("remove suggested node");
+              myDiagram.model.removeNodeData(node);
+              myDiagram.commitTransaction("remove suggested node");
+
+              console.log("🗑️ AI 추천 노드가 삭제되었습니다.");
+
+              // **🔥 기존 selectedNode를 null로 초기화하여 버튼이 잘 동작하도록 설정**
+              selectedNode.value = null;
+            }
+          }
         }
       });
 
@@ -723,7 +896,6 @@ export default {
             const inputField = document.createElement("input");
             inputField.value = editEmoji + node.data.name;
 
-            // 입력 필드 기본 스타일 설정
             inputField.style.position = "absolute";
             inputField.style.backgroundColor = "white";
             inputField.style.outline = "none";
@@ -734,25 +906,16 @@ export default {
 
             document.body.appendChild(inputField);
 
-            // 활성 노드와 입력 필드 참조 저장
             activeEditNode.value = node.data;
             activeInputField.value = inputField;
 
-            // 초기 위치와 크기 설정
             updateInputFieldPosition();
-
             inputField.focus();
 
-            // 입력 필드 이벤트 핸들러
             const handleInput = () => {
-              const editEmoji = "✏️ ";
-              // 현재 입력값에서 이모지를 제외한 텍스트 부분만 가져옴
               const textContent = inputField.value.replace(editEmoji, "");
-
-              // 이모지가 없는 경우에만 추가
               if (!inputField.value.startsWith(editEmoji)) {
                 inputField.value = editEmoji + textContent;
-                // 커서 위치 조정
                 inputField.setSelectionRange(
                   editEmoji.length,
                   inputField.value.length
@@ -760,29 +923,23 @@ export default {
               }
             };
 
-            // 이름을 handleTextFieldKeyDown으로 변경
             const handleTextFieldKeyDown = (e) => {
-              const editEmoji = "✏️ ";
-
               if (e.key === "Enter") {
                 e.preventDefault();
-                activeInputField.value?.blur(); // ✅ 먼저 blur()를 실행하여 중복 실행 방지
+                activeInputField.value?.blur();
               }
 
-              // 백스페이스 키 처리
               if (e.key === "Backspace") {
                 const textContent = inputField.value.replace(editEmoji, "");
-                // 텍스트가 비어있고 커서가 이모지 바로 뒤에 있을 때
                 if (
                   textContent === "" &&
                   inputField.selectionStart <= editEmoji.length
                 ) {
-                  e.preventDefault(); // 백스페이스 동작 막기
+                  e.preventDefault();
                 }
               }
             };
 
-            // 텍스트 편집 완료 처리를 위한 함수
             const completeEditing = async () => {
               if (!activeInputField.value) return;
 
@@ -791,7 +948,7 @@ export default {
                 .trim();
 
               if (document.body.contains(activeInputField.value)) {
-                document.body.removeChild(activeInputField.value); // ✅ DOM에 있는 경우만 삭제
+                document.body.removeChild(activeInputField.value);
               }
 
               activeEditNode.value = null;
@@ -802,7 +959,6 @@ export default {
                 return;
               }
 
-              // 노드 이름 업데이트 및 저장 로직
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
               const success = await updateMindmapNode(
@@ -817,17 +973,9 @@ export default {
               }
             };
 
-            // Enter 키 이벤트 핸들러 추가
-            const handleKeyDown = (e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                completeEditing();
-              }
-            };
-
             inputField.addEventListener("input", handleInput);
             inputField.addEventListener("blur", completeEditing);
-            inputField.addEventListener("keydown", handleTextFieldKeyDown); // Enter 키 이벤트 리스너 추가
+            inputField.addEventListener("keydown", handleTextFieldKeyDown);
           },
         },
         new go.Binding("isSelected", "isSelected"),
@@ -855,6 +1003,11 @@ export default {
             ),
             new go.Binding("stroke", "isSelected", (s) =>
               s ? "blue" : "rgba(0, 0, 255, .15)"
+            ),
+            new go.Binding(
+              "strokeDashArray",
+              "isSuggested",
+              (isSuggested) => (isSuggested ? [10, 5] : null) // ✅ 점선 처리
             )
           ),
           $(
@@ -901,10 +1054,17 @@ export default {
           fromEndSegmentLength: 1,
           toEndSegmentLength: 5,
         },
-        $(go.Shape, {
-          strokeWidth: 2,
-          stroke: "#555",
-        })
+        $(
+          go.Shape,
+          {
+            strokeWidth: 2,
+            stroke: "#555",
+          },
+          // ✅ 링크 데이터에서 isSuggested 확인 후 점선 적용
+          new go.Binding("strokeDashArray", "isSuggested", (s) =>
+            s ? [10, 5] : null
+          )
+        )
       );
 
       myDiagram.addDiagramListener("ChangedSelection", (e) => {
@@ -978,6 +1138,7 @@ export default {
       stopTouch,
       deleteSelectedNode,
       addNode,
+      suggestNodes,
       captureMindmap, // 캡처 함수 추가
       goToDrawing,
       isToastVisible, // 토스트 가시성 상태 추가
@@ -1290,5 +1451,31 @@ export default {
 
 .drawing-btn:hover {
   background: #0b7dda;
+}
+
+/* AI 추천 버튼 스타일 추가 */
+.ai-suggest-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #d3d3d3;
+  color: #666;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.ai-suggest-btn-enabled {
+  background: #ff9800;
+  color: white;
+  cursor: pointer;
+}
+
+.ai-suggest-btn-enabled:hover {
+  background: #fb8c00;
+}
+
+button:focus {
+  outline: none; /* 포커스 테두리 제거 */
 }
 </style>
