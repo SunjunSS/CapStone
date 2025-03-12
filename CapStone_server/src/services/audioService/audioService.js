@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const { convertToMP3 } = require("./convertToMP3");
+const { convertMP3 } = require("./convertMP3");
 const { mixAudio } = require("./audioMix");
 const { callClovaSpeechAPI } = require("./callClovaSpeech");
 const { askOpenAI } = require("./callOpenAI");
@@ -21,6 +21,39 @@ exports.convertToMP3 = async (inputPath) => {
   }
 };
 
+exports.processIndividualFile = async (roomAudioBuffers) => {
+  const userSpeech = {}; // 멤버별 음성 텍스트 저장
+  const speakerNames = []; // 화자 이름 목록
+
+  try {
+    if (roomAudioBuffers == null) return;
+
+    // 각 멤버의 음성텍스트를 저장
+    for (const userObject of roomAudioBuffers) {
+
+      const outputPath = userObject.inputPath.replace(/\\temp_audio\\/g, "\\audio\\");
+
+      const inputPath = await convertMP3(userObject.inputPath, outputPath);
+      const response = await callClovaSpeechAPI(inputPath); // 음성 텍스트 얻기
+      
+      userSpeech[userObject.nickname] = response; // 닉네임과 음성 텍스트 매핑
+      speakerNames.push(userObject.nickname); // 화자 이름 목록에 추가
+    }
+
+    // OpenAI에 전달할 데이터 준비
+    const openAIResponse = await askOpenAI(userSpeech, speakerNames);
+
+    // 파일 삭제
+    deleteFiles(tempAudioFolder);
+    deleteFiles(audioFolder);
+
+    return openAIResponse;
+  } catch (error) {
+    console.error("❌ 음성 인식 및 분석 오류:", error);
+    throw new Error("음성 인식 및 분석 중 오류 발생");
+  }
+};
+
 exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
   try {
 
@@ -32,7 +65,7 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
     }
 
     // 2개 이상일 경우 믹싱 후 변환
-    const mixedAudioPath = await mixAudio(tempAudioFolder, audioFolder);
+    const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
     return mixedAudioPath;
   } catch (error) {
     console.error("❌ 오디오 믹싱 및 변환 오류:", error);
@@ -52,9 +85,6 @@ exports.processAudioFile = async (mp3Path, speakerCount) => {
     const clovaResponse = await callClovaSpeechAPI(mp3Path, speakerCount);
 
     // 클로바 응답과 함께 현재 프로젝트의 노드 데이터도 전달해주기
-    
-
-
     const openAIResponse = await askOpenAI(clovaResponse, speakerNames);
 
     deleteFiles(tempAudioFolder);
