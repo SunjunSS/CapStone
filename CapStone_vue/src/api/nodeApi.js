@@ -164,5 +164,33 @@ export const updateMindmapNode = async (updatedNode, project_id, roomId) => {
   }
 };
 
+// 선택된 노드의 하위 노드를 AI로 추천받는 API 요청 함수
+export const suggestChildNodes = async (project_id, nodeKey, roomId) => {
+  console.log("📡 [suggestChildNodes 호출됨]", { project_id, nodeKey, roomId });
+
+  if (!project_id || !nodeKey) {
+    console.warn("🚨 필수 파라미터가 없습니다.", { project_id, nodeKey });
+    return null;
+  }
+
+  const requestUrl = `${getMindmapUrl(project_id)}/${nodeKey}/ai-suggest`;
+  console.log("🌐 요청 URL:", requestUrl);
+
+  try {
+    const response = await axios.post(requestUrl, { roomId });
+    console.log("📥 서버 응답 성공:", response.data);
+
+    if (!response.data.success) {
+      console.error("🚨 서버에서 실패 응답:", response.data.message);
+      return null;
+    }
+
+    return response.data.data; // 추천된 노드 리스트 반환
+  } catch (error) {
+    console.error("❌ API 요청 중 에러 발생:", error.response || error.message);
+    return null;
+  }
+};
+
 // 상태 값도 필요하면 export
 export { isSaving, lastSaveTime, serverError };
