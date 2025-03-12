@@ -171,45 +171,64 @@ exports.getMindmapByProjectId = async (project_id) => {
 
 // 선택된 노드의 하위 노드 ai요청을 위한 서비스 로직
 exports.getSuggestedChildNodes = async (project_id, key) => {
-  const nodes = await nodeRepository.getAllNodesByProject(project_id);
+  try {
+    console.log("🚩 [getSuggestedChildNodes] 시작됨:", { project_id, key });
 
-  // ✅ `dataValues`만 추출하여 새로운 배열 생성
-  const nodeData = nodes.map((node) => node.dataValues);
+    // 노드 데이터 가져오기
+    const nodes = await nodeRepository.getAllNodesByProject(project_id);
+    if (!nodes || nodes.length === 0) {
+      throw new Error("해당 프로젝트의 노드 데이터를 찾을 수 없습니다.");
+    }
 
-  console.log("모든 노드 데이터:", nodeData);
+    const nodeData = nodes.map((node) => node.dataValues);
+    console.log("📚 전체 노드 데이터:", nodeData);
 
-  // 루트 노드
-  const rootNode = nodeData.find(
-    (node) => node.parent_key === null || node.parent_key === 0
-  );
-  if (!rootNode) throw new Error("루트 노드를 찾을 수 없습니다.");
+    // 루트 노드 확인
+    const rootNode = nodeData.find(
+      (node) => node.parent_key === null || node.parent_key === 0
+    );
+    if (!rootNode) {
+      throw new Error("루트 노드를 찾을 수 없습니다.");
+    }
+    console.log("🌳 루트 노드:", rootNode);
 
-  // 선택한 노드
-  const selectedNode = nodeData.find((node) => node.id == key);
-  if (!selectedNode) throw new Error("선택한 노드를 찾을 수 없습니다.");
+    // 선택된 노드 확인
+    const selectedNode = nodeData.find((node) => node.id == key);
+    if (!selectedNode) {
+      throw new Error(`선택된 노드 (key=${key})를 찾을 수 없습니다.`);
+    }
+    console.log("👉 선택된 노드:", selectedNode);
 
-  // 선택한 노드의 부모 노드드
-  const parentNode = nodeData.find(
-    (node) => node.id === selectedNode.parent_key
-  );
-  const parentName = parentNode ? parentNode.content : "없음";
+    // 부모 노드 확인
+    const parentNode = nodeData.find(
+      (node) => node.id === selectedNode.parent_key
+    );
+    const parentName = parentNode ? parentNode.content : "없음";
+    console.log("👪 부모 노드 이름:", parentName);
 
-  // 해당 프로젝트의 모든 노드
-  const relatedNodes = nodeData.map((node) => node.content);
+    // 모든 노드 이름 목록
+    const relatedNodes = nodeData.map((node) => node.content);
+    console.log("📝 프로젝트의 모든 노드 이름:", relatedNodes);
 
-  console.log("주제는 ", rootNode.content);
-  console.log("선택된 노드는 ", selectedNode.content);
-  console.log("부모 노드: ", parentName);
-  console.log("모든 노드들은 ", relatedNodes);
+    // OpenAI API 호출 전 로그 추가
+    console.log("🚀 OpenAI API 호출 준비중...");
 
-  // open ai에 노드 추천 요청
-  const aiSuggestions = await getMindmapSuggestions(
-    rootNode.content, // 주제
-    selectedNode.content, // 클릭한 노드
-    parentName, // 부모 노드 (없으면 "없음")
-    relatedNodes
-  );
-  console.log("💡 OpenAI 추천 아이디어:", aiSuggestions);
+    const aiSuggestions = await getMindmapSuggestions(
+      rootNode.content,
+      selectedNode.content,
+      parentName,
+      relatedNodes
+    );
 
-  return aiSuggestions;
+    if (!aiSuggestions || aiSuggestions.length === 0) {
+      throw new Error("OpenAI에서 추천 결과를 받아오지 못했습니다.");
+    }
+
+    console.log("💡 OpenAI 추천 결과:", aiSuggestions);
+
+    return aiSuggestions;
+  } catch (error) {
+    console.error("❌ [getSuggestedChildNodes] 오류 발생:", error.message);
+    throw error; // 반드시 throw를 해야 컨트롤러에서 오류 확인 가능
+  }
 };
