@@ -64,6 +64,8 @@ export default function thisMeetingContent(content) {
 
     // ** 키워드 HTML 변환 **
     if (keywordsText) {
+
+      
       report += `
         <h3>🔑 주요 키워드</h3>
         <p style="white-space: pre-wrap; word-wrap: break-word;">${keywordsText.replace(

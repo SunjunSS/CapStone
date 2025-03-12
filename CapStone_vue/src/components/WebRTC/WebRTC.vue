@@ -452,8 +452,7 @@ export default {
 
           // 회의록 업데이트
           const report = thisMeetingContent(
-            processedData,
-            this.participantNicknames
+            processedData
           );
 
           console.log("🟢 변환된 응답값:", report);
