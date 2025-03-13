@@ -70,8 +70,17 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.startTransaction("delete nodes");
 
-    // ✅ Set을 사용하여 중복 방지
+    // ✅ 삭제할 노드 집합
     const nodesToDelete = new Set(deletedNodeKeys);
+
+    // 🔥 삭제할 노드의 모든 자식 노드를 추가적으로 찾기
+    deletedNodeKeys.forEach((parentKey) => {
+      myDiagram.model.nodeDataArray.forEach((node) => {
+        if (node.parent === parentKey) {
+          nodesToDelete.add(node.key); // 부모가 삭제되면 자식도 삭제 대상
+        }
+      });
+    });
 
     nodesToDelete.forEach((nodeKey) => {
       const node = myDiagram.model.findNodeDataForKey(nodeKey);
