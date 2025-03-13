@@ -17,7 +17,7 @@ export default function meetingContent(content) {
         const time = entry.time.replace(/,(\d{3})$/, ",$1"); // 시간 포맷 정리
         const speaker = entry.speaker;
         const speech = entry.speech.replace(/\n/g, "<br>"); // 줄바꿈 처리
-        report += `
+        report += `<br>
           <p><strong>${time}</strong><br><strong>${speaker}:</strong> ${speech}</p>
         `;
       });
@@ -30,8 +30,11 @@ export default function meetingContent(content) {
     if (minutes) {
       report += `
         <h3>📌 회의록</h3>
+        <br>
         <h4>회의 목적</h4>
+        
         <p>${minutes.purpose || "데이터 없음"}</p>
+        
         <h4>주요 주제</h4>
         <ul>
           ${
@@ -59,6 +62,7 @@ export default function meetingContent(content) {
     if (minutes && Array.isArray(minutes.keywords)) {
       report += `
         <h3>🔑 주요 키워드</h3>
+        <br>
         <ul>
           ${minutes.keywords.map((keyword) => `<li>${keyword}</li>`).join("")}
         </ul>

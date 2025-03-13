@@ -43,6 +43,8 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     // OpenAI에 전달할 데이터 준비
     const openAIResponse = await askOpenAI(userSpeech, speakerNames);
 
+    const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
+    
     // 파일 삭제
     deleteFiles(tempAudioFolder);
     deleteFiles(audioFolder);
