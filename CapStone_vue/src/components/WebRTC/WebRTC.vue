@@ -150,7 +150,7 @@
 import io from "socket.io-client";
 import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
-import thisMeetingContent from "../audio/meetingContent";
+import meetingContent from "../audio/meetingContent";
 // import { realTimeUpload } from "./realTimeUpload.js";
 
 
@@ -364,16 +364,6 @@ export default {
       this.mediaRecorder.start();
       this.isRecording = true;
 
-      
-      // 25초마다 realTimeUpload 호출
-      this.uploadInterval = setInterval(() => {
-        if (this.temporaryChunks.length > 0) {
-          const recordedData = this.temporaryChunks.slice(); // 25초 데이터 복사
-          this.temporaryChunks = []; // 업로드 후 초기화
-
-          // realTimeUpload(recordedData, this.roomId);
-        }
-      }, 25000);
     },
 
 
@@ -434,26 +424,29 @@ export default {
           this.checkRecording();
         });
 
-        this.socket.on("return-recording", (recordingData) => {
+        this.socket.on("return-recording", (data) => {
+
+          const { recordingData, fileBuffer } = data;
+
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
+          
 
-          // Object 타입인지 확인 후 문자열로 변환
-          let processedData;
-          if (typeof recordingData === "object") {
-            try {
-              processedData = JSON.stringify(recordingData, null, 2); // JSON 포맷 변환
-            } catch (error) {
-              console.error("❌ JSON 변환 오류:", error);
-              processedData = "[오류] 데이터를 변환할 수 없습니다.";
-            }
-          } else {
-            processedData = recordingData; // 기존 문자열 그대로 유지
-          }
+          // base64로 전달된 MP3 파일을 Blob으로 변환
+          const audioBlob = new Blob([new Uint8Array(atob(fileBuffer).split("").map((c) => c.charCodeAt(0)))], { type: "audio/mp3" });
 
+          // 파일을 URL로 변환
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          // 다운로드 링크 생성
+          const link = document.createElement("a");
+          link.href = audioUrl;
+          link.download = `${this.roomId}_audio.mp3`; // 파일명 설정
+          link.click();
+
+          
           // 회의록 업데이트
-          const report = thisMeetingContent(
-            processedData,
-            this.participantNicknames
+          const report = meetingContent(
+            recordingData
           );
 
           console.log("🟢 변환된 응답값:", report);

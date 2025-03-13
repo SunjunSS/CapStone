@@ -1,5 +1,4 @@
 export default function meetingContent(content) {
-
   let report = "";
 
   // 입력이 JSON 객체인지 확인

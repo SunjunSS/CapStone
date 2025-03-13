@@ -1095,20 +1095,15 @@ export default {
     onMounted(() => {
       initDiagram();
 
-      // diagramDiv에 keydown 이벤트 리스너 추가
-      if (diagramDiv.value) {
-        diagramDiv.value.addEventListener("keydown", handleKeyDown);
-      }
+      // ✅ 전역 keydown 이벤트 리스너 추가
+      window.addEventListener("keydown", handleKeyDown);
     });
 
     onBeforeUnmount(() => {
       unregisterSocketHandlers(); // ✅ WebSocket 이벤트 해제
 
-      if (diagramDiv.value) {
-        diagramDiv.value.removeEventListener("keydown", handleKeyDown);
-      }
-      // 컴포넌트가 언마운트되기 전 마지막으로 저장
-      // saveMindmapToServer()
+      // ✅ 전역 keydown 이벤트 리스너 제거
+      window.removeEventListener("keydown", handleKeyDown);
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달
