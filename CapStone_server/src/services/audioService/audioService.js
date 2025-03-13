@@ -44,12 +44,12 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     const openAIResponse = await askOpenAI(userSpeech, speakerNames);
 
     const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
-    
-    // 파일 삭제
-    deleteFiles(tempAudioFolder);
-    deleteFiles(audioFolder);
 
-    return openAIResponse;
+    // 파일 삭제
+    // deleteFiles(tempAudioFolder);
+    // deleteFiles(audioFolder);
+
+    return { openAIResponse, mixedAudioPath };
   } catch (error) {
     console.error("❌ 음성 인식 및 분석 오류:", error);
     throw new Error("음성 인식 및 분석 중 오류 발생");

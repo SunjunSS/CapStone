@@ -77,7 +77,7 @@ module.exports = (io) => {
           `🎶 ${expectedUsers}명 모두 업로드 완료`
         );
 
-        const openAIResponse  = await processIndividualFile(roomAudioBuffers[roomId]);
+        const { openAIResponse, mixedAudioPath }  = await processIndividualFile(roomAudioBuffers[roomId]);
 
         if(openAIResponse == null) {
           console.log("audioController: ai응답이 비었습니다.")
@@ -88,8 +88,11 @@ module.exports = (io) => {
         //   mp3Path, roomAudioBuffers[roomId].length
         // );
 
+        const mp3Buffer = fs.readFileSync(mixedAudioPath);
+
         io.to(roomId).emit("return-recording", {
           openAIResponse,
+          fileBuffer: mp3Buffer.toString("base64"),
         });
 
         // const mp3Path = await mixAndConvertAudio(roomId, roomAudioBuffers);
