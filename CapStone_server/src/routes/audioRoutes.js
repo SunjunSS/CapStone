@@ -11,7 +11,6 @@ module.exports = (io) => {
     "/upload",
     upload.single("audio"),
     (req, res, next) => {
-      console.log(`닉네임: ${req.body.nickname}`); // 오타 수정(boby → body)
       next(); // 다음 미들웨어로 제어 전달
     },
     uploadAudio // 함수 참조만 전달, 즉시 호출하지 않음

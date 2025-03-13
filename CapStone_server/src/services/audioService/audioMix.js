@@ -8,7 +8,7 @@ async function mixAudio(folderPath, outputPath) {
     fs.readdir(folderPath, async (err, files) => {
       if (err) return reject(err);
 
-      // .wav 파일 필터링 후 알파벳순 정렬
+      // .mp3 파일 필터링 후 알파벳순 정렬
       const inputPaths = files
         .filter((file) => path.extname(file).toLowerCase() === ".mp3")
         .map((file) => path.join(folderPath, file))

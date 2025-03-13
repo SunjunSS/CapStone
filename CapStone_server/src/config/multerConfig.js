@@ -11,12 +11,12 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     // 닉네임 가져오기 (닉네임이 없으면 timestamp 사용)
     const nickname = req.body.nickname
-      ? req.body.nickname.replace(/\s+/g, "_")
-      : `audio_${Date.now()}`;
+    const roomId = req.body.roomId
+    
     console.log(`닉네임: ${nickname}`);
 
-    // 파일명: nickname.wav 형식으로 저장
-    const fileName = `${nickname}.mp3`;
+    // 파일명: nickname_roomId.mp3 형식으로 저장
+    const fileName = `${nickname}_${roomId}.mp3`;
     req.fileName = fileName;
     cb(null, fileName);
   },
