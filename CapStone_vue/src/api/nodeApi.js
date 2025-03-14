@@ -192,5 +192,23 @@ export const suggestChildNodes = async (project_id, nodeKey, roomId) => {
   }
 };
 
+// ✅ 노드 이동 API 함수
+export const moveMindmapNode = async (movedNodeId, newParentId) => {
+  console.log("📡 [API] 노드 이동 요청:", { movedNodeId, newParentId });
+
+  try {
+    const response = await axios.patch("/api/mindmap/move", {
+      movedNodeId,
+      newParentId,
+    });
+
+    console.log("✅ [API] 노드 이동 성공:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ [API] 노드 이동 중 오류 발생:", error);
+    return null;
+  }
+};
+
 // 상태 값도 필요하면 export
 export { isSaving, lastSaveTime, serverError };

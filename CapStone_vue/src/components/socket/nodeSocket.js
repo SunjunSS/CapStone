@@ -1,5 +1,6 @@
 import { socket } from "./socket"; // 기존 소켓 인스턴스 import
 import * as go from "gojs";
+import { nextTick } from "vue";
 
 /**
  * MindMap 소켓 이벤트 핸들러 모듈
@@ -36,8 +37,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     });
     myDiagram.commitTransaction("add node");
   });
-
-  console.log("✅ WebSocket 이벤트 리스너 등록 완료");
 
   // ✅ 노드 수정 이벤트
   socket.on("nodeUpdated", (updatedNode) => {
@@ -94,6 +93,70 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
   });
 
+  // ✅ 서버로부터 노드 이동 이벤트를 받아 적용 - 이벤트 핸들러를 올바른 위치로 이동
+  // ✅ 서버로부터 노드 이동 이벤트를 받아 적용
+  socket.on("nodeMoved", (updatedNode) => {
+    console.log("🔄 [Vue] 노드 이동 이벤트 수신:", updatedNode);
+
+    // 서버에서 보낸 데이터 구조 확인
+    const nodeData = updatedNode.dataValues || updatedNode;
+
+    // 노드 ID와 새 부모 ID 추출
+    const nodeId = nodeData.id;
+    const newParentId = nodeData.parent_key;
+
+    console.log(
+      `🔍 [Vue] 노드 이동 처리: 노드 ID ${nodeId}, 새 부모 ID ${newParentId}`
+    );
+
+    if (!nodeId) {
+      console.error("🚨 [Vue] 노드 ID 없음:", nodeData);
+      return;
+    }
+
+    // GoJS 다이어그램 모델에서 노드 검색
+    // 주의: GoJS에서 사용하는 키 이름이 서버의 ID와 다를 수 있음
+    const node =
+      myDiagram.findNodeForKey(nodeId) ||
+      myDiagram.findNodeForKey(String(nodeId));
+
+    if (node) {
+      console.log("✅ [Vue] 노드 찾음:", node.key);
+
+      myDiagram.startTransaction("move node");
+
+      // GoJS 모델에서 사용하는 부모 필드명 확인
+      // 모델에 따라 'parent', 'group', 'parentId' 등 다양한 이름을 사용할 수 있음
+      const parentFieldName = "parent";
+
+      // 노드 데이터 객체 가져오기
+      const nodeDataObj = node.data || node;
+
+      // 부모 노드 업데이트
+      myDiagram.model.setDataProperty(
+        nodeDataObj,
+        parentFieldName,
+        newParentId
+      );
+
+      myDiagram.commitTransaction("move node");
+
+      // 레이아웃 강제 업데이트
+      myDiagram.layout.invalidateLayout();
+      myDiagram.requestUpdate();
+
+      console.log(
+        `✅ [Vue] 노드 부모 업데이트 완료: ${nodeId} → ${newParentId}`
+      );
+    } else {
+      console.warn(`🚨 [Vue] 노드 찾기 실패: ${nodeId}`);
+
+      // 다이어그램의 모든 노드 키 출력하여 디버깅
+      console.log("🔍 [Vue] 현재 다이어그램 노드 키 목록:");
+      myDiagram.nodes.each((n) => console.log(n.key));
+    }
+  });
+
   console.log("✅ WebSocket 이벤트 리스너 등록 완료");
 };
 
@@ -114,6 +177,7 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeAdded");
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
+  socket.off("nodeMoved"); // nodeMoved 이벤트도 해제
 
   // 방에서 나가기
   if (roomIdValue) {

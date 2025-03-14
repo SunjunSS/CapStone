@@ -882,12 +882,42 @@ export default {
           selectionAdorned: false,
           resizable: false,
           layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
+
+          // ✅ 노드 드래그 가능
+          movable: true,
+
+          // ✅ 드래그 시작 이벤트 (마우스로 드래그하면 true)
           mouseDragEnter: (e, node) => {
             isNodeDragging.value = true;
           },
+
+          // ✅ 드래그 종료 이벤트
           mouseDragLeave: (e, node) => {
             isNodeDragging.value = false;
           },
+
+          // ✅ 드롭 이벤트 (다른 노드 위에 놓았을 때 부모 변경)
+          mouseDrop: (e, node) => {
+            const draggedNode = e.diagram.selection.first(); // 드래그한 노드
+            if (!draggedNode || draggedNode === node) return;
+
+            console.log(
+              "🟢 노드 이동 감지: ",
+              draggedNode.data,
+              "=>",
+              node.data
+            );
+
+            // ✅ WebSocket을 통해 서버에 변경된 정보 전달
+            socket.emit("move-node", {
+              roomId: roomId.value, // ✅ 현재 방 ID
+              movedNodeId: draggedNode.data.key, // ✅ 이동할 노드 ID
+              newParentId: node.data.key, // ✅ 새로운 부모 노드 ID
+              project_id: paramProject_id.value, // ✅ 프로젝트 ID 추가
+            });
+          },
+
+          // ✅ 더블 클릭 시 노드 이름 편집
           doubleClick: (e, node) => {
             const nodeElement = node.findObject("NAME_TEXTBLOCK");
             if (!nodeElement) return;
@@ -978,7 +1008,9 @@ export default {
             inputField.addEventListener("keydown", handleTextFieldKeyDown);
           },
         },
+
         new go.Binding("isSelected", "isSelected"),
+
         $(
           go.Panel,
           "Auto",
@@ -987,6 +1019,7 @@ export default {
             desiredSize: new go.Size(NaN, NaN),
             minSize: new go.Size(100, 40),
           },
+
           $(
             go.Shape,
             "RoundedRectangle",
@@ -998,22 +1031,24 @@ export default {
               fromSpot: go.Spot.RightSide,
               toSpot: go.Spot.LeftSide,
             },
+            // ✅ 루트 노드는 배경색 변경
             new go.Binding("fill", "parent", (p) =>
               p === 0 ? "#FFF612" : "white"
             ),
             new go.Binding("stroke", "isSelected", (s) =>
               s ? "blue" : "rgba(0, 0, 255, .15)"
             ),
-            new go.Binding(
-              "strokeDashArray",
-              "isSuggested",
-              (isSuggested) => (isSuggested ? [10, 5] : null) // ✅ 점선 처리
+            // ✅ AI 추천 노드는 점선 처리
+            new go.Binding("strokeDashArray", "isSuggested", (isSuggested) =>
+              isSuggested ? [10, 5] : null
             )
           ),
+
           $(
             go.Panel,
             "Horizontal",
             { margin: 8 },
+
             $(
               go.TextBlock,
               {
@@ -1030,6 +1065,7 @@ export default {
                 (name) => name && name.startsWith("*")
               )
             ),
+
             $(
               go.TextBlock,
               {
