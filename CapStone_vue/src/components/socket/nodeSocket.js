@@ -1,6 +1,5 @@
 import { socket } from "./socket"; // 기존 소켓 인스턴스 import
 import * as go from "gojs";
-import { nextTick } from "vue";
 
 /**
  * MindMap 소켓 이벤트 핸들러 모듈
@@ -81,6 +80,14 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
       });
     });
 
+    // 🔥 현재 선택된 노드가 삭제 대상 목록에 있는지 확인하고, 있다면 선택 상태 초기화
+    const selectedNodeKey = myDiagram.selection.first()?.data?.key;
+    let shouldResetSelection = false;
+
+    if (selectedNodeKey && nodesToDelete.has(selectedNodeKey)) {
+      shouldResetSelection = true;
+    }
+
     nodesToDelete.forEach((nodeKey) => {
       const node = myDiagram.model.findNodeDataForKey(nodeKey);
       if (node) {
@@ -90,10 +97,20 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.commitTransaction("delete nodes");
 
+    // 🔥 삭제된 노드가 현재 선택된 노드였다면, 다이어그램의 선택 해제 및 selectedNode 초기화
+    if (shouldResetSelection) {
+      myDiagram.clearSelection();
+
+      // Vue 컴포넌트의 selectedNode 초기화 (MindMap.vue의 ref)
+      // 외부에서 접근 가능한 방식으로 상태 초기화
+      window.dispatchEvent(
+        new CustomEvent("node-deleted", { detail: { resetSelection: true } })
+      );
+    }
+
     console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
   });
 
-  // ✅ 서버로부터 노드 이동 이벤트를 받아 적용 - 이벤트 핸들러를 올바른 위치로 이동
   // ✅ 서버로부터 노드 이동 이벤트를 받아 적용
   socket.on("nodeMoved", (updatedNode) => {
     console.log("🔄 [Vue] 노드 이동 이벤트 수신:", updatedNode);

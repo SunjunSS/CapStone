@@ -1133,6 +1133,13 @@ export default {
 
       // ✅ 전역 keydown 이벤트 리스너 추가
       window.addEventListener("keydown", handleKeyDown);
+
+      // 🔥 노드 삭제 이벤트 리스너 추가
+      window.addEventListener("node-deleted", (event) => {
+        if (event.detail.resetSelection) {
+          selectedNode.value = null;
+        }
+      });
     });
 
     onBeforeUnmount(() => {
@@ -1140,6 +1147,9 @@ export default {
 
       // ✅ 전역 keydown 이벤트 리스너 제거
       window.removeEventListener("keydown", handleKeyDown);
+
+      // 🔥 노드 삭제 이벤트 리스너 제거
+      window.removeEventListener("node-deleted", () => {});
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달
