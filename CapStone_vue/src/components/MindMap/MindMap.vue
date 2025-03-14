@@ -815,6 +815,16 @@ export default {
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value,
       });
+
+      // ✅ 트리 레이아웃 자동 정렬 추가
+      myDiagram.addDiagramListener("SelectionMoved", (e) => {
+        console.log("🔄 노드 이동 완료, 트리 레이아웃 재정렬 실행");
+
+        myDiagram.startTransaction("Rearrange Tree");
+        myDiagram.layoutDiagram(true); // 🔥 트리 레이아웃 강제 실행
+        myDiagram.commitTransaction("Rearrange Tree");
+      });
+
       // ✅ WebSocket 이벤트 등록
       registerSocketHandlers(myDiagram, roomId, userId);
 
@@ -1010,6 +1020,7 @@ export default {
         },
 
         new go.Binding("isSelected", "isSelected"),
+        new go.Binding("zOrder", "isSelected", (s) => (s ? 1 : 0)).makeTwoWay(),
 
         $(
           go.Panel,
