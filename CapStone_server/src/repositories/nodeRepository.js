@@ -45,3 +45,11 @@ exports.deleteNodesByIds = async (ids, project_id) => {
 exports.getAllNodesByProject = async (project_id) => {
   return await Node.findAll({ where: { project_id }, order: [["id", "ASC"]] });
 };
+
+// 특정 프로젝트의 모든 노드 삭제
+exports.deleteNodesByProjectId = async (project_id, transaction) => {
+  return await Node.destroy({
+    where: { project_id },
+    transaction,
+  });
+};

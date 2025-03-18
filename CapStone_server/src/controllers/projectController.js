@@ -55,3 +55,22 @@ exports.updateProjectAndRootNodeName = async (req, res) => {
       .json({ message: "수정 중 오류 발생", error: error.message });
   }
 };
+
+exports.deleteProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "프로젝트 ID가 필요합니다." });
+    }
+
+    await projectService.deleteProject(project_id);
+
+    res.status(200).json({ message: "프로젝트가 성공적으로 삭제되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트 삭제 오류:", error);
+    res
+      .status(500)
+      .json({ message: "삭제 중 오류 발생", error: error.message });
+  }
+};
