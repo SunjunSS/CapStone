@@ -70,29 +70,47 @@ exports.getProjectsByUserId = async (user_id) => {
   }
 };
 
-// ✅ 프로젝트 이름 수정 (트랜잭션 지원)
-exports.updateProjectName = async (project_id, newName, transaction = null) => {
+/**
+ * ✅ 프로젝트 이름 수정 + 루트 노드 이름 수정 (트랜잭션 적용)
+ */
+exports.updateProjectAndRootNodeName = async (project_id, newName) => {
   if (!project_id || !newName) {
     throw new Error("프로젝트 ID와 새 이름이 필요합니다.");
   }
 
-  // ✅ 트랜잭션 옵션 설정 (기존 트랜잭션이 있으면 사용, 없으면 새로 생성)
-  const options = { where: { project_id } };
-  if (transaction) {
-    options.transaction = transaction; // ✅ 기존 트랜잭션을 이어서 사용
-  }
-
+  const transaction = await sequelize.transaction();
   try {
-    const [updatedCount] = await Project.update({ name: newName }, options);
+    // ✅ 프로젝트 이름 수정
+    const projectUpdated = await projectRepository.updateProjectName(
+      project_id,
+      newName,
+      transaction
+    );
 
-    if (updatedCount === 0) {
+    if (!projectUpdated) {
       throw new Error("프로젝트를 찾을 수 없거나 수정할 수 없습니다.");
     }
 
-    console.log(`✅ 프로젝트(${project_id}) 이름 수정 완료:`, newName);
+    // ✅ 루트 노드 이름도 변경
+    const rootNodeUpdated = await nodeRepository.updateRootNodeName(
+      project_id,
+      newName,
+      transaction
+    );
+
+    if (!rootNodeUpdated) {
+      throw new Error("루트 노드를 찾을 수 없거나 수정할 수 없습니다.");
+    }
+
+    await transaction.commit();
+    console.log(
+      `✅ 프로젝트(${project_id}) 및 루트 노드 이름 수정 완료:`,
+      newName
+    );
     return true;
   } catch (error) {
-    console.error("❌ 프로젝트 이름 수정 실패:", error.message);
-    throw new Error("프로젝트 이름 수정 중 오류 발생");
+    await transaction.rollback();
+    console.error("❌ 프로젝트 및 루트 노드 이름 수정 실패:", error.message);
+    throw new Error("프로젝트 및 루트 노드 이름 수정 중 오류 발생");
   }
 };

@@ -17,6 +17,13 @@ exports.findNodeById = async (id, project_id, transaction = null) => {
   return await Node.findOne({ where: { id, project_id }, transaction });
 };
 
+exports.updateRootNodeName = async (project_id, newName, transaction) => {
+  return await Node.update(
+    { content: newName },
+    { where: { project_id, parent_key: null }, transaction }
+  );
+};
+
 exports.updateNodeContent = async (
   id,
   project_id,

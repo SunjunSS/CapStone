@@ -31,3 +31,27 @@ exports.getProjectsByUserId = async (req, res) => {
     res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
+
+exports.updateProjectAndRootNodeName = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+    const { name } = req.body;
+
+    if (!project_id || !name) {
+      return res
+        .status(400)
+        .json({ message: "프로젝트 ID와 새 이름이 필요합니다." });
+    }
+
+    await projectService.updateProjectAndRootNodeName(project_id, name);
+
+    res
+      .status(200)
+      .json({ message: "프로젝트 및 루트 노드 이름이 변경되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트 및 루트 노드 이름 수정 오류:", error);
+    res
+      .status(500)
+      .json({ message: "수정 중 오류 발생", error: error.message });
+  }
+};
