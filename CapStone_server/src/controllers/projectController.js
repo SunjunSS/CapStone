@@ -16,7 +16,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
-exports.getUserProjects = async (req, res) => {
+exports.getProjectsByUserId = async (req, res) => {
   try {
     const { user_id } = req.params;
 
@@ -24,7 +24,7 @@ exports.getUserProjects = async (req, res) => {
       return res.status(400).json({ message: "user_id가 필요합니다." });
     }
 
-    const projectIds = await projectService.getUserProjects(user_id);
+    const projectIds = await projectService.getProjectsByUserId(user_id);
     res.status(200).json({ projects: projectIds });
   } catch (error) {
     console.error("프로젝트 조회 오류:", error);

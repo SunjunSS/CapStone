@@ -1,12 +1,8 @@
 const { Project, sequelize } = require("../../models"); // ✅ `Project` 테이블만 사용
-const {
-  addProjectMember,
-  getUserProjectIds,
-} = require("../projectMemberService/projectMembersService"); // ✅ ProjectMembers 관련 로직 분리
-// const nodeService = require("../nodeService/nodeService"); // ✅ Node 관련 로직 분리
 const nodeRepository = require("../../repositories/nodeRepository");
 const projectRepository = require("../../repositories/projectRepository"); // ✅ 추가
-// ✅ 프로젝트 생성 + 사용자 매핑 + 루트 노드 추가
+const projectMemberRepository = require("../../repositories/projectMemberRepository");
+
 exports.createProjectWithUser = async (user_id) => {
   const transaction = await sequelize.transaction(); // 트랜잭션 시작
 
@@ -18,7 +14,12 @@ exports.createProjectWithUser = async (user_id) => {
     );
 
     // 2️⃣ 사용자 추가 (ProjectMembers 테이블 관리)
-    await addProjectMember(user_id, project.project_id, 3, transaction); // ✅ 별도 서비스에서 처리
+    await projectMemberRepository.addProjectMember(
+      user_id,
+      project.project_id,
+      3,
+      transaction
+    );
 
     // 3️⃣ 루트 노드 생성 (Node 테이블 관리)
     await nodeRepository.createNode(
@@ -37,10 +38,13 @@ exports.createProjectWithUser = async (user_id) => {
     throw error;
   }
 };
-exports.getUserProjects = async (user_id) => {
+
+exports.getProjectsByUserId = async (user_id) => {
   try {
     // ✅ 프로젝트 멤버 서비스에서 사용자의 프로젝트 ID 목록 가져오기
-    const userProjects = await getUserProjectIds(user_id);
+    const userProjects = await projectMemberRepository.getUserProjectIds(
+      user_id
+    );
     if (!userProjects || userProjects.length === 0) {
       return [];
     }
