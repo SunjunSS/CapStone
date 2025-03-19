@@ -146,6 +146,24 @@ exports.updateNode = async (id, project_id, name) => {
   }
 };
 
+// ✅ 노드 이동 서비스 함수
+exports.moveNode = async (movedNodeId, newParentId, project_id) => {
+  console.log("📌 [moveNode] 서비스 호출됨:", {
+    movedNodeId,
+    newParentId,
+    project_id,
+  });
+
+  const node = await nodeRepository.findNodeById(movedNodeId, project_id); // ✅ project_id 추가
+  if (!node) throw new Error("노드를 찾을 수 없습니다.");
+
+  node.parent_key = newParentId;
+  await node.save();
+
+  console.log("✅ [moveNode] 노드 부모 업데이트 완료");
+  return node;
+};
+
 // 🟢 특정 프로젝트의 마인드맵 조회
 exports.getMindmapByProjectId = async (project_id) => {
   try {
@@ -264,5 +282,3 @@ exports.getBestMindmapIdea = async (project_id) => {
     throw new Error("AI 프로젝트 분석 중 오류 발생");
   }
 };
-
-//안녕
