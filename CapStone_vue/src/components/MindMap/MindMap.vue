@@ -158,6 +158,7 @@ export default {
     let zoomAnimationFrame = null;
     let panAnimationFrame = null;
     let targetPosition = null;
+    const aiParentNode = ref(null); // AI 추천 노드의 부모 노드 저장 변수
 
     // 서버 통신 관련 상태 추가
     const isSaving = ref(false);
@@ -451,6 +452,31 @@ export default {
 
     const startDrag = (event) => {
       if (!myDiagram) return;
+
+      console.log(
+        "📌 startDrag 호출됨! isDragging:",
+        isDragging.value,
+        "isNodeDragging:",
+        isNodeDragging.value
+      );
+
+      // ✅ 클릭한 요소가 노드인지 확인
+      const part = myDiagram.findPartAt(
+        myDiagram.transformViewToDoc(new go.Point(event.clientX, event.clientY))
+      );
+
+      if (part instanceof go.Node) {
+        console.log("🚨 노드 클릭 감지됨! 화면 드래그 차단");
+        return; // 🔥 노드를 클릭한 경우 화면 드래그 실행 안 함
+      }
+
+      // ✅ 노드 드래그 중이면 화면 드래그 차단
+      if (isNodeDragging.value) {
+        console.log("🚨 노드 드래그 감지 → 화면 드래그 차단");
+        isDragging.value = false;
+        return;
+      }
+
       isDragging.value = true;
       lastMousePosition.value = {
         x: event.clientX,
@@ -459,12 +485,24 @@ export default {
     };
 
     const stopDrag = () => {
-      isDragging.value = false;
-      isNodeDragging.value = false;
+      if (!isNodeDragging.value) {
+        isDragging.value = false;
+      }
+      isNodeDragging.value = false; // 노드 드래그 상태 초기화
     };
 
     const dragMove = (event) => {
-      if (!isDragging.value || !myDiagram || isNodeDragging.value) return;
+      if (!isDragging.value || !myDiagram || isNodeDragging.value) {
+        console.log(
+          "⛔ dragMove 실행 중단! isDragging:",
+          isDragging.value,
+          "isNodeDragging:",
+          isNodeDragging.value
+        );
+        return;
+      }
+
+      console.log("📌 dragMove 실행됨! 화면 이동 중...");
 
       const dx = (event.clientX - lastMousePosition.value.x) / myDiagram.scale;
       const dy = (event.clientY - lastMousePosition.value.y) / myDiagram.scale;
@@ -479,6 +517,7 @@ export default {
         y: event.clientY,
       };
     };
+
     //두 손가락 사이의 거리 계산 (줌 기능에 사용)
     const getTouchDistance = (touches) => {
       const dx = touches[0].clientX - touches[1].clientX;
@@ -624,25 +663,28 @@ export default {
     };
 
     const suggestNodes = async () => {
-      console.log("🟢 AI 추천 버튼 클릭됨", selectedNode.value);
-
       if (!selectedNode.value) {
         console.warn("🚨 선택된 노드가 없습니다.");
         return;
       }
 
+      if (!aiParentNode.value) {
+        aiParentNode.value = selectedNode.value; // 🔥 현재 선택된 노드를 AI 추천 부모 노드로 저장
+      }
+
+      console.log("🟢 AI 추천 버튼 클릭됨", aiParentNode.value);
+
       const suggestedNodes = await suggestChildNodes(
         paramProject_id.value,
-        selectedNode.value.key,
+        aiParentNode.value.key, // 🔥 기존 선택된 부모 노드를 유지
         roomId.value
       );
 
       if (suggestedNodes && suggestedNodes.length > 0) {
-        // **숫자를 제거하고 텍스트만 추출**
         const individualSuggestions = suggestedNodes
-          .flatMap(
-            (s) => s.split(",").map((s) => s.trim().replace(/^\d+\.\s*/, "")) // 🔥 정규식 추가
-          )
+          .flatMap((s) =>
+            s.split(",").map((s) => s.trim().replace(/^\d+\.\s*/, ""))
+          ) // 숫자 제거
           .filter(Boolean);
 
         for (const suggestedName of individualSuggestions) {
@@ -650,7 +692,7 @@ export default {
             id: `temp-${Date.now()}`,
             key: `temp-${Date.now()}`,
             name: suggestedName,
-            parent: selectedNode.value.key,
+            parent: aiParentNode.value.key, // 🔥 기존 선택된 부모 노드를 사용
             isSelected: false,
             project_id: paramProject_id.value,
             isSuggested: true,
@@ -661,6 +703,8 @@ export default {
       } else {
         console.error("❌ 추천된 노드를 받아오지 못했습니다.");
       }
+
+      aiParentNode.value = null; // ✅ AI 추천 완료 후 초기화
     };
 
     const addNode = async (isSibling = false) => {
@@ -898,33 +942,45 @@ export default {
 
           // ✅ 드래그 시작 이벤트 (마우스로 드래그하면 true)
           mouseDragEnter: (e, node) => {
+            console.log("🟢 노드 드래그 시작됨!", node.data);
             isNodeDragging.value = true;
+            isDragging.value = false; // 🔥 노드를 드래그하는 동안 화면 드래그 비활성화
           },
 
           // ✅ 드래그 종료 이벤트
           mouseDragLeave: (e, node) => {
+            console.log("🛑 노드 드래그 종료됨!", node.data);
             isNodeDragging.value = false;
+
+            // 화면 드래그 다시 활성화 (단, 다른 노드를 계속 드래그 중이면 활성화하지 않음)
+            if (!myDiagram.selection.first()) {
+              isDragging.value = true;
+            }
           },
 
           // ✅ 드롭 이벤트 (다른 노드 위에 놓았을 때 부모 변경)
           mouseDrop: (e, node) => {
-            const draggedNode = e.diagram.selection.first(); // 드래그한 노드
+            const draggedNode = e.diagram.selection.first();
             if (!draggedNode || draggedNode === node) return;
 
             console.log(
-              "🟢 노드 이동 감지: ",
+              "🟢 노드 이동 감지:",
               draggedNode.data,
               "=>",
               node.data
             );
 
-            // ✅ WebSocket을 통해 서버에 변경된 정보 전달
             socket.emit("move-node", {
-              roomId: roomId.value, // ✅ 현재 방 ID
-              movedNodeId: draggedNode.data.key, // ✅ 이동할 노드 ID
-              newParentId: node.data.key, // ✅ 새로운 부모 노드 ID
-              project_id: paramProject_id.value, // ✅ 프로젝트 ID 추가
+              roomId: roomId.value,
+              movedNodeId: draggedNode.data.key,
+              newParentId: node.data.key,
+              project_id: paramProject_id.value,
             });
+
+            // 🔥 드래그 종료 시 `isNodeDragging` 초기화
+            console.log("✅ 노드 드래그 완료! 위치 변경됨:", node.data);
+            isNodeDragging.value = false;
+            isDragging.value = false; // 🔴 화면 드래그도 비활성화
           },
 
           // ✅ 더블 클릭 시 노드 이름 편집

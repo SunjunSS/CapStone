@@ -8,12 +8,10 @@ module.exports = (io) => {
       const { project_id } = req.params;
 
       if (!project_id || !roomId) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "project_id, roomId가 필요합니다.",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "project_id, roomId가 필요합니다.",
+        });
       }
 
       const response = await nodeService.addNodes(addedNodes, project_id);
@@ -105,17 +103,26 @@ module.exports = (io) => {
         });
       }
 
-      const updatedNode = await nodeService.moveNode(
-        movedNodeId,
-        newParentId,
-        project_id // ✅ project_id 추가
-      );
+      // ✅ 부모 노드가 자식 노드로 이동하는지 검증 후 에러 처리
+      try {
+        const updatedNode = await nodeService.moveNode(
+          movedNodeId,
+          newParentId,
+          project_id
+        );
 
-      if (updatedNode) {
-        io.to(roomId).emit("nodeMoved", updatedNode);
+        if (updatedNode) {
+          io.to(roomId).emit("nodeMoved", updatedNode);
+        }
+
+        res.status(200).json({ success: true, data: updatedNode });
+      } catch (error) {
+        console.error(
+          "🚨 [moveNode] 부모 노드가 자식 노드로 이동할 수 없음:",
+          error.message
+        );
+        return res.status(400).json({ success: false, message: error.message });
       }
-
-      res.status(200).json({ success: true, data: updatedNode });
     } catch (error) {
       console.error("❌ [moveNode] 노드 이동 중 오류 발생:", error.message);
       res.status(500).json({ success: false, message: error.message });
