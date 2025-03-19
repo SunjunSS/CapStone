@@ -7,16 +7,13 @@ module.exports = (io) => {
       const { addedNodes, roomId } = req.body;
       const { project_id } = req.params;
 
-      if (!project_id) {
+      if (!project_id || !roomId) {
         return res
           .status(400)
-          .json({ success: false, message: "project_id가 필요합니다." });
-      }
-
-      if (!roomId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "roomId가 필요합니다." });
+          .json({
+            success: false,
+            message: "project_id, roomId가 필요합니다.",
+          });
       }
 
       const response = await nodeService.addNodes(addedNodes, project_id);
@@ -38,17 +35,11 @@ module.exports = (io) => {
       const { project_id, key } = req.params;
       const { roomId } = req.body;
 
-      if (!project_id || !key) {
+      if (!project_id || !key || !roomId) {
         return res.status(400).json({
           success: false,
-          message: "project_id와 key 값이 필요합니다.",
+          message: "project_id와 key, roomId값이 필요합니다.",
         });
-      }
-
-      if (!roomId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "roomId가 필요합니다." });
       }
 
       // ✅ 노드 삭제 요청 (자식 노드 포함)
@@ -74,17 +65,11 @@ module.exports = (io) => {
       const { project_id, key } = req.params;
       const { name, roomId } = req.body;
 
-      if (!project_id || !key || !name) {
+      if (!project_id || !key || !name || !roomId) {
         return res.status(400).json({
           success: false,
-          message: "project_id, key, name 값이 필요합니다.",
+          message: "project_id, key, name, roomId값이 필요합니다.",
         });
-      }
-
-      if (!roomId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "roomId가 필요합니다." });
       }
 
       const response = await nodeService.updateNode(key, project_id, name);

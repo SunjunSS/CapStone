@@ -282,5 +282,3 @@ exports.getBestMindmapIdea = async (project_id) => {
     throw new Error("AI 프로젝트 분석 중 오류 발생");
   }
 };
-
-//안녕
