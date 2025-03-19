@@ -46,8 +46,8 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
 
     // 파일 삭제
-    // deleteFiles(tempAudioFolder);
-    // deleteFiles(audioFolder);
+    deleteFiles(tempAudioFolder);
+    deleteFiles(audioFolder);
 
     return { openAIResponse, mixedAudioPath };
   } catch (error) {
