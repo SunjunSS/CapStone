@@ -100,6 +100,43 @@ module.exports = (io) => {
     }
   };
 
+  // ✅ 노드 이동 요청 처리
+  const moveNode = async (req, res) => {
+    try {
+      const { movedNodeId, newParentId, roomId } = req.body;
+      const { project_id } = req.params; // ✅ 프로젝트 ID 받아오기
+
+      console.log("📌 [moveNode] API 요청 수신:", {
+        movedNodeId,
+        newParentId,
+        roomId,
+        project_id,
+      });
+
+      if (!movedNodeId || !newParentId || !project_id) {
+        return res.status(400).json({
+          success: false,
+          message: "이동할 노드 ID, 새 부모 ID, project_id가 필요합니다.",
+        });
+      }
+
+      const updatedNode = await nodeService.moveNode(
+        movedNodeId,
+        newParentId,
+        project_id // ✅ project_id 추가
+      );
+
+      if (updatedNode) {
+        io.to(roomId).emit("nodeMoved", updatedNode);
+      }
+
+      res.status(200).json({ success: true, data: updatedNode });
+    } catch (error) {
+      console.error("❌ [moveNode] 노드 이동 중 오류 발생:", error.message);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
   // ✅ 특정 프로젝트의 마인드맵 조회 (기존 코드 유지)
   const getMindmapByProjectId = async (req, res) => {
     try {
@@ -179,6 +216,7 @@ module.exports = (io) => {
     addNodes,
     deleteNode,
     updateNode,
+    moveNode,
     getMindmapByProjectId,
     suggestChildNodesFromRoot,
     getBestMindmapIdea,
