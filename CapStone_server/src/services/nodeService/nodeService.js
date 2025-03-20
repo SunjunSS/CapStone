@@ -60,7 +60,7 @@ exports.createRootNode = async (project_id, project_name, transaction) => {
   }
 };
 
-// 🔴 특정 프로젝트의 특정 노드 삭제 (자식 노드 포함)
+// 🔴 부모 노드 삭제 시, AI 추천 노드도 함께 삭제
 exports.deleteNodeWithChildren = async (id, project_id) => {
   if (!id) {
     throw new Error("삭제할 노드의 id 값이 필요합니다.");
@@ -69,8 +69,9 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
   try {
     const nodeId = parseInt(id, 10);
 
-    // ✅ 삭제 전, 자식 노드 목록을 가져오기 (ID만 추출)
+    // ✅ 삭제 전, 프로젝트의 모든 노드 가져오기
     const nodesToDelete = await nodeRepository.getAllNodesByProject(project_id);
+
     const getAllChildNodes = (parentId) => {
       let toDelete = nodesToDelete.filter(
         (node) => node.parent_key === parentId
@@ -81,19 +82,19 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
       return toDelete;
     };
 
+    // ✅ 삭제할 노드 + 자식 노드 목록 수집
     const nodesToRemove = new Set(
       getAllChildNodes(nodeId).map((node) => node.id)
     );
     nodesToRemove.add(nodeId);
-    const sortedNodesToRemove = [...nodesToRemove];
 
-    console.log(`🗑️ 삭제할 노드 목록 (정렬 완료):`, sortedNodesToRemove);
+    console.log(`🗑️ 삭제할 노드 목록:`, [...nodesToRemove]);
 
     // ✅ 노드 삭제 실행
-    await nodeRepository.deleteNodesByIds(nodeId, project_id);
+    await nodeRepository.deleteNodesByIds([...nodesToRemove], project_id);
 
-    console.log(`🗑️ 요청된 노드 ${nodeId} 및 자식 노드 삭제 완료`);
-    return sortedNodesToRemove;
+    console.log(`🗑️ 요청된 노드 및 하위 노드 삭제 완료`);
+    return [...nodesToRemove];
   } catch (error) {
     console.error("❌ 노드 삭제 중 오류 발생:", error.message);
     throw new Error("노드 삭제 중 오류 발생");
@@ -143,6 +144,56 @@ exports.updateNode = async (id, project_id, name) => {
     console.error("❌ 노드 수정 실패:", error.message);
     throw new Error("노드 수정 중 오류 발생");
   }
+};
+
+// ✅ 노드 이동 서비스 함수 (부모가 자식 노드로 이동하는지 검증 추가)
+exports.moveNode = async (movedNodeId, newParentId, project_id) => {
+  console.log("📌 [moveNode] 서비스 호출됨:", {
+    movedNodeId,
+    newParentId,
+    project_id,
+  });
+
+  const nodes = await nodeRepository.getAllNodesByProject(project_id);
+  if (!nodes || nodes.length === 0) {
+    throw new Error("해당 프로젝트의 노드 데이터를 찾을 수 없습니다.");
+  }
+
+  // 🔍 자식 노드인지 확인하는 재귀 함수
+  const isDescendant = (nodeId, potentialParentId) => {
+    const childNodes = nodes.filter((node) => node.parent_key === nodeId);
+    for (const child of childNodes) {
+      if (
+        child.id === potentialParentId ||
+        isDescendant(child.id, potentialParentId)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // 🚨 부모 노드가 자식 노드로 이동하려는 경우 에러 발생
+  if (isDescendant(movedNodeId, newParentId)) {
+    console.error(
+      "🚨 이동 불가: 부모 노드가 자식 노드의 하위로 이동할 수 없음!",
+      {
+        movedNodeId,
+        newParentId,
+      }
+    );
+    throw new Error("부모 노드는 자식 노드의 하위로 이동할 수 없습니다.");
+  }
+
+  // ✅ 노드 이동 로직 실행
+  const node = await nodeRepository.findNodeById(movedNodeId, project_id);
+  if (!node) throw new Error("노드를 찾을 수 없습니다.");
+
+  node.parent_key = newParentId;
+  await node.save();
+
+  console.log("✅ [moveNode] 노드 부모 업데이트 완료");
+  return node;
 };
 
 // 🟢 특정 프로젝트의 마인드맵 조회

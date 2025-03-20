@@ -1,11 +1,28 @@
-import { socket } from "./socket"; // 기존 소켓 인스턴스 import
+import { socket } from "./socket";
 import * as go from "gojs";
 
 /**
- * MindMap 소켓 이벤트 핸들러 모듈
- * @param {go.Diagram} myDiagram - go.js 다이어그램 객체
- * @param {string} roomId - 참여할 방의 ID
- * @param {string} userId - 참여할 사용자의 ID
+ * 특정 노드가 다른 노드의 하위 노드인지 검사하는 함수
+ * @param {string} nodeId - 이동하려는 노드의 ID
+ * @param {string} newParentId - 이동하려는 부모 노드의 ID
+ * @param {go.Diagram} myDiagram - GoJS 다이어그램 객체
+ * @returns {boolean} - 자식 노드로 이동하면 true, 그렇지 않으면 false
+ */
+const isDescendant = (nodeId, newParentId, myDiagram) => {
+  if (!nodeId || !newParentId) return false;
+
+  let currentNode = myDiagram.findNodeForKey(newParentId);
+  while (currentNode) {
+    if (currentNode.data.key === nodeId) {
+      return true; // 🚨 부모 노드가 자기 자식 노드로 이동하려 하면 true 반환
+    }
+    currentNode = myDiagram.findNodeForKey(currentNode.data.parent);
+  }
+  return false;
+};
+
+/**
+ * MindMap 소켓 이벤트 핸들러 등록
  */
 export const registerSocketHandlers = (myDiagram, roomId, userId) => {
   if (!myDiagram) {
@@ -13,20 +30,16 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     return;
   }
 
-  // ✅ roomId가 computed 속성일 경우, .value 사용
   const roomIdValue = roomId.value ? roomId.value : roomId;
 
-  // ✅ 소켓이 연결되지 않았을 경우 연결 시도
   if (!socket.connected) {
     socket.connect();
     console.log("🔗 소켓 연결 시도...");
   }
 
-  // ✅ 방에 입장하는 로직 추가
   socket.emit("join-room", { roomId: roomIdValue, userId });
   console.log(`🏠 방 입장 요청: Room ID: ${roomIdValue}, User ID: ${userId}`);
 
-  // ✅ 새로운 노드 추가 이벤트
   socket.on("nodeAdded", (newNodes) => {
     console.log("🟢 새로운 노드 추가됨:", newNodes);
 
@@ -37,9 +50,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     myDiagram.commitTransaction("add node");
   });
 
-  console.log("✅ WebSocket 이벤트 리스너 등록 완료");
-
-  // ✅ 노드 수정 이벤트
   socket.on("nodeUpdated", (updatedNode) => {
     console.log("✏️ 노드 수정됨:", updatedNode);
 
@@ -57,7 +67,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     myDiagram.commitTransaction("update node");
   });
 
-  // ✅ 노드 삭제 이벤트
   socket.on("nodeDeleted", (deletedNodeKeys) => {
     console.log("🗑️ 삭제된 노드 리스트:", deletedNodeKeys);
 
@@ -70,8 +79,22 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.startTransaction("delete nodes");
 
-    // ✅ Set을 사용하여 중복 방지
     const nodesToDelete = new Set(deletedNodeKeys);
+
+    deletedNodeKeys.forEach((parentKey) => {
+      myDiagram.model.nodeDataArray.forEach((node) => {
+        if (node.parent === parentKey) {
+          nodesToDelete.add(node.key);
+        }
+      });
+    });
+
+    const selectedNodeKey = myDiagram.selection.first()?.data?.key;
+    let shouldResetSelection = false;
+
+    if (selectedNodeKey && nodesToDelete.has(selectedNodeKey)) {
+      shouldResetSelection = true;
+    }
 
     nodesToDelete.forEach((nodeKey) => {
       const node = myDiagram.model.findNodeDataForKey(nodeKey);
@@ -82,7 +105,82 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.commitTransaction("delete nodes");
 
+    if (shouldResetSelection) {
+      myDiagram.clearSelection();
+      window.dispatchEvent(
+        new CustomEvent("node-deleted", { detail: { resetSelection: true } })
+      );
+    }
+
     console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
+  });
+
+  // ✅ 노드 이동 이벤트 (부모가 자식으로 이동하는 것을 방지)
+  socket.on("nodeMoved", (updatedNode) => {
+    console.log("🔄 [Vue] 노드 이동 이벤트 수신:", updatedNode);
+
+    const nodeData = updatedNode.dataValues || updatedNode;
+    const nodeId = nodeData.id;
+    const newParentId = nodeData.parent_key;
+
+    console.log(
+      `🔍 [Vue] 노드 이동 처리: 노드 ID ${nodeId}, 새 부모 ID ${newParentId}`
+    );
+
+    if (!nodeId) {
+      console.error("🚨 [Vue] 노드 ID 없음:", nodeData);
+      return;
+    }
+
+    // 🚨 부모가 자식으로 이동하는지 검사
+    if (isDescendant(nodeId, newParentId, myDiagram)) {
+      console.warn(
+        "🚨 이동 불가: 부모 노드가 자식 노드의 하위로 이동할 수 없음!",
+        {
+          nodeId,
+          newParentId,
+        }
+      );
+
+      // ❌ 클라이언트에 에러 메시지 전송
+      socket.emit("move-node-error", {
+        roomId: roomIdValue,
+        message: "부모 노드는 자식 노드의 하위로 이동할 수 없습니다.",
+      });
+
+      return;
+    }
+
+    const node =
+      myDiagram.findNodeForKey(nodeId) ||
+      myDiagram.findNodeForKey(String(nodeId));
+
+    if (node) {
+      console.log("✅ [Vue] 노드 찾음:", node.key);
+
+      myDiagram.startTransaction("move node");
+
+      const parentFieldName = "parent";
+      const nodeDataObj = node.data || node;
+
+      myDiagram.model.setDataProperty(
+        nodeDataObj,
+        parentFieldName,
+        newParentId
+      );
+
+      myDiagram.commitTransaction("move node");
+
+      myDiagram.layout.invalidateLayout();
+      myDiagram.requestUpdate();
+
+      console.log(
+        `✅ [Vue] 노드 부모 업데이트 완료: ${nodeId} → ${newParentId}`
+      );
+    } else {
+      console.warn(`🚨 [Vue] 노드 찾기 실패: ${nodeId}`);
+      myDiagram.nodes.each((n) => console.log(n.key));
+    }
   });
 
   console.log("✅ WebSocket 이벤트 리스너 등록 완료");
@@ -90,8 +188,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
 /**
  * WebSocket 이벤트 해제 함수 (컴포넌트 언마운트 시 호출)
- * @param {string} roomId - 방 ID
- * @param {string} userId - 사용자 ID
  */
 export const unregisterSocketHandlers = (roomId, userId) => {
   if (!roomId || !userId) {
@@ -105,8 +201,8 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeAdded");
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
+  socket.off("nodeMoved");
 
-  // 방에서 나가기
   if (roomIdValue) {
     socket.emit("leave-room", { roomId: roomIdValue, userId });
     console.log(`🚪 ${userId} 님이 ${roomIdValue} 방에서 나감`);

@@ -1,4 +1,5 @@
 const loginHandler = require("./LoginHandler.js");
+const nodeService = require("../services/nodeService/nodeService"); // ✅ nodeService 추가
 // const mainHomeHandler = require("./mainHomeHandler");
 
 const rooms = {};
@@ -163,6 +164,34 @@ module.exports = (io) => {
         }
       }
     });
+
+    // ✅ 노드 이동 이벤트 처리
+    socket.on(
+      "move-node",
+      async ({ movedNodeId, newParentId, roomId, project_id }) => {
+        console.log("📡 [Socket] move-node 이벤트 수신:", {
+          movedNodeId,
+          newParentId,
+          roomId,
+          project_id,
+        });
+
+        try {
+          const updatedNode = await nodeService.moveNode(
+            movedNodeId,
+            newParentId,
+            project_id
+          );
+
+          console.log("📡 [Socket] 이동된 노드 브로드캐스트:", updatedNode);
+
+          // ✅ 방(roomId)의 모든 참가자에게 이동된 노드 정보를 전송
+          io.to(roomId).emit("nodeMoved", updatedNode);
+        } catch (error) {
+          console.error("❌ [Socket] 노드 이동 중 오류 발생:", error.message);
+        }
+      }
+    );
 
     // WebRTC 시그널링 처리
     socket.on("signal", ({ targetId, signal }) => {
