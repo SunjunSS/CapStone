@@ -66,8 +66,8 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData) {
      - **새로운 내용을 창작하지 말고, 기존 노드에서 확장할 수 있는 주제를 선택하세요.**
      - **추천 노드는 반드시 기존 노드의 주제와 관련된 내용을 포함해야 합니다.**
      - **각 노드는 기존 노드 중 관련성이 높은 parent_key를 가져야 합니다.**
-     - **노드 ID는 auto_increment로 가정하고, project_id는 기존 노드와 동일하게 설정하세요.**
-     - **isSelected는 false로 설정하세요.**
+     - **project_id는 주어진 노드와 동일하게 설정하세요.**
+   
 
 
 
