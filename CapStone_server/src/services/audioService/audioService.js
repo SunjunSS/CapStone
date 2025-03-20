@@ -5,6 +5,7 @@ const { mixAudio } = require("./audioMix");
 const { callClovaSpeechAPI } = require("./callClovaSpeech");
 const { askOpenAI } = require("./callOpenAI");
 const { deleteFiles } = require("./deleteFiles");
+const nodeService = require("../nodeService/nodeService")
 
 const audioFolder = path.join(__dirname, "../../../storage/audio");
 const tempAudioFolder = path.join(__dirname, "../../../storage/temp_audio");
@@ -41,7 +42,12 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     }
 
     // OpenAI에 전달할 데이터 준비
-    const openAIResponse = await askOpenAI(userSpeech, speakerNames);
+
+    const { success, data } = await nodeService.getMindmapByProjectId(1)
+    
+    const nodeData = data
+
+    const openAIResponse = await askOpenAI(userSpeech, speakerNames, nodeData);
 
     const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
 
