@@ -91,7 +91,7 @@ module.exports = (io) => {
         const mp3Buffer = fs.readFileSync(mixedAudioPath);
 
         io.to(roomId).emit("return-recording", {
-          openAIResponse,
+          recordingData: openAIResponse,
           fileBuffer: mp3Buffer.toString("base64"),
         });
 

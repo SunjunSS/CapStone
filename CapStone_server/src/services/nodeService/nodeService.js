@@ -200,7 +200,7 @@ exports.moveNode = async (movedNodeId, newParentId, project_id) => {
 exports.getMindmapByProjectId = async (project_id) => {
   try {
     const nodes = await nodeRepository.getAllNodesByProject(project_id);
-
+    console.log(`📌가져온 데이터: ${nodes}`);
     return {
       success: true,
       data: nodes.map(
