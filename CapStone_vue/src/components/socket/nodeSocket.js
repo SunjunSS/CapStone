@@ -1,11 +1,28 @@
-import { socket } from "./socket"; // 기존 소켓 인스턴스 import
+import { socket } from "./socket";
 import * as go from "gojs";
 
 /**
- * MindMap 소켓 이벤트 핸들러 모듈
- * @param {go.Diagram} myDiagram - go.js 다이어그램 객체
- * @param {string} roomId - 참여할 방의 ID
- * @param {string} userId - 참여할 사용자의 ID
+ * 특정 노드가 다른 노드의 하위 노드인지 검사하는 함수
+ * @param {string} nodeId - 이동하려는 노드의 ID
+ * @param {string} newParentId - 이동하려는 부모 노드의 ID
+ * @param {go.Diagram} myDiagram - GoJS 다이어그램 객체
+ * @returns {boolean} - 자식 노드로 이동하면 true, 그렇지 않으면 false
+ */
+const isDescendant = (nodeId, newParentId, myDiagram) => {
+  if (!nodeId || !newParentId) return false;
+
+  let currentNode = myDiagram.findNodeForKey(newParentId);
+  while (currentNode) {
+    if (currentNode.data.key === nodeId) {
+      return true; // 🚨 부모 노드가 자기 자식 노드로 이동하려 하면 true 반환
+    }
+    currentNode = myDiagram.findNodeForKey(currentNode.data.parent);
+  }
+  return false;
+};
+
+/**
+ * MindMap 소켓 이벤트 핸들러 등록
  */
 export const registerSocketHandlers = (myDiagram, roomId, userId) => {
   if (!myDiagram) {
@@ -13,20 +30,16 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     return;
   }
 
-  // ✅ roomId가 computed 속성일 경우, .value 사용
   const roomIdValue = roomId.value ? roomId.value : roomId;
 
-  // ✅ 소켓이 연결되지 않았을 경우 연결 시도
   if (!socket.connected) {
     socket.connect();
     console.log("🔗 소켓 연결 시도...");
   }
 
-  // ✅ 방에 입장하는 로직 추가
   socket.emit("join-room", { roomId: roomIdValue, userId });
   console.log(`🏠 방 입장 요청: Room ID: ${roomIdValue}, User ID: ${userId}`);
 
-  // ✅ 새로운 노드 추가 이벤트
   socket.on("nodeAdded", (newNodes) => {
     console.log("🟢 새로운 노드 추가됨:", newNodes);
 
@@ -37,7 +50,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     myDiagram.commitTransaction("add node");
   });
 
-  // ✅ 노드 수정 이벤트
   socket.on("nodeUpdated", (updatedNode) => {
     console.log("✏️ 노드 수정됨:", updatedNode);
 
@@ -55,7 +67,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     myDiagram.commitTransaction("update node");
   });
 
-  // ✅ 노드 삭제 이벤트
   socket.on("nodeDeleted", (deletedNodeKeys) => {
     console.log("🗑️ 삭제된 노드 리스트:", deletedNodeKeys);
 
@@ -68,19 +79,16 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.startTransaction("delete nodes");
 
-    // ✅ 삭제할 노드 집합
     const nodesToDelete = new Set(deletedNodeKeys);
 
-    // 🔥 삭제할 노드의 모든 자식 노드를 추가적으로 찾기
     deletedNodeKeys.forEach((parentKey) => {
       myDiagram.model.nodeDataArray.forEach((node) => {
         if (node.parent === parentKey) {
-          nodesToDelete.add(node.key); // 부모가 삭제되면 자식도 삭제 대상
+          nodesToDelete.add(node.key);
         }
       });
     });
 
-    // 🔥 현재 선택된 노드가 삭제 대상 목록에 있는지 확인하고, 있다면 선택 상태 초기화
     const selectedNodeKey = myDiagram.selection.first()?.data?.key;
     let shouldResetSelection = false;
 
@@ -97,12 +105,8 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.commitTransaction("delete nodes");
 
-    // 🔥 삭제된 노드가 현재 선택된 노드였다면, 다이어그램의 선택 해제 및 selectedNode 초기화
     if (shouldResetSelection) {
       myDiagram.clearSelection();
-
-      // Vue 컴포넌트의 selectedNode 초기화 (MindMap.vue의 ref)
-      // 외부에서 접근 가능한 방식으로 상태 초기화
       window.dispatchEvent(
         new CustomEvent("node-deleted", { detail: { resetSelection: true } })
       );
@@ -111,14 +115,11 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
   });
 
-  // ✅ 서버로부터 노드 이동 이벤트를 받아 적용
+  // ✅ 노드 이동 이벤트 (부모가 자식으로 이동하는 것을 방지)
   socket.on("nodeMoved", (updatedNode) => {
     console.log("🔄 [Vue] 노드 이동 이벤트 수신:", updatedNode);
 
-    // 서버에서 보낸 데이터 구조 확인
     const nodeData = updatedNode.dataValues || updatedNode;
-
-    // 노드 ID와 새 부모 ID 추출
     const nodeId = nodeData.id;
     const newParentId = nodeData.parent_key;
 
@@ -131,8 +132,25 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
       return;
     }
 
-    // GoJS 다이어그램 모델에서 노드 검색
-    // 주의: GoJS에서 사용하는 키 이름이 서버의 ID와 다를 수 있음
+    // 🚨 부모가 자식으로 이동하는지 검사
+    if (isDescendant(nodeId, newParentId, myDiagram)) {
+      console.warn(
+        "🚨 이동 불가: 부모 노드가 자식 노드의 하위로 이동할 수 없음!",
+        {
+          nodeId,
+          newParentId,
+        }
+      );
+
+      // ❌ 클라이언트에 에러 메시지 전송
+      socket.emit("move-node-error", {
+        roomId: roomIdValue,
+        message: "부모 노드는 자식 노드의 하위로 이동할 수 없습니다.",
+      });
+
+      return;
+    }
+
     const node =
       myDiagram.findNodeForKey(nodeId) ||
       myDiagram.findNodeForKey(String(nodeId));
@@ -142,14 +160,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
       myDiagram.startTransaction("move node");
 
-      // GoJS 모델에서 사용하는 부모 필드명 확인
-      // 모델에 따라 'parent', 'group', 'parentId' 등 다양한 이름을 사용할 수 있음
       const parentFieldName = "parent";
-
-      // 노드 데이터 객체 가져오기
       const nodeDataObj = node.data || node;
 
-      // 부모 노드 업데이트
       myDiagram.model.setDataProperty(
         nodeDataObj,
         parentFieldName,
@@ -158,7 +171,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
       myDiagram.commitTransaction("move node");
 
-      // 레이아웃 강제 업데이트
       myDiagram.layout.invalidateLayout();
       myDiagram.requestUpdate();
 
@@ -167,9 +179,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
       );
     } else {
       console.warn(`🚨 [Vue] 노드 찾기 실패: ${nodeId}`);
-
-      // 다이어그램의 모든 노드 키 출력하여 디버깅
-      console.log("🔍 [Vue] 현재 다이어그램 노드 키 목록:");
       myDiagram.nodes.each((n) => console.log(n.key));
     }
   });
@@ -179,8 +188,6 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
 /**
  * WebSocket 이벤트 해제 함수 (컴포넌트 언마운트 시 호출)
- * @param {string} roomId - 방 ID
- * @param {string} userId - 사용자 ID
  */
 export const unregisterSocketHandlers = (roomId, userId) => {
   if (!roomId || !userId) {
@@ -194,9 +201,8 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeAdded");
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
-  socket.off("nodeMoved"); // nodeMoved 이벤트도 해제
+  socket.off("nodeMoved");
 
-  // 방에서 나가기
   if (roomIdValue) {
     socket.emit("leave-room", { roomId: roomIdValue, userId });
     console.log(`🚪 ${userId} 님이 ${roomIdValue} 방에서 나감`);

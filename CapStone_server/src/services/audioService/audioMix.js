@@ -20,6 +20,14 @@ async function mixAudio(folderPath, outputPath) {
         );
       }
 
+      // 🎯 오디오 파일이 1개라면 믹싱 없이 그대로 반환
+      if (inputPaths.length === 1) {
+        console.log(
+          `🎵 Only one audio file found. Skipping mixing: ${inputPaths[0]}`
+        );
+        return resolve(inputPaths[0]);
+      }
+
       // 파일 이름 가져오기
       const fileNames = inputPaths.map((file) => path.basename(file, ".mp3"));
 
@@ -27,7 +35,6 @@ async function mixAudio(folderPath, outputPath) {
       const outputFileName = `${fileNames.join("+")}.mp3`;
       const outputFilePath = path.join(outputPath, outputFileName);
 
-      
       console.log(`🔹 Mixing files: ${inputPaths.join(", ")}`);
       console.log(`🔹 Output file: ${outputFilePath}`);
 

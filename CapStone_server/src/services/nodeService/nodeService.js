@@ -146,7 +146,7 @@ exports.updateNode = async (id, project_id, name) => {
   }
 };
 
-// ✅ 노드 이동 서비스 함수
+// ✅ 노드 이동 서비스 함수 (부모가 자식 노드로 이동하는지 검증 추가)
 exports.moveNode = async (movedNodeId, newParentId, project_id) => {
   console.log("📌 [moveNode] 서비스 호출됨:", {
     movedNodeId,
@@ -154,7 +154,39 @@ exports.moveNode = async (movedNodeId, newParentId, project_id) => {
     project_id,
   });
 
-  const node = await nodeRepository.findNodeById(movedNodeId, project_id); // ✅ project_id 추가
+  const nodes = await nodeRepository.getAllNodesByProject(project_id);
+  if (!nodes || nodes.length === 0) {
+    throw new Error("해당 프로젝트의 노드 데이터를 찾을 수 없습니다.");
+  }
+
+  // 🔍 자식 노드인지 확인하는 재귀 함수
+  const isDescendant = (nodeId, potentialParentId) => {
+    const childNodes = nodes.filter((node) => node.parent_key === nodeId);
+    for (const child of childNodes) {
+      if (
+        child.id === potentialParentId ||
+        isDescendant(child.id, potentialParentId)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // 🚨 부모 노드가 자식 노드로 이동하려는 경우 에러 발생
+  if (isDescendant(movedNodeId, newParentId)) {
+    console.error(
+      "🚨 이동 불가: 부모 노드가 자식 노드의 하위로 이동할 수 없음!",
+      {
+        movedNodeId,
+        newParentId,
+      }
+    );
+    throw new Error("부모 노드는 자식 노드의 하위로 이동할 수 없습니다.");
+  }
+
+  // ✅ 노드 이동 로직 실행
+  const node = await nodeRepository.findNodeById(movedNodeId, project_id);
   if (!node) throw new Error("노드를 찾을 수 없습니다.");
 
   node.parent_key = newParentId;
@@ -168,7 +200,7 @@ exports.moveNode = async (movedNodeId, newParentId, project_id) => {
 exports.getMindmapByProjectId = async (project_id) => {
   try {
     const nodes = await nodeRepository.getAllNodesByProject(project_id);
-
+    console.log(`📌가져온 데이터: ${nodes}`);
     return {
       success: true,
       data: nodes.map(
