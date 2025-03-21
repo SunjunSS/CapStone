@@ -1,3 +1,5 @@
+--디자인 변경+기존존--
+
 <template>
   <div class="app-container">
     <!-- Sidebar for WebRTC -->
@@ -852,7 +854,7 @@ export default {
           arrangement: go.TreeLayout.ArrangementHorizontal,
           alignment: go.TreeLayout.AlignmentCenterChildren,
           compaction: go.TreeLayout.CompactionNone,
-          layerStyle: go.TreeLayout.LayerUniform,
+          layerStyle: go.TreeLayout.LayerIndividual,
         }),
         model: $(go.TreeModel),
         "animationManager.isEnabled": true,
@@ -1039,9 +1041,13 @@ export default {
             const completeEditing = async () => {
               if (!activeInputField.value) return;
 
-              const updatedText = activeInputField.value.value
-                .replace(editEmoji, "")
+              let updatedText = activeInputField.value.value
+                .replace("✏️ ", "")
                 .trim();
+
+              if (!updatedText) {
+                updatedText = "새 노드"; // 빈 값이면 기본 텍스트로 대체
+              }
 
               if (document.body.contains(activeInputField.value)) {
                 document.body.removeChild(activeInputField.value);
@@ -1057,11 +1063,16 @@ export default {
 
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
+              myDiagram.startTransaction("update text");
+              myDiagram.layoutDiagram(true);
+              myDiagram.commitTransaction("update text");
+
               const success = await updateMindmapNode(
                 node.data,
                 paramProject_id.value,
                 roomId.value
               );
+
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
               } else {
@@ -1072,6 +1083,21 @@ export default {
             inputField.addEventListener("input", handleInput);
             inputField.addEventListener("blur", completeEditing);
             inputField.addEventListener("keydown", handleTextFieldKeyDown);
+
+            // 🔥 이 부분을 여기에 추가
+            inputField.addEventListener("keydown", (e) => {
+              const isSelectAll =
+                (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
+
+              if (isSelectAll) {
+                e.preventDefault();
+                const emojiOffset = editEmoji.length;
+                inputField.setSelectionRange(
+                  emojiOffset,
+                  inputField.value.length
+                );
+              }
+            });
           },
         },
 
@@ -1097,13 +1123,14 @@ export default {
               portId: "",
               fromSpot: go.Spot.RightSide,
               toSpot: go.Spot.LeftSide,
+              parameter1: 20,
             },
             // ✅ 루트 노드는 배경색 변경
             new go.Binding("fill", "parent", (p) =>
-              p === 0 ? "#FFF612" : "white"
+              p === 0 ? "#FFA500" : "white"
             ),
             new go.Binding("stroke", "isSelected", (s) =>
-              s ? "blue" : "rgba(0, 0, 255, .15)"
+              s ? "rgb(0, 170, 255)" : "rgba(0, 0, 255, .15)"
             ),
             // ✅ AI 추천 노드는 점선 처리
             new go.Binding("strokeDashArray", "isSuggested", (isSuggested) =>
@@ -1137,11 +1164,15 @@ export default {
               go.TextBlock,
               {
                 name: "NAME_TEXTBLOCK",
-                font: "14px sans-serif",
-                stroke: "black",
               },
               new go.Binding("text", "name", (name) =>
                 name ? name.replace(/^\*/, "") : ""
+              ),
+              new go.Binding("stroke", "parent", (p) =>
+                p === 0 ? "#FFFFFF" : "black"
+              ),
+              new go.Binding("font", "parent", (p) =>
+                p === 0 ? "bold 22px 'Arial'" : "bold 14px 'Arial'"
               )
             )
           )
@@ -1574,13 +1605,13 @@ export default {
 }
 
 .ai-suggest-btn-enabled {
-  background: #ff9800;
+  background: #e040fb;
   color: white;
   cursor: pointer;
 }
 
 .ai-suggest-btn-enabled:hover {
-  background: #fb8c00;
+  background: #d500f9;
 }
 
 button:focus {
