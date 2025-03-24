@@ -45,7 +45,7 @@ export const getUserProjects = async (userId) => {
 
 export const deleteProject = async (projectId) => {
   try {
-    await axios.delete(`/api/projects/${projectId}`);
+    await axios.delete(`${getProjectUrl()}/${projectId}`);
   } catch (error) {
     console.error("프로젝트 삭제 오류:", error);
     throw error;
@@ -55,12 +55,30 @@ export const deleteProject = async (projectId) => {
 export const updateProject = async (projectId, updatedData) => {
   try {
     const response = await axios.patch(
-      `/api/projects/${projectId}`,
+      `${getProjectUrl()}/${projectId}`,
       updatedData
     );
     return response.data;
   } catch (error) {
     console.error("프로젝트 수정 오류:", error);
+    throw error;
+  }
+};
+
+export const addUserToProject = async (projectId, email, role) => {
+  try {
+    const response = await axios.post(
+      `${getProjectUrl()}/${projectId}/members`,
+      {
+        email: email,
+        role: role,
+      }
+    );
+
+    console.log("🟢 유저 추가 응답:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ 프로젝트에 유저 추가 오류:", error);
     throw error;
   }
 };

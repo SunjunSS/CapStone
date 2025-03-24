@@ -151,6 +151,7 @@ import {
   registerSocketHandlers,
   unregisterSocketHandlers,
 } from "../socket/nodeSocket.js"; // ✅ WebSocket 핸들러 모듈 import
+import { addUserToProject } from "@/api/projectApi";
 
 export default {
   components: {
@@ -239,12 +240,11 @@ export default {
       }
 
       try {
-        // 서버에 초대 요청 전송
-        await axios.post("/api/mindmap/invite", {
-          email: inviteEmail.value,
-          role: selectedRole.value,
-          project_id: paramProject_id.value,
-        });
+        await addUserToProject(
+          paramProject_id.value,
+          inviteEmail.value,
+          selectedRole.value
+        );
 
         alert("초대가 완료되었습니다.");
         closeInviteModal();
