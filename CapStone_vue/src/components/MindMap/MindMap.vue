@@ -1,3 +1,5 @@
+--팀원초대 모듈 추가--
+
 <template>
   <div class="app-container">
     <!-- Sidebar for WebRTC -->
@@ -88,10 +90,45 @@
           >
             AI 추천
           </button>
+
+          <!-- 🔹 팀원 초대 버튼 추가 -->
+          <button @click="openInviteModal" class="invite-btn">팀원 초대</button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- 🔹 팀원 초대 모달 -->
+  <teleport to="body">
+    <div
+      v-if="isInviteModalOpen"
+      class="modal-overlay"
+      @click="closeInviteModal"
+    >
+      <div class="modal-content" @click.stop>
+        <h2>{{ rootNodeName }} 공유하기</h2>
+
+        <label for="invite-email">초대할 이메일</label>
+        <input
+          type="email"
+          id="invite-email"
+          v-model="inviteEmail"
+          placeholder="팀원이나 그룹 추가"
+        />
+
+        <label for="invite-role">역할 선택</label>
+        <select id="invite-role" v-model="selectedRole">
+          <option value="viewer">뷰어</option>
+          <option value="editor">편집자</option>
+        </select>
+
+        <div class="modal-buttons">
+          <button @click="sendInvite" class="confirm-btn">초대</button>
+          <button @click="closeInviteModal" class="cancel-btn">취소</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
 </template>
 
 <script>
@@ -172,6 +209,50 @@ export default {
     // 현재 편집 중인 노드와 입력 필드를 추적하기 위한 refs
     const activeEditNode = ref(null);
     const activeInputField = ref(null);
+
+    const isInviteModalOpen = ref(false);
+    const inviteEmail = ref("");
+    const selectedRole = ref("viewer");
+    const rootNodeName = ref("마인드맵"); // 루트 노드 이름 저장
+
+    // 🔹 팀원 초대 관련 함수 추가
+    const openInviteModal = () => {
+      // 루트 노드 이름 가져오기
+      const rootNode = myDiagram.model.nodeDataArray.find(
+        (node) => node.parent === 0
+      );
+      rootNodeName.value = rootNode ? `"${rootNode.name}"` : `"마인드맵"`;
+
+      isInviteModalOpen.value = true;
+    };
+
+    const closeInviteModal = () => {
+      isInviteModalOpen.value = false;
+      inviteEmail.value = "";
+      selectedRole.value = "viewer";
+    };
+
+    const sendInvite = async () => {
+      if (!inviteEmail.value.trim()) {
+        alert("이메일을 입력하세요.");
+        return;
+      }
+
+      try {
+        // 서버에 초대 요청 전송
+        await axios.post("/api/mindmap/invite", {
+          email: inviteEmail.value,
+          role: selectedRole.value,
+          project_id: paramProject_id.value,
+        });
+
+        alert("초대가 완료되었습니다.");
+        closeInviteModal();
+      } catch (error) {
+        console.error("초대 실패:", error);
+        alert("초대에 실패했습니다.");
+      }
+    };
 
     // 입력 필드 위치와 크기를 업데이트하는 함수
     const updateInputFieldPosition = () => {
@@ -852,7 +933,7 @@ export default {
           arrangement: go.TreeLayout.ArrangementHorizontal,
           alignment: go.TreeLayout.AlignmentCenterChildren,
           compaction: go.TreeLayout.CompactionNone,
-          layerStyle: go.TreeLayout.LayerUniform,
+          layerStyle: go.TreeLayout.LayerIndividual,
         }),
         model: $(go.TreeModel),
         "animationManager.isEnabled": true,
@@ -1039,9 +1120,13 @@ export default {
             const completeEditing = async () => {
               if (!activeInputField.value) return;
 
-              const updatedText = activeInputField.value.value
-                .replace(editEmoji, "")
+              let updatedText = activeInputField.value.value
+                .replace("✏️ ", "")
                 .trim();
+
+              if (!updatedText) {
+                updatedText = "새 노드"; // 빈 값이면 기본 텍스트로 대체
+              }
 
               if (document.body.contains(activeInputField.value)) {
                 document.body.removeChild(activeInputField.value);
@@ -1057,11 +1142,16 @@ export default {
 
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
 
+              myDiagram.startTransaction("update text");
+              myDiagram.layoutDiagram(true);
+              myDiagram.commitTransaction("update text");
+
               const success = await updateMindmapNode(
                 node.data,
                 paramProject_id.value,
                 roomId.value
               );
+
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
               } else {
@@ -1072,6 +1162,21 @@ export default {
             inputField.addEventListener("input", handleInput);
             inputField.addEventListener("blur", completeEditing);
             inputField.addEventListener("keydown", handleTextFieldKeyDown);
+
+            // 🔥 이 부분을 여기에 추가
+            inputField.addEventListener("keydown", (e) => {
+              const isSelectAll =
+                (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
+
+              if (isSelectAll) {
+                e.preventDefault();
+                const emojiOffset = editEmoji.length;
+                inputField.setSelectionRange(
+                  emojiOffset,
+                  inputField.value.length
+                );
+              }
+            });
           },
         },
 
@@ -1097,13 +1202,14 @@ export default {
               portId: "",
               fromSpot: go.Spot.RightSide,
               toSpot: go.Spot.LeftSide,
+              parameter1: 20,
             },
             // ✅ 루트 노드는 배경색 변경
             new go.Binding("fill", "parent", (p) =>
-              p === 0 ? "#FFF612" : "white"
+              p === 0 ? "#FFA500" : "white"
             ),
             new go.Binding("stroke", "isSelected", (s) =>
-              s ? "blue" : "rgba(0, 0, 255, .15)"
+              s ? "rgb(0, 170, 255)" : "rgba(0, 0, 255, .15)"
             ),
             // ✅ AI 추천 노드는 점선 처리
             new go.Binding("strokeDashArray", "isSuggested", (isSuggested) =>
@@ -1137,11 +1243,15 @@ export default {
               go.TextBlock,
               {
                 name: "NAME_TEXTBLOCK",
-                font: "14px sans-serif",
-                stroke: "black",
               },
               new go.Binding("text", "name", (name) =>
                 name ? name.replace(/^\*/, "") : ""
+              ),
+              new go.Binding("stroke", "parent", (p) =>
+                p === 0 ? "#FFFFFF" : "black"
+              ),
+              new go.Binding("font", "parent", (p) =>
+                p === 0 ? "bold 22px 'Arial'" : "bold 14px 'Arial'"
               )
             )
           )
@@ -1247,19 +1357,36 @@ export default {
       deleteSelectedNode,
       addNode,
       suggestNodes,
-      captureMindmap, // 캡처 함수 추가
+      captureMindmap,
       goToDrawing,
-      isToastVisible, // 토스트 가시성 상태 추가
-      toastMessage, // 토스트 메시지 추가
-      isToastError, // 토스트 에러 상태 추가
+
+      // ✅ 토스트 관련
+      isToastVisible,
+      toastMessage,
+      isToastError,
+
+      // ✅ 서버 상태 관련
       isSaving,
       lastSaveTime,
       serverError,
+
+      // ✅ 라우팅 및 사용자 정보
       paramProject_id,
       roomId,
       userId,
+
+      // ✅ 노드 편집 관련
       activeEditNode,
       activeInputField,
+
+      // ✅ 팀원 초대 모달 관련 (새로 추가됨)
+      isInviteModalOpen,
+      inviteEmail,
+      selectedRole,
+      rootNodeName,
+      openInviteModal,
+      closeInviteModal,
+      sendInvite,
     };
   },
 };
@@ -1303,12 +1430,11 @@ export default {
   justify-content: center;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  color: #333; /* 텍스트 색상 추가 */
-  font-size: 14px; /* 텍스트 크기 지정 */
-  font-weight: bold; /* 텍스트를 굵게 */
+  color: #333;
+  font-size: 14px;
+  font-weight: bold;
 }
 
-/* 호버 효과 추가 */
 .sidebar-toggle:hover {
   background-color: #f5f5f5;
 }
@@ -1317,6 +1443,12 @@ export default {
   height: 100%;
   overflow-y: auto;
   padding: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  display: none;
 }
 
 .main-content {
@@ -1372,6 +1504,32 @@ export default {
   transition: all 0.3s ease;
 }
 
+.zoom-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.zoom-btn:hover {
+  background: #e0e0e0;
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 .delete-control {
   position: fixed;
   right: 20px;
@@ -1410,32 +1568,6 @@ export default {
   background: #ff0000;
 }
 
-.zoom-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #f0f0f0;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
-}
-
-.zoom-btn:hover {
-  background: #e0e0e0;
-}
-
-.zoom-level {
-  min-width: 50px;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 500;
-}
-
 .add-controls {
   position: fixed;
   right: 20px;
@@ -1453,7 +1585,7 @@ export default {
 .add-btn {
   padding: 8px 16px;
   border: none;
-  background: #d3d3d3; /* disabled 상태의 기본 색상 */
+  background: #d3d3d3;
   color: #666;
   border-radius: 4px;
   cursor: not-allowed;
@@ -1471,27 +1603,6 @@ export default {
   background: #8a5bea;
 }
 
-.mindmap-wrapper:focus {
-  outline: none;
-  box-shadow: 0 0 2px 2px rgba(0, 0, 255, 0.2);
-}
-
-.sidebar-content {
-  height: 100%;
-  overflow-y: auto;
-  padding: 20px;
-  /* 스크롤바 숨기기를 위한 CSS 추가 */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-/* Webkit (Chrome, Safari, Opera) 브라우저용 스크롤바 숨기기 */
-.sidebar-content::-webkit-scrollbar {
-  display: none;
-}
-
-/* 캡처 버튼 스타일 */
-
 .capture-btn {
   padding: 8px 16px;
   border: none;
@@ -1507,7 +1618,57 @@ export default {
   background: #45a049;
 }
 
-/* 토스트 메시지 스타일 */
+.drawing-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #8d6e63;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.drawing-btn:hover {
+  background: #0b7dda;
+}
+
+.ai-suggest-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #d3d3d3;
+  color: #666;
+  border-radius: 4px;
+  cursor: not-allowed;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.ai-suggest-btn-enabled {
+  background: #e040fb;
+  color: white;
+  cursor: pointer;
+}
+
+.ai-suggest-btn-enabled:hover {
+  background: #d500f9;
+}
+
+.invite-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #0898ff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.invite-btn:hover {
+  background: #0079d3;
+}
+
 .toast-message {
   position: fixed;
   top: 20px;
@@ -1545,45 +1706,105 @@ export default {
   }
 }
 
-/* 드로잉 버튼 스타일 */
-.drawing-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #2196f3;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
+/* ✅ 초대 모달 개선 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.modal-content {
+  background: linear-gradient(to bottom, #ffffff, #f7f7f7);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  width: 420px;
+  text-align: center;
+  animation: fadeSlideIn 0.3s ease-out;
+}
+
+.modal-content h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 2px solid #ddd;
+  border-radius: 8px;
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
 }
 
-.drawing-btn:hover {
-  background: #0b7dda;
+.modal-content input:focus,
+.modal-content select:focus {
+  border-color: #0898ff;
+  box-shadow: 0 0 6px rgba(8, 152, 255, 0.3);
+  outline: none;
 }
 
-/* AI 추천 버튼 스타일 추가 */
-.ai-suggest-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #d3d3d3;
-  color: #666;
-  border-radius: 4px;
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: all 0.3s ease;
+.modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
 }
 
-.ai-suggest-btn-enabled {
-  background: #ff9800;
+.confirm-btn {
+  background: #0898ff;
   color: white;
+  border: none;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 0.3s ease;
 }
 
-.ai-suggest-btn-enabled:hover {
-  background: #fb8c00;
+.confirm-btn:hover {
+  background: #0079d3;
+}
+
+.cancel-btn {
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background: #c7c7c7;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 button:focus {
-  outline: none; /* 포커스 테두리 제거 */
+  outline: none;
 }
 </style>
