@@ -3,10 +3,10 @@ const router = express.Router();
 const projectController = require("../controllers/projectController.js");
 
 // 프로젝트에 대한 CRUD
-router.post("/", projectController.createProject);
-router.get("/:user_id", projectController.getProjectsByUserId);
-router.patch("/:project_id", projectController.updateProjectAndRootNodeName);
-router.delete("/:project_id", projectController.deleteProject);
+router.post("/", projectController.createProject); // 프로젝트 생성 요청
+router.get("/:user_id", projectController.getProjectsByUserId); //유저 id로 프로젝트 조회
+router.patch("/:project_id", projectController.updateProjectAndRootNodeName); // 프로젝트 id로 수정
+router.delete("/:project_id", projectController.deleteProject); // 프로젝트 id로 프로젝트 삭제
 
 // 프로젝트에 대한 유저 CRUD
 router.post("/:project_id/members", projectController.addMemberToProject); // 프로젝트에 유저 추가

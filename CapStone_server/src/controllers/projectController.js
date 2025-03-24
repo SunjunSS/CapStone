@@ -79,15 +79,15 @@ exports.deleteProject = async (req, res) => {
 exports.addMemberToProject = async (req, res) => {
   try {
     const { project_id } = req.params;
-    const { user_id, role = 2 } = req.body; // 기본 role 3으로 설정 (일반 멤버)
+    const { email, role } = req.body;
 
-    if (!project_id || !user_id) {
+    if (!project_id || !email) {
       return res
         .status(400)
-        .json({ message: "project_id와 user_id가 필요합니다." });
+        .json({ message: "project_id와 email가 필요합니다." });
     }
 
-    await projectService.addMemberToProject(project_id, user_id, role);
+    await projectService.addMemberToProject(project_id, email, role);
 
     res
       .status(201)

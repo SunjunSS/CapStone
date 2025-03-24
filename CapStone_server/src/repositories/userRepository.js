@@ -7,3 +7,10 @@ exports.getUsersByIds = async (userIds) => {
     attributes: ["user_id", "name", "email"],
   });
 };
+
+exports.getUserByEmail = async (email) => {
+  return await User.findOne({
+    where: { email },
+    attributes: ["user_id", "name", "email"],
+  });
+};
