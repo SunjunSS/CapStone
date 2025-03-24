@@ -32,7 +32,10 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     // 각 멤버의 음성텍스트를 저장
     for (const userObject of roomAudioBuffers) {
 
-      const outputPath = userObject.inputPath.replace(/\\temp_audio\\/g, "\\audio\\");
+      const outputPath = userObject.inputPath.replace(
+        path.join("temp_audio"),
+        path.join("audio")
+      );
 
       const inputPath = await convertMP3(userObject.inputPath, outputPath);
       const response = await callClovaSpeechAPI(inputPath); // 음성 텍스트 얻기

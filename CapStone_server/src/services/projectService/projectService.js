@@ -2,6 +2,8 @@ const { sequelize } = require("../../models"); // ✅ `Project` 테이블만 사
 const nodeRepository = require("../../repositories/nodeRepository");
 const projectRepository = require("../../repositories/projectRepository"); // ✅ 추가
 const projectMemberRepository = require("../../repositories/projectMemberRepository");
+const userRepository = require("../../repositories/userRepository");
+const { ROLE_LABELS } = require("../../constants/roles"); // 역할 매핑 상수 추가
 
 // 프로젝트 생성, 프로젝트 유저 매핑, 루트 노드 생성
 exports.createProjectWithUser = async (user_id) => {
@@ -144,4 +146,96 @@ exports.deleteProject = async (project_id) => {
     console.error("❌ 프로젝트 삭제 실패:", error.message);
     throw new Error("프로젝트 삭제 중 오류 발생");
   }
+};
+
+exports.addMemberToProject = async (project_id, email, role = 3) => {
+  const transaction = await sequelize.transaction();
+  try {
+    // 문자열 role이 들어오면 숫자로 매핑
+    let roleValue = role;
+    if (typeof role === "string") {
+      roleValue = ROLE_LABELS[role];
+      if (roleValue === undefined) {
+        throw new Error("유효하지 않은 역할(role) 값입니다.");
+      }
+    }
+
+    const user = await userRepository.getUserByEmail(email);
+    if (!user) {
+      throw new Error("해당 이메일의 유저를 찾을 수 없습니다.");
+    }
+
+    const user_id = user.user_id;
+
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project) {
+      throw new Error("해당 프로젝트가 존재하지 않습니다.");
+    }
+
+    const exists = await projectMemberRepository.isUserInProject(
+      user_id,
+      project_id
+    );
+    if (exists) {
+      throw new Error("이미 이 유저는 해당 프로젝트의 멤버입니다.");
+    }
+
+    await projectMemberRepository.addProjectMember(
+      user_id,
+      project_id,
+      roleValue,
+      transaction
+    );
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 유저 추가 실패:", error.message);
+    throw error;
+  }
+};
+
+exports.removeMemberFromProject = async (project_id, user_id) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const exists = await projectMemberRepository.isUserInProject(
+      user_id,
+      project_id
+    );
+    if (!exists) {
+      throw new Error("해당 유저는 이 프로젝트에 포함되어 있지 않습니다.");
+    }
+
+    await projectMemberRepository.removeProjectMember(
+      user_id,
+      project_id,
+      transaction
+    );
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 유저 제거 실패:", error.message);
+    throw error;
+  }
+};
+
+exports.getProjectMembers = async (project_id) => {
+  const memberRecords = await projectMemberRepository.getProjectMemberIds(
+    project_id
+  );
+  const userIds = memberRecords.map((m) => m.user_id);
+
+  const users = await userRepository.getUsersByIds(userIds);
+
+  // 유저 정보와 isAdmin을 결합해서 정리
+  return users.map((user) => {
+    const memberInfo = memberRecords.find((m) => m.user_id === user.user_id);
+    return {
+      user_id: user.user_id,
+      name: user.name,
+      email: user.email,
+      isAdmin: memberInfo?.isAdmin || 0,
+    };
+  });
 };
