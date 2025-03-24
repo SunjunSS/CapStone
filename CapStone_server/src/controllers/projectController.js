@@ -74,3 +74,26 @@ exports.deleteProject = async (req, res) => {
       .json({ message: "삭제 중 오류 발생", error: error.message });
   }
 };
+
+// 프로젝트에 유저 추가
+exports.addMemberToProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+    const { user_id, role = 2 } = req.body; // 기본 role 3으로 설정 (일반 멤버)
+
+    if (!project_id || !user_id) {
+      return res
+        .status(400)
+        .json({ message: "project_id와 user_id가 필요합니다." });
+    }
+
+    await projectService.addMemberToProject(project_id, user_id, role);
+
+    res
+      .status(201)
+      .json({ message: "유저가 프로젝트에 성공적으로 추가되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트에 유저 추가 중 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};

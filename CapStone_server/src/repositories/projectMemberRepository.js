@@ -29,3 +29,10 @@ exports.deleteProjectMembers = async (project_id, transaction) => {
     transaction,
   });
 };
+
+exports.isUserInProject = async (user_id, project_id) => {
+  const member = await ProjectMembers.findOne({
+    where: { user_id, project_id },
+  });
+  return !!member; // 존재하면 true 반환
+};

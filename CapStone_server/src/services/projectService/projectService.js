@@ -145,3 +145,37 @@ exports.deleteProject = async (project_id) => {
     throw new Error("프로젝트 삭제 중 오류 발생");
   }
 };
+
+exports.addMemberToProject = async (project_id, user_id, role = 3) => {
+  const transaction = await sequelize.transaction();
+  try {
+    // 프로젝트 존재 여부 확인
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project) {
+      throw new Error("해당 프로젝트가 존재하지 않습니다.");
+    }
+
+    // 중복 멤버 방지 (이미 추가된 유저인지 확인)
+    const exists = await projectMemberRepository.isUserInProject(
+      user_id,
+      project_id
+    );
+    if (exists) {
+      throw new Error("이미 이 유저는 해당 프로젝트의 멤버입니다.");
+    }
+
+    // 프로젝트에 멤버 추가
+    await projectMemberRepository.addProjectMember(
+      user_id,
+      project_id,
+      role,
+      transaction
+    );
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 유저 추가 실패:", error.message);
+    throw error;
+  }
+};
