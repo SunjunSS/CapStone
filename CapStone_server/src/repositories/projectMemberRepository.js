@@ -30,9 +30,28 @@ exports.deleteProjectMembers = async (project_id, transaction) => {
   });
 };
 
+// 프로젝트에 해당하는 특정 유저만 프로젝트에서 제외
+exports.removeProjectMember = async (user_id, project_id, transaction) => {
+  return await ProjectMembers.destroy({
+    where: {
+      user_id,
+      project_id,
+    },
+    transaction,
+  });
+};
+
 exports.isUserInProject = async (user_id, project_id) => {
   const member = await ProjectMembers.findOne({
     where: { user_id, project_id },
   });
   return !!member; // 존재하면 true 반환
+};
+
+// projectMemberRepository.js
+exports.getProjectMemberIds = async (project_id) => {
+  return await ProjectMembers.findAll({
+    where: { project_id },
+    attributes: ["user_id", "isAdmin"],
+  });
 };

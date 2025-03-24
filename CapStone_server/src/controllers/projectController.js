@@ -97,3 +97,39 @@ exports.addMemberToProject = async (req, res) => {
     res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
+
+exports.removeMemberFromProject = async (req, res) => {
+  try {
+    const { project_id, user_id } = req.params;
+
+    if (!project_id || !user_id) {
+      return res
+        .status(400)
+        .json({ message: "project_id와 user_id가 필요합니다." });
+    }
+
+    await projectService.removeMemberFromProject(project_id, user_id);
+
+    res.status(200).json({ message: "유저가 프로젝트에서 제거되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트에서 유저 제거 중 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+exports.getProjectMembers = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id가 필요합니다." });
+    }
+
+    const members = await projectService.getProjectMembers(project_id);
+
+    res.status(200).json({ members });
+  } catch (error) {
+    console.error("❌ 프로젝트 멤버 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
