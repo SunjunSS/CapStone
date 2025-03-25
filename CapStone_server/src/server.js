@@ -45,6 +45,9 @@ require("./socket/socketHandler")(io);
 const inviteRoutes = require("./routes/inviteRoutes");
 app.use("/api/invite", inviteRoutes);
 
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
+
 // ✅ 서버 시작 전에 데이터베이스 동기화 수행
 initDB();
 
