@@ -41,12 +41,15 @@ app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);
 
-// 초대 라우트 등록
-const inviteRoutes = require("./routes/inviteRoutes");
-app.use("/api/invite", inviteRoutes);
+// // 초대 라우트 등록
+// const inviteRoutes = require("./routes/inviteRoutes");
+// app.use("/api/invite", inviteRoutes);
 
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
+// const authRoutes = require("./routes/authRoutes");
+// app.use("/api/auth", authRoutes);
+
+const mailRoutes = require("./routes/mailRoutes");
+app.use("/api/mail", mailRoutes);
 
 // ✅ 서버 시작 전에 데이터베이스 동기화 수행
 initDB();
