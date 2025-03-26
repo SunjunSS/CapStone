@@ -1,4 +1,4 @@
---역할 구분 성공, 팀원 목록 표시--
+--초대된 팀원 역할 변경 기능 추가--
 
 <template>
   <div class="app-container">
@@ -149,15 +149,16 @@
                   {{ member.name || "닉네임 없음" }}
                 </div>
               </div>
-              <div
+              <button
                 class="member-role"
                 :class="{
                   viewer: member.isAdmin === 2,
                   editor: member.isAdmin === 3,
                 }"
+                @click="updateRole(member)"
               >
                 {{ member.isAdmin === 2 ? "뷰어" : "편집자" }}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -191,7 +192,11 @@ import {
   registerSocketHandlers,
   unregisterSocketHandlers,
 } from "../socket/nodeSocket.js"; // ✅ WebSocket 핸들러 모듈 import
-import { addUserToProject, getProjectMembers } from "@/api/projectApi";
+import {
+  addUserToProject,
+  getProjectMembers,
+  updateUserRole,
+} from "@/api/projectApi";
 
 export default {
   components: {
@@ -268,6 +273,25 @@ export default {
       }
     };
 
+    const updateRole = async (member) => {
+      // 첫 번째 팀원 (index 0)의 역할은 변경할 수 없도록 처리 -> 첫 번째 팀원이 프로젝트 생성자
+      if (invitedMembers.value.indexOf(member) === 0) {
+        showToast("프로젝트 생성자의 역할은 변경할 수 없습니다.", true);
+        return;
+      }
+
+      const newRole = member.isAdmin === 2 ? "editor" : "viewer"; // 역할을 반대로 변경
+      try {
+        // API 호출하여 역할 업데이트
+        await updateUserRole(paramProject_id.value, member.user_id, newRole);
+        member.isAdmin = newRole === "viewer" ? 2 : 3; // 로컬에서 역할 업데이트
+        showToast("역할이 성공적으로 변경되었습니다.");
+      } catch (error) {
+        console.error("❌ 역할 변경 실패:", error);
+        showToast("역할 변경에 실패했습니다.", true);
+      }
+    };
+
     // 🔹 팀원 초대 관련 함수 추가
     const openInviteModal = async () => {
       // 루트 노드 이름 가져오기
@@ -326,12 +350,11 @@ export default {
 
         alert("초대가 완료되었습니다.");
         closeInviteModal();
+        await loadInvitedMembers(); // 초대한 팀원 다시 불러오기
       } catch (error) {
         console.error("초대 실패:", error);
         alert("초대에 실패했습니다.");
       }
-
-      await loadInvitedMembers(); // 초대한 팀원 다시 불러오기
     };
 
     // 입력 필드 위치와 크기를 업데이트하는 함수
@@ -1482,6 +1505,7 @@ export default {
       sendInvite,
       isViewer,
       invitedMembers,
+      updateRole,
     };
   },
 };
@@ -1773,7 +1797,7 @@ export default {
   color: white;
   padding: 10px 20px;
   border-radius: 4px;
-  z-index: 10000;
+  z-index: 10001;
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;

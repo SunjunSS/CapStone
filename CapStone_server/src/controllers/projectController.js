@@ -1,4 +1,5 @@
 const projectService = require("../services/projectService/projectService.js");
+const { ROLE_LABELS } = require("../constants/roles");
 
 exports.createProject = async (req, res) => {
   try {
@@ -130,6 +131,37 @@ exports.getProjectMembers = async (req, res) => {
     res.status(200).json({ members });
   } catch (error) {
     console.error("❌ 프로젝트 멤버 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 프로젝트에 유저 역할 수정
+exports.updateMemberRole = async (req, res) => {
+  try {
+    const { project_id, user_id } = req.params;
+    const { role } = req.body;
+
+    console.log("🟢 역할 업데이트 요청 받음: ", project_id, user_id, role); // 요청받은 데이터 로그
+
+    if (!role || !project_id || !user_id) {
+      return res
+        .status(400)
+        .json({ message: "프로젝트 ID, 유저 ID, 역할이 필요합니다." });
+    }
+
+    const roleValue = ROLE_LABELS[role];
+    if (roleValue === undefined) {
+      return res
+        .status(400)
+        .json({ message: "유효하지 않은 역할(role) 값입니다." });
+    }
+
+    await projectService.updateMemberRole(project_id, user_id, roleValue);
+    res
+      .status(200)
+      .json({ message: "유저 역할이 성공적으로 업데이트되었습니다." });
+  } catch (error) {
+    console.error("❌ 역할 수정 오류:", error);
     res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };

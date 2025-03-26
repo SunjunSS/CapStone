@@ -93,3 +93,16 @@ export const getProjectMembers = async (projectId) => {
     throw error;
   }
 };
+
+export const updateUserRole = async (projectId, userId, role) => {
+  try {
+    const url = `${getProjectUrl()}/${projectId}/members/${userId}/role`; // 이 URL이 정확한지 확인!
+    console.log("🟢 역할 업데이트 요청 URL:", url);
+    const response = await axios.patch(url, { role: role });
+    console.log("🟢 역할 업데이트 응답:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ 역할 업데이트 오류:", error);
+    throw error;
+  }
+};
