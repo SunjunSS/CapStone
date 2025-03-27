@@ -6,3 +6,5 @@
 !/storage/temp_audio/.gitkeep  # ✅ `.gitkeep` 파일은 무시하지 않음
 
 node_modules/
+
+/google_key/planar-lacing-454709-b6-06cea798e131.json

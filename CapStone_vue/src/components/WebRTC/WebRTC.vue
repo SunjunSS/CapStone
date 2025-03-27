@@ -151,7 +151,8 @@ import io from "socket.io-client";
 import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
-// import { realTimeUpload } from "./realTimeUpload.js";
+
+
 
 
 export default {
@@ -171,6 +172,7 @@ export default {
       isMuted: false,
       audioDevices: [],
       selectedAudioDevice: "",
+      sttProcess: null,
       audioLevel: 0,
       speakingParticipants: {},
       connectionStatus: "disconnected",
@@ -307,13 +309,15 @@ export default {
       this.isRecording = !this.isRecording;
 
       if (this.isRecording) {
-        //this.startRecording();
         this.socket.emit("start-recording", this.roomId);
+        
         console.log("녹음 시작");
+
       } else {
-        //this.stopRecording();
         this.socket.emit("stop-recording", this.roomId);
+        
         console.log("녹음 중지");
+        
       }
     },
 
@@ -331,15 +335,24 @@ export default {
     },
 
     // 녹음 시작 메서드
-    startRecording() {
+    async startRecording() {
       if (!this.localStream) return;
 
       this.recordedChunks = [];
-      this.mediaRecorder = new MediaRecorder(this.localStream);
+      this.mediaRecorder = new MediaRecorder(this.localStream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
 
-      this.mediaRecorder.ondataavailable = (event) => {
+
+      this.mediaRecorder.ondataavailable = async (event) => {
+
         this.recordedChunks.push(event.data);
         this.temporaryChunks.push(event.data);
+
+        const arrayBuffer = await event.data.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        this.socket.emit("streamingData", uint8Array);
+        
       };
 
       this.mediaRecorder.onstop = async () => {
@@ -353,7 +366,7 @@ export default {
 
         // 서버로 audio파일을 업로드함
         try {
-          await uploadAudio(blob, this.roomId, this.userNickname);
+          //await uploadAudio(blob, this.roomId, this.userNickname);
           console.log("✅ 업로드 성공!");
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
@@ -361,13 +374,10 @@ export default {
         clearInterval(this.uploadInterval);
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(500);
       this.isRecording = true;
 
     },
-
-
-    
 
     // 녹음 중지 메서드
     stopRecording() {
@@ -423,6 +433,7 @@ export default {
           //녹음 시작 or 녹음 중지함수를 실행
           this.checkRecording();
         });
+
 
         this.socket.on("return-recording", (data) => {
 
