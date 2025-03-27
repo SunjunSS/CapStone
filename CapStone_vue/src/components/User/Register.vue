@@ -20,14 +20,43 @@
               dense
             ></v-text-field>
 
+            <!-- 이메일 입력 필드 + 인증 버튼 한 줄로 정렬 -->
+            <v-row dense class="align-center mb-2">
+              <!-- 이메일 입력 필드: 유연하게 늘어나게 -->
+              <v-col cols="auto" class="flex-grow-1">
+                <v-text-field
+                  v-model="email"
+                  :rules="[
+                    (v) => !!v || '이메일을 입력하세요.',
+                    (v) =>
+                      /.+@(gmail\.com|naver\.com)$/.test(v) ||
+                      'gmail 또는 naver 이메일만 가능합니다.',
+                  ]"
+                  label="이메일 (gmail.com 또는 naver.com)"
+                  prepend-icon="mdi-email"
+                  outlined
+                  dense
+                />
+              </v-col>
+
+              <!-- 버튼: 고정된 너비로, 오른쪽 정렬 -->
+              <v-col cols="auto" class="d-flex justify-end">
+                <v-btn
+                  color="#1E88E5"
+                  class="email-verify-btn"
+                  @click="sendVerificationCode"
+                >
+                  인증 코드
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <!-- 인증 코드 입력 필드 (버튼 클릭 시 표시) -->
             <v-text-field
-              v-model="email"
-              :rules="[
-                (v) => !!v || '이메일을 입력하세요.',
-                (v) => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.',
-              ]"
-              label="이메일"
-              prepend-icon="mdi-email"
+              v-if="showVerificationField"
+              v-model="verificationCode"
+              label="인증 코드 입력"
+              prepend-icon="mdi-shield-key-outline"
               required
               outlined
               dense
@@ -100,6 +129,10 @@ export default {
       snackbarText: "",
       snackbarColor: "info", // Default color
       valid: false,
+
+      // 인증 코드 관련
+      showVerificationField: false, // 인증 입력창 표시 여부
+      verificationCode: "", // 사용자가 입력할 인증 코드
     };
   },
   methods: {
@@ -112,19 +145,16 @@ export default {
           password: this.password,
         });
 
-        // Set color to info for successful registration
         this.snackbarColor = "info";
         this.snackbarText = response.data.message;
         console.log(response.data.message);
 
-        // 회원가입 성공 시 로그인 화면으로 이동
         setTimeout(() => {
           this.$router.push("/Login");
         }, 700); // 700ms 후 이동
       } catch (error) {
-        console.error("서버 응답 오류:", error.response); // 전체 응답 확인
+        console.error("서버 응답 오류:", error.response);
 
-        // Set color to error for existing email or other errors
         this.snackbarColor = "error";
         this.snackbarText =
           error.response?.data.message || "오류가 발생했습니다.";
@@ -132,8 +162,26 @@ export default {
       }
       this.snackbar = true;
     },
+
     goToLogin() {
       this.$router.push("/Login");
+    },
+
+    // 인증 코드 발송 버튼 클릭 시 실행
+    sendVerificationCode() {
+      // 이메일 유효성 확인
+      if (!this.email || !/.+@(gmail\.com|naver\.com)$/.test(this.email)) {
+        this.snackbarColor = "error";
+        this.snackbarText = "올바른 이메일을 먼저 입력해주세요.";
+        this.snackbar = true;
+        return;
+      }
+
+      // 인증 입력창 표시
+      this.showVerificationField = true;
+
+      // (여기서 실제 이메일로 인증코드 전송 API 요청 가능)
+      console.log("인증 코드 발송 요청:", this.email);
     },
   },
 };
@@ -175,5 +223,12 @@ export default {
   justify-content: center;
   width: 100%;
   text-align: center;
+}
+
+.email-verify-btn {
+  height: 57px; /* dense v-text-field와 맞춤 */
+  min-height: 40px;
+  font-size: 14px;
+  margin-bottom: 20px; /* 버튼 하단 약간 보정 */
 }
 </style>
