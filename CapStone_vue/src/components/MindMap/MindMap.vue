@@ -1,4 +1,4 @@
---팀원초대 모듈 추가--
+--초대된 팀원 역할 변경 기능 추가--
 
 <template>
   <div class="app-container">
@@ -55,7 +55,7 @@
             :class="{
               'delete-btn-enabled': selectedNode && selectedNode.parent !== 0,
             }"
-            :disabled="!selectedNode || selectedNode.parent === 0"
+            :disabled="!selectedNode || selectedNode.parent === 0 || isViewer"
           >
             Delete Node
           </button>
@@ -66,7 +66,7 @@
             @click="addNode(false)"
             class="add-btn"
             :class="{ 'add-btn-enabled': selectedNode }"
-            :disabled="!selectedNode"
+            :disabled="!selectedNode || isViewer"
           >
             하위레벨 추가
           </button>
@@ -74,25 +74,37 @@
             @click="addNode(true)"
             class="add-btn"
             :class="{ 'add-btn-enabled': canAddSibling }"
-            :disabled="!canAddSibling"
+            :disabled="!selectedNode || isViewer"
           >
             동일레벨 추가
           </button>
-          <button @click="captureMindmap" class="capture-btn">
+          <button
+            @click="captureMindmap"
+            class="capture-btn"
+            :disabled="isViewer"
+          >
             마인드맵 캡처
           </button>
-          <button @click="goToDrawing" class="drawing-btn">그림판</button>
+          <button @click="goToDrawing" class="drawing-btn" :disabled="isViewer">
+            그림판
+          </button>
           <button
             @click="suggestNodes"
             class="ai-suggest-btn"
             :class="{ 'ai-suggest-btn-enabled': selectedNode }"
-            :disabled="!selectedNode"
+            :disabled="!selectedNode || isViewer"
           >
             AI 추천
           </button>
 
           <!-- 🔹 팀원 초대 버튼 추가 -->
-          <button @click="openInviteModal" class="invite-btn">팀원 초대</button>
+          <button
+            @click="openInviteModal"
+            class="invite-btn"
+            :disabled="isViewer"
+          >
+            팀원 초대
+          </button>
         </div>
       </div>
     </div>
@@ -121,6 +133,35 @@
           <option value="viewer">뷰어</option>
           <option value="editor">편집자</option>
         </select>
+
+        <!-- 초대한 팀원 리스트 -->
+        <div v-if="invitedMembers.length > 0" class="invited-list">
+          <h3>참여자</h3>
+          <div class="member-card-container">
+            <div
+              class="member-card"
+              v-for="member in invitedMembers"
+              :key="member.user_id"
+            >
+              <div class="member-info">
+                <div class="member-email">{{ member.email }}</div>
+                <div class="member-name">
+                  {{ member.name || "닉네임 없음" }}
+                </div>
+              </div>
+              <button
+                class="member-role"
+                :class="{
+                  viewer: member.isAdmin === 2,
+                  editor: member.isAdmin === 3,
+                }"
+                @click="updateRole(member)"
+              >
+                {{ member.isAdmin === 2 ? "뷰어" : "편집자" }}
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div class="modal-buttons">
           <button @click="sendInvite" class="confirm-btn">초대</button>
@@ -151,7 +192,11 @@ import {
   registerSocketHandlers,
   unregisterSocketHandlers,
 } from "../socket/nodeSocket.js"; // ✅ WebSocket 핸들러 모듈 import
-import { addUserToProject } from "@/api/projectApi";
+import {
+  addUserToProject,
+  getProjectMembers,
+  updateUserRole,
+} from "@/api/projectApi";
 
 export default {
   components: {
@@ -186,6 +231,9 @@ export default {
     const ZOOM_BUTTON_STEP = 0.2;
     const ANIMATION_DURATION = 300;
     const PAN_ANIMATION_DURATION = 100;
+    const isViewer = ref(false);
+    const currentUserEmail = ref("");
+    const invitedMembers = ref([]);
 
     const isDragging = ref(false);
     const isNodeDragging = ref(false);
@@ -216,8 +264,36 @@ export default {
     const selectedRole = ref("viewer");
     const rootNodeName = ref("마인드맵"); // 루트 노드 이름 저장
 
+    const loadInvitedMembers = async () => {
+      try {
+        const members = await getProjectMembers(paramProject_id.value);
+        invitedMembers.value = members;
+      } catch (error) {
+        console.error("❌ 초대한 팀원 불러오기 실패:", error);
+      }
+    };
+
+    const updateRole = async (member) => {
+      // 첫 번째 팀원 (index 0)의 역할은 변경할 수 없도록 처리 -> 첫 번째 팀원이 프로젝트 생성자
+      if (invitedMembers.value.indexOf(member) === 0) {
+        showToast("프로젝트 생성자의 역할은 변경할 수 없습니다.", true);
+        return;
+      }
+
+      const newRole = member.isAdmin === 2 ? "editor" : "viewer"; // 역할을 반대로 변경
+      try {
+        // API 호출하여 역할 업데이트
+        await updateUserRole(paramProject_id.value, member.user_id, newRole);
+        member.isAdmin = newRole === "viewer" ? 2 : 3; // 로컬에서 역할 업데이트
+        showToast("역할이 성공적으로 변경되었습니다.");
+      } catch (error) {
+        console.error("❌ 역할 변경 실패:", error);
+        showToast("역할 변경에 실패했습니다.", true);
+      }
+    };
+
     // 🔹 팀원 초대 관련 함수 추가
-    const openInviteModal = () => {
+    const openInviteModal = async () => {
       // 루트 노드 이름 가져오기
       const rootNode = myDiagram.model.nodeDataArray.find(
         (node) => node.parent === 0
@@ -225,6 +301,32 @@ export default {
       rootNodeName.value = rootNode ? `"${rootNode.name}"` : `"마인드맵"`;
 
       isInviteModalOpen.value = true;
+
+      await loadInvitedMembers();
+    };
+
+    const checkUserRole = async () => {
+      try {
+        const members = await getProjectMembers(paramProject_id.value);
+        console.log("📋 프로젝트 멤버 리스트:", members);
+        console.log("📧 현재 로그인 이메일:", currentUserEmail.value);
+
+        const currentUser = members.find(
+          (m) => m.email === currentUserEmail.value
+        );
+
+        console.log("🔍 현재 유저 정보:", currentUser);
+
+        if (currentUser?.isAdmin === 2) {
+          console.log("👁️‍🗨️ 이 유저는 viewer입니다.");
+          isViewer.value = true;
+        } else {
+          console.log("✏️ 이 유저는 편집 권한이 있습니다.");
+          isViewer.value = false;
+        }
+      } catch (error) {
+        console.error("❌ 권한 확인 오류:", error);
+      }
     };
 
     const closeInviteModal = () => {
@@ -248,6 +350,7 @@ export default {
 
         alert("초대가 완료되었습니다.");
         closeInviteModal();
+        await loadInvitedMembers(); // 초대한 팀원 다시 불러오기
       } catch (error) {
         console.error("초대 실패:", error);
         alert("초대에 실패했습니다.");
@@ -331,6 +434,11 @@ export default {
 
     // 기존의 전역 handleKeyDown 함수에 TextField 관련 로직 추가
     const handleKeyDown = (event) => {
+      // ✅ Viewer는 키보드 단축키 동작도 비활성화
+      if (isViewer.value) {
+        return;
+      }
+
       // F5 키는 기본 동작 허용
       if (event.key === "F5") {
         return true;
@@ -1066,6 +1174,11 @@ export default {
 
           // ✅ 더블 클릭 시 노드 이름 편집
           doubleClick: (e, node) => {
+            if (isViewer.value) {
+              console.log("👁️‍🗨️ Viewer 권한 - 노드 이름 편집 비활성화됨");
+              return;
+            }
+
             const nodeElement = node.findObject("NAME_TEXTBLOCK");
             if (!nodeElement) return;
 
@@ -1305,13 +1418,16 @@ export default {
       });
     };
 
-    onMounted(() => {
+    onMounted(async () => {
+      // ✅ 현재 로그인한 이메일을 세션에서 가져와 저장
+      currentUserEmail.value = sessionStorage.getItem("userEmail") || "";
+      console.log("🟡 세션에서 가져온 이메일:", currentUserEmail.value);
+
+      await checkUserRole();
       initDiagram();
 
-      // ✅ 전역 keydown 이벤트 리스너 추가
       window.addEventListener("keydown", handleKeyDown);
 
-      // 🔥 노드 삭제 이벤트 리스너 추가
       window.addEventListener("node-deleted", (event) => {
         if (event.detail.resetSelection) {
           selectedNode.value = null;
@@ -1387,6 +1503,9 @@ export default {
       openInviteModal,
       closeInviteModal,
       sendInvite,
+      isViewer,
+      invitedMembers,
+      updateRole,
     };
   },
 };
@@ -1678,7 +1797,7 @@ export default {
   color: white;
   padding: 10px 20px;
   border-radius: 4px;
-  z-index: 10000;
+  z-index: 10001;
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
@@ -1806,5 +1925,74 @@ export default {
 
 button:focus {
   outline: none;
+}
+
+button:disabled {
+  opacity: 1; /* 투명도 제거 */
+  cursor: not-allowed;
+  background-color: #d3d3d3 !important; /* 기본 회색 버튼 색상 */
+  color: #666 !important; /* 텍스트 색상 */
+}
+
+.invited-list {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.invited-list h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.member-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.member-card {
+  background: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-email {
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+}
+
+.member-name {
+  font-size: 13px;
+  color: #777;
+}
+
+.member-role {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.member-role.viewer {
+  background-color: #9e9e9e;
+}
+
+.member-role.editor {
+  background-color: #0898ff;
 }
 </style>
