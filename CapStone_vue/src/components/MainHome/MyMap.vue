@@ -416,16 +416,16 @@ export default {
 
 .map-item {
   background: #f5f5f7;
-  padding: 20px;
-  border-radius: 15px;
+  padding: 2vh 2vw;
+  border-radius: 1vw;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 220px;
-  min-height: 120px;
-  transition: transform 0.3s ease; /* 애니메이션 효과 추가 */
+  min-width: 14.5vw;
+  min-height: 20vh;
+  transition: transform 0.3s ease;
 }
 
 .map-item:hover {

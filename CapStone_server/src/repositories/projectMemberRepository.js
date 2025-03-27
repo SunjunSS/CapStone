@@ -55,3 +55,16 @@ exports.getProjectMemberIds = async (project_id) => {
     attributes: ["user_id", "isAdmin"],
   });
 };
+
+// 프로젝트 멤버 역할 수정
+exports.updateProjectMemberRole = async (
+  user_id,
+  project_id,
+  role,
+  transaction
+) => {
+  return await ProjectMembers.update(
+    { isAdmin: role },
+    { where: { user_id, project_id }, transaction }
+  );
+};

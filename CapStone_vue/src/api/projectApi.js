@@ -1,5 +1,4 @@
 import axios from "axios";
-
 import API_BASE_URL from "../config/apiConfig"; // ✅ API URL 설정 파일 가져오기
 
 const getProjectUrl = () => `${API_BASE_URL}/api/project`;
@@ -79,6 +78,31 @@ export const addUserToProject = async (projectId, email, role) => {
     return response.data;
   } catch (error) {
     console.error("❌ 프로젝트에 유저 추가 오류:", error);
+    throw error;
+  }
+};
+
+// ✅ 새로 추가된 부분: 프로젝트 멤버 조회
+export const getProjectMembers = async (projectId) => {
+  try {
+    const response = await axios.get(`${getProjectUrl()}/${projectId}/members`);
+    console.log("🟢 멤버 조회 응답:", response.data);
+    return response.data.members;
+  } catch (error) {
+    console.error("❌ 프로젝트 멤버 조회 오류:", error);
+    throw error;
+  }
+};
+
+export const updateUserRole = async (projectId, userId, role) => {
+  try {
+    const url = `${getProjectUrl()}/${projectId}/members/${userId}/role`; // 이 URL이 정확한지 확인!
+    console.log("🟢 역할 업데이트 요청 URL:", url);
+    const response = await axios.patch(url, { role: role });
+    console.log("🟢 역할 업데이트 응답:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ 역할 업데이트 오류:", error);
     throw error;
   }
 };

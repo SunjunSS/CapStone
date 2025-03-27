@@ -239,3 +239,37 @@ exports.getProjectMembers = async (project_id) => {
     };
   });
 };
+
+// 프로젝트에 유저 역할 수정
+exports.updateMemberRole = async (project_id, user_id, role) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project) {
+      throw new Error("프로젝트가 존재하지 않습니다.");
+    }
+
+    const user = await userRepository.getUserById(user_id); // 여기서 추가된 함수 호출
+    if (!user) {
+      throw new Error("유저를 찾을 수 없습니다.");
+    }
+
+    // 역할 업데이트
+    await projectMemberRepository.updateProjectMemberRole(
+      user_id,
+      project_id,
+      role,
+      transaction
+    );
+
+    await transaction.commit();
+    console.log(
+      `✅ 프로젝트(${project_id})에 대한 유저(${user_id}) 역할 수정 완료: ${role}`
+    );
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 역할 업데이트 실패:", error.message);
+    throw error;
+  }
+};

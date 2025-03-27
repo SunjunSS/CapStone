@@ -7,6 +7,11 @@ router.post("/", projectController.createProject); // 프로젝트 생성 요청
 router.get("/:user_id", projectController.getProjectsByUserId); //유저 id로 프로젝트 조회
 router.patch("/:project_id", projectController.updateProjectAndRootNodeName); // 프로젝트 id로 수정
 router.delete("/:project_id", projectController.deleteProject); // 프로젝트 id로 프로젝트 삭제
+// 프로젝트에 유저 역할 수정
+router.patch(
+  "/:project_id/members/:user_id/role",
+  projectController.updateMemberRole
+);
 
 // 프로젝트에 대한 유저 CRUD
 router.post("/:project_id/members", projectController.addMemberToProject); // 프로젝트에 유저 추가
