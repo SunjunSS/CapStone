@@ -54,8 +54,8 @@
                   <span class="map-icon">🌟</span>
                   {{ item.name }}
                 </td>
-                <td class="creator-column">{{ item.creator }}</td>
-                <td class="date-column">{{ item.date }}</td>
+                <td class="creator-column">{{ item.creator || "너" }}</td>
+                <td class="date-column">{{ item.date || "-" }}</td>
                 <td class="action-column">
                   <button class="menu-button" @click="showMenu(index, $event)">
                     ⋯
@@ -66,7 +66,15 @@
                     ref="menuDropdown"
                   >
                     <ul>
-                      <li @click="restoreMap(index)">♻️ 복구</li>
+                      <li @click="restoreMap(item.project_id, index)">
+                        ♻️ 복구
+                      </li>
+                      <li
+                        @click="deleteMapPermanently(item.project_id, index)"
+                        class="delete-option"
+                      >
+                        🗑️ 완전히 삭제
+                      </li>
                     </ul>
                   </div>
                 </td>
@@ -101,90 +109,223 @@
         </div>
       </section>
     </main>
+
+    <!-- 로딩 오버레이 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>처리 중...</p>
+    </div>
   </div>
 </template>
 
 <script>
+import { ref, onMounted, computed } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
+import { useRouter } from "vue-router";
+import {
+  getTrashProjects,
+  restoreProject,
+  deleteProject,
+} from "../../api/projectApi";
 
 export default {
-  name: "MyMap",
+  name: "TrashPage", // 컴포넌트 이름을 TrashPage로 수정
   components: {
     MainHomeSideBar,
   },
-  data() {
-    return {
-      mapItems: [
-        {
-          name: "나의 새 마인드맵",
-          creator: "kim",
-          date: "Jan 22, 2025",
-          selected: false,
-          showMenu: false,
-        },
-        {
-          name: "캡스톤 마인드맵 탐색",
-          creator: "kim",
-          date: "Feb 10, 2025",
-          selected: false,
-          showMenu: false,
-        },
-      ],
-    };
-  },
-  computed: {
-    hasSelectedItems() {
-      return this.mapItems.some((item) => item.selected);
-    },
-    selectedItemsCount() {
-      return this.mapItems.filter((item) => item.selected).length;
-    },
-  },
-  methods: {
-    clearTrash() {
-      if (confirm("휴지통을 비우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
-        this.mapItems = [];
+  setup() {
+    const router = useRouter();
+    const mapItems = ref([]);
+    const isLoading = ref(false);
+
+    // 세션에서 userId 가져오기
+    const userId = sessionStorage.getItem("userId");
+
+    // 휴지통에 있는 프로젝트 목록 로드
+    const loadTrashProjects = async () => {
+      if (!userId) {
+        console.error("❌ 사용자 ID가 없습니다.");
+        return;
       }
-    },
-    handleCheckboxChange() {
-      // 체크박스 변경 핸들러 (기존과 동일)
-    },
-    showMenu(index, event) {
+
+      isLoading.value = true;
+      try {
+        const trashProjects = await getTrashProjects(userId);
+        console.log("🟢 휴지통 프로젝트 로드 성공:", trashProjects);
+
+        mapItems.value = trashProjects.map((project) => ({
+          project_id: project.project_id,
+          name: project.name,
+          creator: project.creator,
+          date: project.date,
+          selected: false,
+          showMenu: false,
+        }));
+      } catch (error) {
+        console.error("❌ 휴지통 프로젝트 로드 오류:", error);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    // 프로젝트 복원
+    const restoreMap = async (projectId, index) => {
+      if (index < 0 || index >= mapItems.value.length) {
+        console.error("❌ 유효하지 않은 인덱스:", index);
+        return;
+      }
+
+      const mapName = mapItems.value[index].name;
+
+      if (confirm(`${mapName}을(를) 복구하시겠습니까?`)) {
+        isLoading.value = true;
+        try {
+          await restoreProject(projectId);
+          console.log(`♻️ 프로젝트(${projectId}) 복원 완료`);
+          mapItems.value.splice(index, 1);
+          alert(`${mapName}이(가) 복구되었습니다.`);
+        } catch (error) {
+          console.error("❌ 프로젝트 복원 오류:", error);
+          alert("프로젝트 복원 중 오류가 발생했습니다.");
+        } finally {
+          isLoading.value = false;
+        }
+      }
+    };
+
+    // 프로젝트 완전 삭제
+    const deleteMapPermanently = async (projectId, index) => {
+      if (index < 0 || index >= mapItems.value.length) {
+        console.error("❌ 유효하지 않은 인덱스:", index);
+        return;
+      }
+
+      const mapName = mapItems.value[index].name;
+
+      if (
+        confirm(
+          `${mapName}을(를) 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다!`
+        )
+      ) {
+        isLoading.value = true;
+        try {
+          await deleteProject(projectId);
+          console.log(`🚮 프로젝트(${projectId}) 완전 삭제 완료`);
+          mapItems.value.splice(index, 1);
+        } catch (error) {
+          console.error("❌ 프로젝트 완전 삭제 오류:", error);
+          alert("프로젝트 삭제 중 오류가 발생했습니다.");
+        } finally {
+          isLoading.value = false;
+        }
+      }
+    };
+
+    // 휴지통 비우기 (선택된 모든 항목 완전 삭제)
+    const clearTrash = async () => {
+      if (confirm("휴지통을 비우시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+        const selectedItems = mapItems.value.filter((item) => item.selected);
+
+        if (selectedItems.length === 0) {
+          // 선택된 항목이 없으면 모든 항목 삭제
+          if (confirm("모든 항목을 완전히 삭제하시겠습니까?")) {
+            isLoading.value = true;
+            try {
+              const deletePromises = mapItems.value.map((item) =>
+                deleteProject(item.project_id)
+              );
+              await Promise.all(deletePromises);
+              console.log("🚮 모든 프로젝트 완전 삭제 완료");
+              mapItems.value = [];
+            } catch (error) {
+              console.error("❌ 휴지통 비우기 오류:", error);
+              alert("휴지통 비우기 중 오류가 발생했습니다.");
+            } finally {
+              isLoading.value = false;
+            }
+          }
+        } else {
+          // 선택된 항목만 삭제
+          isLoading.value = true;
+          try {
+            const deletePromises = selectedItems.map((item) =>
+              deleteProject(item.project_id)
+            );
+            await Promise.all(deletePromises);
+
+            // 선택된 항목들을 mapItems에서 제거
+            mapItems.value = mapItems.value.filter((item) => !item.selected);
+            console.log("🚮 선택된 프로젝트 완전 삭제 완료");
+          } catch (error) {
+            console.error("❌ 선택된 항목 삭제 오류:", error);
+            alert("선택된 항목 삭제 중 오류가 발생했습니다.");
+          } finally {
+            isLoading.value = false;
+          }
+        }
+      }
+    };
+
+    // 체크박스 처리
+    const handleCheckboxChange = () => {
+      // 체크박스 변경 핸들러
+    };
+
+    // 메뉴 표시
+    const showMenu = (index, event) => {
       // 다른 메뉴 모두 닫기
-      this.mapItems.forEach((item, i) => {
+      mapItems.value.forEach((item, i) => {
         if (i !== index) {
           item.showMenu = false;
-          item.selected = false; // 다른 항목들의 체크박스 해제
         }
       });
 
-      // 현재 항목만 체크박스 선택
-      this.mapItems[index].selected = true;
-
       // 선택한 메뉴 토글
-      this.mapItems[index].showMenu = !this.mapItems[index].showMenu;
+      mapItems.value[index].showMenu = !mapItems.value[index].showMenu;
       event.stopPropagation(); // 이벤트 버블링 방지
-    },
-    closeAllMenus() {
-      this.mapItems.forEach((item) => {
+    };
+
+    // 모든 메뉴 닫기
+    const closeAllMenus = () => {
+      mapItems.value.forEach((item) => {
         item.showMenu = false;
       });
-    },
-    restoreMap(index) {
-      const mapName = this.mapItems[index].name; // 먼저 이름을 저장
+    };
 
-      if (confirm(`${mapName}을(를) 복구하시겠습니까?`)) {
-        this.mapItems.splice(index, 1); // 배열에서 제거
-        alert(`${mapName}이(가) 복구되었습니다.`); // 저장해둔 이름 사용
-      }
-      this.closeAllMenus();
-    },
+    // 계산된 속성들
+    const hasSelectedItems = computed(() => {
+      return mapItems.value.some((item) => item.selected);
+    });
+
+    const selectedItemsCount = computed(() => {
+      return mapItems.value.filter((item) => item.selected).length;
+    });
+
+    onMounted(() => {
+      loadTrashProjects();
+      // 메뉴 외부 클릭 시 메뉴 닫기
+      document.addEventListener("click", closeAllMenus);
+    });
+
+    return {
+      mapItems,
+      isLoading,
+      restoreMap,
+      deleteMapPermanently,
+      clearTrash,
+      loadTrashProjects,
+      handleCheckboxChange,
+      showMenu,
+      closeAllMenus,
+      hasSelectedItems,
+      selectedItemsCount,
+    };
   },
   mounted() {
-    // 메뉴 외부 클릭 시 메뉴 닫기
-    document.addEventListener("click", this.closeAllMenus);
+    // setup()에서 이벤트 리스너를 추가하므로 여기서는 제거
   },
-  beforeDestroy() {
+  beforeUnmount() {
+    // setup()에서 추가된 이벤트 리스너 제거
     document.removeEventListener("click", this.closeAllMenus);
   },
 };
@@ -220,6 +361,7 @@ export default {
 .mymap-container {
   display: flex;
   min-height: 100vh;
+  position: relative;
 }
 
 .content {
@@ -450,5 +592,39 @@ export default {
 
 .view-plans-button:hover {
   background-color: #1765cc;
+}
+
+/* 로딩 오버레이 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
