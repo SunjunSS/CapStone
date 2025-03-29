@@ -1,4 +1,4 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes, Sequelize } = require("sequelize");
 const sequelize = require("../config/localDB");
 
 const Project = sequelize.define(
@@ -12,6 +12,16 @@ const Project = sequelize.define(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: Sequelize.NOW,
+    },
+    deleted: {
+      type: DataTypes.TINYINT(1),
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {

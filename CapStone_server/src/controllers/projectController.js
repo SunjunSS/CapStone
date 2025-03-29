@@ -57,22 +57,39 @@ exports.updateProjectAndRootNodeName = async (req, res) => {
   }
 };
 
-exports.deleteProject = async (req, res) => {
+// ✅ 소프트 삭제
+exports.softDeleteProject = async (req, res) => {
   try {
     const { project_id } = req.params;
 
     if (!project_id) {
-      return res.status(400).json({ message: "프로젝트 ID가 필요합니다." });
+      return res.status(400).json({ message: "project_id가 필요합니다." });
     }
 
-    await projectService.deleteProject(project_id);
+    await projectService.softDeleteProject(project_id);
 
-    res.status(200).json({ message: "프로젝트가 성공적으로 삭제되었습니다." });
+    res.status(200).json({ message: "프로젝트가 휴지통으로 이동되었습니다." });
   } catch (error) {
-    console.error("❌ 프로젝트 삭제 오류:", error);
-    res
-      .status(500)
-      .json({ message: "삭제 중 오류 발생", error: error.message });
+    console.error("❌ 소프트 삭제 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// ✅ 완전 삭제
+exports.permanentlyDeleteProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id가 필요합니다." });
+    }
+
+    await projectService.permanentlyDeleteProject(project_id);
+
+    res.status(200).json({ message: "프로젝트가 완전히 삭제되었습니다." });
+  } catch (error) {
+    console.error("❌ 완전 삭제 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
 

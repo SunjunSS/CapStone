@@ -34,3 +34,13 @@ exports.getProjectById = async (project_id) => {
     raw: true, // JSON 형식으로 반환
   });
 };
+
+exports.updateProjectDeletedFlag = async (project_id, deleted, transaction) => {
+  return await Project.update(
+    { deleted },
+    {
+      where: { project_id },
+      transaction,
+    }
+  );
+};

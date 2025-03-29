@@ -9,6 +9,7 @@ const sequelize = new Sequelize(
     host: config.db.host,
     dialect: "mysql",
     port: config.db.port,
+    timezone: "+09:00", // ✅ 한국 시간대로 설정
   }
 );
 

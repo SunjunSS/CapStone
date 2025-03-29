@@ -115,37 +115,57 @@ exports.updateProjectAndRootNodeName = async (project_id, newName) => {
   }
 };
 
-// 프로젝트 삭제
-exports.deleteProject = async (project_id) => {
-  if (!project_id) {
-    throw new Error("프로젝트 ID가 필요합니다.");
-  }
-
+exports.softDeleteProject = async (project_id) => {
   const transaction = await sequelize.transaction();
   try {
-    // ✅ 프로젝트가 존재하는지 확인
     const project = await projectRepository.getProjectById(project_id);
     if (!project) {
-      throw new Error("삭제할 프로젝트를 찾을 수 없습니다.");
+      throw new Error("삭제할 프로젝트가 없습니다.");
     }
 
-    // ✅ 프로젝트에 속한 노드 삭제
-    await nodeRepository.deleteNodesByProjectId(project_id, transaction);
-
-    // ✅ 프로젝트에 속한 멤버 정보 삭제
-    await projectMemberRepository.deleteProjectMembers(project_id, transaction);
-
-    // ✅ 프로젝트 삭제
-    await projectRepository.deleteProject(project_id, transaction);
+    // ✅ deleted = 1 로 변경
+    await projectRepository.updateProjectDeletedFlag(
+      project_id,
+      1,
+      transaction
+    );
 
     await transaction.commit();
-    console.log(`🗑️ 프로젝트(${project_id}) 및 관련 데이터 삭제 완료`);
+    console.log(`🗑️ 프로젝트(${project_id}) 소프트 삭제 완료`);
     return true;
   } catch (error) {
     await transaction.rollback();
-    console.error("❌ 프로젝트 삭제 실패:", error.message);
-    throw new Error("프로젝트 삭제 중 오류 발생");
+    console.error("❌ 소프트 삭제 실패:", error.message);
+    throw error;
   }
+};
+
+exports.permanentlyDeleteProject = async (project_id) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project || project.deleted !== 1) {
+      throw new Error("휴지통에 있는 프로젝트만 완전 삭제할 수 있습니다.");
+    }
+
+    // 관련된 노드, 멤버, 프로젝트 순으로 삭제
+    await nodeRepository.deleteNodesByProjectId(project_id, transaction);
+    await projectMemberRepository.deleteProjectMembers(project_id, transaction);
+    await projectRepository.deleteProject(project_id, transaction);
+
+    await transaction.commit();
+    console.log(`🚮 프로젝트(${project_id}) 완전 삭제 완료`);
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 완전 삭제 실패:", error.message);
+    throw error;
+  }
+};
+
+// 복원
+exports.restoreProject = async (project_id) => {
+  return await updateProjectDeletedFlag(project_id, 0);
 };
 
 exports.addMemberToProject = async (project_id, email, role = 3) => {
