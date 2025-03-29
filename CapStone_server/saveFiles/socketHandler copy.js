@@ -1,5 +1,6 @@
 const loginHandler = require("./LoginHandler.js");
 const nodeService = require("../services/nodeService/nodeService"); // ✅ nodeService 추가
+const audioHandler = require("./audioHandler.js")
 
 const rooms = {};
 const roomAudioBuffers = {};
@@ -7,7 +8,7 @@ const recordingStatus = {};
 const socketSessions = require("./socketSessions");
 const roomNodes = {}; // 노드 저장 객체 추가 (누락되어 있었음)
 const roomNicknames = {}; // 방별 닉네임 정보 저장 객체 추가
-
+const roomTranscripts = {};
 
 
 
@@ -16,14 +17,93 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("🟢 사용자 연결됨:", socket.id);
 
-    
+    let nowRoomId = null;
     // 로그인 핸들러 실행
     loginHandler(socket);
 
+    //  RTC 오디오 관리 핸들러 실행
+    // audioHandler(socket);
+    const { SpeechClient } = require("@google-cloud/speech");
+    process.env.GOOGLE_APPLICATION_CREDENTIALS =
+      "../google_key/planar-lacing-454709-b6-06cea798e131.json";
+
+    // 실시간 googleSTT 이벤트 시작
+    const client = new SpeechClient();
+    const encoding = "WEBM_OPUS";
+    const sampleRateHertz = 16000;
+    const languageCode = "ko-KR";
+
+    const request = {
+      config: {
+        encoding: encoding,
+        sampleRateHertz: sampleRateHertz,
+        languageCode: languageCode,
+        enableAutomaticPunctuation: true,
+      },
+      single_utterance: false,
+      interimResults: true, // 중간 결과 반환
+    };
+
+    // Keep-Alive 처리: 일정 간격으로 빈 데이터 전송
+    const keepAliveInterval = setInterval(() => {
+      if (!recognizeStream.destroyed) {
+        recognizeStream.write(Buffer.from([])); // 빈 버퍼 전송
+      }
+    }, 5000); // 5초마다 전송
+
+    // Google STT 스트림 생성
+    const recognizeStream = client
+      .streamingRecognize(request)
+      .on("error", console.error)
+      .on("data", (data) => {
+        const transcript = data.results[0]?.alternatives[0]?.transcript;
+
+        if (transcript) {
+          console.log(`STT: ${transcript}`);
+
+          // 해당 방에 텍스트 추가
+          roomTranscripts[nowRoomId].transcripts.push(transcript);
+          roomTranscripts[nowRoomId].count += 1;
+
+          // 해당 room의 텍스트가 모두 모였을 경우
+          if (roomTranscripts[nowRoomId].count === rooms[nowRoomId].length) {
+            // AI한테 보내기
+            console.log(`${nowRoomId}의 10초마다 AI분석 시행`)
+            //processRoomData(nowRoomId);
+          }
+        }
+      });
+
+    let audioBufferQueue = [];
+
+    const sendAudioDataInterval = setInterval(() => {
+      if (audioBufferQueue.length > 0) {
+        const concatenatedBuffer = Buffer.concat(audioBufferQueue);
+        if (!recognizeStream.destroyed) {
+          recognizeStream.write(concatenatedBuffer); // 10초마다 데이터를 보내기
+          console.log("STT에 데이터 전송:", concatenatedBuffer.length);
+        }
+        audioBufferQueue = []; // 전송 후 큐 초기화
+      }
+    }, 10000); // 10초마다 전송
+
+    // 음성 데이터 수신 처리
+    socket.on("streamingData", (audioBuffer) => {
+      if (!audioBuffer || !(audioBuffer instanceof Uint8Array)) {
+        console.error("❌ Received invalid audioBuffer:", audioBuffer);
+        return;
+      }
+
+      const buffer = Buffer.from(audioBuffer);
+      audioBufferQueue.push(buffer);
+    });
+
     
+
     // 방 참가 처리
     socket.on("join-room", ({ roomId, userId, nickname }) => {
       socket.join(roomId);
+      nowRoomId = roomId
 
       const userSocketId = socketSessions[userId]; // 로그인된 사용자의 socket.id 가져오기
       if (userSocketId) {
@@ -40,6 +120,10 @@ module.exports = (io) => {
       }
       rooms[roomId][socket.id] = userId;
 
+      if(!roomTranscripts[roomId]) {
+        // 음성 텍스트를 저장
+        roomTranscripts[roomId] = { transcripts: [], count: 0 };
+      }
 
       // 닉네임 정보 저장
       if (!roomNicknames[roomId]) {
@@ -101,12 +185,19 @@ module.exports = (io) => {
       console.log(`📡 sync-recording 이벤트 전송 - Room ID: ${roomId}`);
       roomAudioBuffers[roomId] = [];
 
+      
+
     });
 
     // 녹음 중지 처리
     socket.on("stop-recording", (roomId) => {
       console.log(`Recording stopped in room ${roomId}`);
 
+      // googleSTT도 종료
+      console.log("🚪 클라이언트 연결 해제, STT 스트림 종료");
+      // clearInterval(keepAliveInterval); // Keep-Alive 중지
+      // clearInterval(sendAudioDataInterval);
+      // recognizeStream.end();
 
       recordingStatus[roomId] = false;
       io.to(roomId).emit("sync-recording", false);

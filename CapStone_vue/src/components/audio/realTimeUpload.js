@@ -2,8 +2,8 @@ export async function realTimeUpload(recordedChunks, roomId, nickname) {
   
   if (recordedChunks.length === 0) return;
 
-  const blob = new Blob(recordedChunks, { type: "audio/wav" });
-  console.log("📤 10초마다 자동 업로드 진행 중...");
+  const blob = new Blob(recordedChunks, { type: "audio/mp3" });
+  console.log("📤 15초마다 자동 업로드 진행 중...");
 
   if (!blob || !roomId) {
       console.error("❌ Missing roomId");
@@ -14,7 +14,7 @@ export async function realTimeUpload(recordedChunks, roomId, nickname) {
     formData.append("roomId", roomId);
     formData.append(
       "stt",
-      new File([blob], "audio.wav", { type: "audio/wav" })
+      new File([blob], `${roomId}:${nickname}.mp3`, { type: "audio/mp3" })
     );
 
     try {
@@ -30,7 +30,7 @@ export async function realTimeUpload(recordedChunks, roomId, nickname) {
       );
 
       // upload 확인
-      console.log("✅ 업로드 성공!");
+      console.log("✅ 실시간 업로드 성공!");
 
       // 응답 확인
       resolve(response);

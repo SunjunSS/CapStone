@@ -8,7 +8,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // .env 파일에 API 키 저장 필요
 });
 
-async function askOpenAI(speakerSpeech, speakerNames, nodeData) {
+async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = false) {
   try {
     if (!speakerSpeech || !speakerNames) return;
 
@@ -21,7 +21,8 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData) {
             if (lines.length < 3) return ""; // SRT 형식이 아닐 경우 무시
 
             let time = lines[1]; // "00:00:21,000 --> 00:00:28,840"
-            let speech = lines.slice(2).join(" "); // 발언 내용만 추출
+            let speech
+             = lines.slice(2).join(" "); // 발언 내용만 추출
 
             return `${time}\n${nickname}: ${speech}`;
           })
@@ -83,6 +84,32 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData) {
 
     #### **현재 노드 데이터**
     ${nodeData}`;
+
+    if (isRealTime) {
+      
+      finalPrompt = `
+      이 대화 내용은 실시간 회의 중 일부입니다. 한국어로 응답해주세요.
+      
+      대화에서 중요한 키워드를 추출하고, 아래 JSON 형식으로 응답하세요.
+
+      {
+        "keywords": ["키워드1", "키워드2"]
+      }
+
+      📌 **작업 내용**:
+      - 대화 내용을 분석하여 가장 중요한 **2개의 키워드**를 추출하세요.
+      - 키워드는 반드시 **현재 노드 데이터**와 연관성이 있어야 합니다.
+      - 단순히 빈번하게 언급된 단어가 아니라, **회의에서 핵심적으로 논의된 개념을 포함**해야 합니다.
+
+      ### 🔍 **입력 데이터**
+      #### **대화 내용**
+      ${formattedSpeech} 
+
+      #### **현재 노드 데이터**
+      ${nodeData}
+      `;
+    }
+
     
     // OpenAI API 호출
     const response = await openai.chat.completions.create({

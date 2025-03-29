@@ -16,5 +16,14 @@ module.exports = (io) => {
     uploadAudio // 함수 참조만 전달, 즉시 호출하지 않음
   );
 
+  router.post(
+    "/realTime",
+    upload.single("audio"),
+    (req, res, next) => {
+      next(); // 다음 미들웨어로 제어 전달
+    },
+    uploadAudio // 함수 참조만 전달, 즉시 호출하지 않음
+  );
+
   return router;
 };
