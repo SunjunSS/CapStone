@@ -33,6 +33,57 @@ exports.getProjectsByUserId = async (req, res) => {
   }
 };
 
+// 활성 프로젝트만 조회 (deleted=0)
+exports.getActiveProjectsByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    const projects = await projectService.getActiveProjectsByUserId(user_id);
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error("활성 프로젝트 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 휴지통 프로젝트만 조회 (deleted=1)
+exports.getTrashProjectsByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    const projects = await projectService.getTrashProjectsByUserId(user_id);
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error("휴지통 프로젝트 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 프로젝트 복원
+exports.restoreProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id가 필요합니다." });
+    }
+
+    await projectService.restoreProject(project_id);
+    res.status(200).json({ message: "프로젝트가 성공적으로 복원되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트 복원 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
 exports.updateProjectAndRootNodeName = async (req, res) => {
   try {
     const { project_id } = req.params;

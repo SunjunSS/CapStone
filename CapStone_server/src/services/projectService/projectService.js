@@ -42,6 +42,101 @@ exports.createProjectWithUser = async (user_id) => {
   }
 };
 
+// 유저ID로 활성 프로젝트 찾기 (deleted=0인 프로젝트만)// 유저ID로 활성 프로젝트 찾기 (deleted=0인 프로젝트만)
+exports.getActiveProjectsByUserId = async (user_id) => {
+  try {
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 사용자 ID: ${user_id} 의 활성 프로젝트 조회 시작`
+    );
+
+    // ✅ 프로젝트 멤버 서비스에서 사용자의 프로젝트 ID 목록 가져오기
+    const userProjects = await projectMemberRepository.getUserProjectIds(
+      user_id
+    );
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 사용자의 프로젝트 ID 목록:`,
+      JSON.stringify(userProjects)
+    );
+
+    if (!userProjects || userProjects.length === 0) {
+      console.log(
+        `🔍 [getActiveProjectsByUserId] 사용자의 프로젝트가 없습니다.`
+      );
+      return [];
+    }
+
+    // ✅ 프로젝트 ID 목록을 사용하여 프로젝트 정보 조회 (레포지토리 사용)
+    const projects = await projectRepository.getUserProjects(
+      userProjects.map((p) => p.project_id)
+    );
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 조회된 전체 프로젝트:`,
+      JSON.stringify(projects)
+    );
+
+    // ✅ `deleted=0`인 프로젝트만 필터링
+    const activeProjects = projects.filter((project) => project.deleted === 0);
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 필터링된 활성 프로젝트 (deleted=0):`,
+      JSON.stringify(activeProjects)
+    );
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 활성 프로젝트 수: ${activeProjects.length}`
+    );
+
+    // ✅ `isAdmin` 정보를 추가하여 반환
+    const result = activeProjects.map((project) => ({
+      project_id: project.project_id,
+      name: project.name,
+      isAdmin:
+        userProjects.find((p) => p.project_id === project.project_id)
+          ?.isAdmin || 0, // ✅ isAdmin 값 추가
+    }));
+
+    console.log(
+      `🔍 [getActiveProjectsByUserId] 최종 결과:`,
+      JSON.stringify(result)
+    );
+    return result;
+  } catch (error) {
+    console.error("❌ 유저의 활성 프로젝트 조회 중 오류 발생:", error);
+    throw error;
+  }
+};
+
+// 유저ID로 휴지통 프로젝트 찾기 (deleted=1인 프로젝트만)
+exports.getTrashProjectsByUserId = async (user_id) => {
+  try {
+    // ✅ 프로젝트 멤버 서비스에서 사용자의 프로젝트 ID 목록 가져오기
+    const userProjects = await projectMemberRepository.getUserProjectIds(
+      user_id
+    );
+    if (!userProjects || userProjects.length === 0) {
+      return [];
+    }
+
+    // ✅ 프로젝트 ID 목록을 사용하여 프로젝트 정보 조회 (레포지토리 사용)
+    const projects = await projectRepository.getUserProjects(
+      userProjects.map((p) => p.project_id)
+    );
+
+    // ✅ `deleted=1`인 프로젝트만 필터링
+    const trashProjects = projects.filter((project) => project.deleted === 1);
+
+    // ✅ `isAdmin` 정보를 추가하여 반환
+    return trashProjects.map((project) => ({
+      project_id: project.project_id,
+      name: project.name,
+      isAdmin:
+        userProjects.find((p) => p.project_id === project.project_id)
+          ?.isAdmin || 0, // ✅ isAdmin 값 추가
+    }));
+  } catch (error) {
+    console.error("❌ 유저의 휴지통 프로젝트 조회 중 오류 발생:", error);
+    throw error;
+  }
+};
+
 // 유저ID로 프로젝트 찾기
 exports.getProjectsByUserId = async (user_id) => {
   try {
@@ -165,7 +260,32 @@ exports.permanentlyDeleteProject = async (project_id) => {
 
 // 복원
 exports.restoreProject = async (project_id) => {
-  return await updateProjectDeletedFlag(project_id, 0);
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project) {
+      throw new Error("복원할 프로젝트가 없습니다.");
+    }
+
+    if (project.deleted === 0) {
+      throw new Error("이미 활성 상태인 프로젝트입니다.");
+    }
+
+    // deleted = 0으로 변경
+    await projectRepository.updateProjectDeletedFlag(
+      project_id,
+      0,
+      transaction
+    );
+
+    await transaction.commit();
+    console.log(`♻️ 프로젝트(${project_id}) 복원 완료`);
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 프로젝트 복원 실패:", error.message);
+    throw error;
+  }
 };
 
 exports.addMemberToProject = async (project_id, email, role = 3) => {
