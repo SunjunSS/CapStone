@@ -1,13 +1,13 @@
-const { sequelize } = require("../../models"); // ✅ `Project` 테이블만 사용
+const { sequelize } = require("../../models");
 const nodeRepository = require("../../repositories/nodeRepository");
-const projectRepository = require("../../repositories/projectRepository"); // ✅ 추가
+const projectRepository = require("../../repositories/projectRepository");
 const projectMemberRepository = require("../../repositories/projectMemberRepository");
 const userRepository = require("../../repositories/userRepository");
-const { ROLE_LABELS } = require("../../constants/roles"); // 역할 매핑 상수 추가
+const { ROLE_LABELS } = require("../../constants/roles");
 
 // 프로젝트 생성, 프로젝트 유저 매핑, 루트 노드 생성
 exports.createProjectWithUser = async (user_id) => {
-  const transaction = await sequelize.transaction(); // 트랜잭션 시작
+  const transaction = await sequelize.transaction();
 
   try {
     // 1️⃣ 프로젝트 생성 (기본 이름 사용)
@@ -16,11 +16,11 @@ exports.createProjectWithUser = async (user_id) => {
       transaction
     );
 
-    // 2️⃣ 사용자 추가 (ProjectMembers 테이블 관리)
+    // 2️⃣ 사용자 추가 (ProjectMembers 테이블 관리) - isAdmin 값을 4로 설정
     await projectMemberRepository.addProjectMember(
       user_id,
       project.project_id,
-      3,
+      4, // isAdmin 값을 4로 변경 (기존 3에서 변경)
       transaction
     );
 
@@ -33,16 +33,16 @@ exports.createProjectWithUser = async (user_id) => {
       transaction
     );
 
-    await transaction.commit(); // ✅ 트랜잭션 커밋
+    await transaction.commit();
     return project;
   } catch (error) {
-    await transaction.rollback(); // ❌ 오류 발생 시 롤백
+    await transaction.rollback();
     console.error("❌ 프로젝트 생성 중 오류:", error);
     throw error;
   }
 };
 
-// 유저ID로 활성 프로젝트 찾기 (deleted=0인 프로젝트만)// 유저ID로 활성 프로젝트 찾기 (deleted=0인 프로젝트만)
+// 유저ID로 활성 프로젝트 찾기 (deleted=0인 프로젝트만)
 exports.getActiveProjectsByUserId = async (user_id) => {
   try {
     console.log(
@@ -361,23 +361,43 @@ exports.removeMemberFromProject = async (project_id, user_id) => {
 };
 
 exports.getProjectMembers = async (project_id) => {
-  const memberRecords = await projectMemberRepository.getProjectMemberIds(
-    project_id
-  );
-  const userIds = memberRecords.map((m) => m.user_id);
+  try {
+    const memberRecords = await projectMemberRepository.getProjectMemberIds(
+      project_id
+    );
+    const userIds = memberRecords.map((m) => m.user_id);
 
-  const users = await userRepository.getUsersByIds(userIds);
+    const users = await userRepository.getUsersByIds(userIds);
 
-  // 유저 정보와 isAdmin을 결합해서 정리
-  return users.map((user) => {
-    const memberInfo = memberRecords.find((m) => m.user_id === user.user_id);
-    return {
-      user_id: user.user_id,
-      name: user.name,
-      email: user.email,
-      isAdmin: memberInfo?.isAdmin || 0,
-    };
-  });
+    // 유저 정보와 isAdmin을 결합해서 정리
+    const membersWithInfo = users.map((user) => {
+      const memberInfo = memberRecords.find((m) => m.user_id === user.user_id);
+      return {
+        user_id: user.user_id,
+        name: user.name,
+        email: user.email,
+        isAdmin: memberInfo?.isAdmin || 0,
+      };
+    });
+
+    // isAdmin이 4인 멤버를 맨 앞으로 정렬하고, 그 외의 멤버는 그대로 유지
+    const sortedMembers = membersWithInfo.sort((a, b) => {
+      // isAdmin이 4인 멤버를 맨 앞으로 정렬
+      if (a.isAdmin === 4 && b.isAdmin !== 4) {
+        return -1; // a가 b보다 앞에 위치
+      }
+      if (a.isAdmin !== 4 && b.isAdmin === 4) {
+        return 1; // b가 a보다 앞에 위치
+      }
+      // 그 외의 경우 순서 유지
+      return 0;
+    });
+
+    return sortedMembers;
+  } catch (error) {
+    console.error("❌ 프로젝트 멤버 조회 오류:", error);
+    throw error;
+  }
 };
 
 // 프로젝트에 유저 역할 수정
