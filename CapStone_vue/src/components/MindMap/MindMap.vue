@@ -153,7 +153,7 @@
                 class="member-role"
                 :class="{
                   viewer: member.isAdmin === 2,
-                  editor: member.isAdmin === 3,
+                  editor: member.isAdmin === 3 || member.isAdmin === 4,
                 }"
                 @click="updateRole(member)"
               >
