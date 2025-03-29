@@ -1,3 +1,6 @@
+// userRepository.js
+const { User } = require("../../models");
+
 exports.registerUser = async (name, email, password) => {
   // 도메인 제한 검사
   const allowedDomains = ["gmail.com", "naver.com"];
