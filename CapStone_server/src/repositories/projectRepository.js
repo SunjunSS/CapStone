@@ -11,12 +11,19 @@ exports.updateProjectName = async (project_id, newName, transaction) => {
   );
 };
 
+// projectRepository.js 파일의 getUserProjects 함수 수정
 exports.getUserProjects = async (projectIds) => {
-  return await Project.findAll({
-    attributes: ["project_id", "name"],
-    where: { project_id: projectIds },
-    raw: true,
-  });
+  try {
+    return await Project.findAll({
+      attributes: ["project_id", "name", "deleted"], // 'deleted' 필드 추가
+      where: {
+        project_id: projectIds,
+      },
+    });
+  } catch (error) {
+    console.error("❌ 프로젝트 조회 중 오류 발생:", error);
+    throw error;
+  }
 };
 
 // 프로젝트 삭제
@@ -33,4 +40,14 @@ exports.getProjectById = async (project_id) => {
     where: { project_id },
     raw: true, // JSON 형식으로 반환
   });
+};
+
+exports.updateProjectDeletedFlag = async (project_id, deleted, transaction) => {
+  return await Project.update(
+    { deleted },
+    {
+      where: { project_id },
+      transaction,
+    }
+  );
 };

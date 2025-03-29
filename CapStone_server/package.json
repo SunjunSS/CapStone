@@ -24,7 +24,11 @@
     "grpc-tools": "^1.13.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.12.0",
+<<<<<<< HEAD
     "node-record-lpcm16": "^1.0.1",
+=======
+    "nodemailer": "^6.10.0",
+>>>>>>> 4c26e179e4c714bddb3a55940240ddbb7986595f
     "openai": "^4.82.0",
     "protobufjs": "^7.4.0",
     "record": "^0.2.0",

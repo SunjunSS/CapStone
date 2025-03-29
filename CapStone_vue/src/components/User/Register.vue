@@ -20,14 +20,43 @@
               dense
             ></v-text-field>
 
+            <!-- 이메일 입력 필드 + 인증 버튼 한 줄로 정렬 -->
+            <v-row dense class="align-center mb-2">
+              <!-- 이메일 입력 필드: 유연하게 늘어나게 -->
+              <v-col cols="auto" class="flex-grow-1">
+                <v-text-field
+                  v-model="email"
+                  :rules="[
+                    (v) => !!v || '이메일을 입력하세요.',
+                    (v) =>
+                      /.+@(gmail\.com|naver\.com)$/.test(v) ||
+                      'gmail 또는 naver 이메일만 가능합니다.',
+                  ]"
+                  label="이메일 (gmail.com 또는 naver.com)"
+                  prepend-icon="mdi-email"
+                  outlined
+                  dense
+                />
+              </v-col>
+
+              <!-- 버튼: 고정된 너비로, 오른쪽 정렬 -->
+              <v-col cols="auto" class="d-flex justify-end">
+                <v-btn
+                  color="#1E88E5"
+                  class="email-verify-btn"
+                  @click="sendVerificationCode"
+                >
+                  인증 코드
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <!-- 인증 코드 입력 필드 (버튼 클릭 시 표시) -->
             <v-text-field
-              v-model="email"
-              :rules="[
-                (v) => !!v || '이메일을 입력하세요.',
-                (v) => /.+@.+\..+/.test(v) || '유효한 이메일을 입력하세요.',
-              ]"
-              label="이메일"
-              prepend-icon="mdi-email"
+              v-if="showVerificationField"
+              v-model="verificationCode"
+              label="인증 코드 입력"
+              prepend-icon="mdi-shield-key-outline"
               required
               outlined
               dense
@@ -100,10 +129,43 @@ export default {
       snackbarText: "",
       snackbarColor: "info", // Default color
       valid: false,
+
+      // 인증 코드 관련
+      showVerificationField: false, // 인증 입력창 표시 여부
+      verificationCode: "", // 사용자가 입력할 인증 코드
     };
   },
   methods: {
     async register() {
+      // 인증 코드가 입력되어 있지만 검증은 안된 상태
+      if (
+        this.showVerificationField &&
+        this.verificationCode &&
+        !this.emailVerified
+      ) {
+        // 먼저 인증 코드 검증 진행
+        await this.verifyCode();
+
+        // 인증에 실패했다면 회원가입 진행하지 않음
+        if (!this.emailVerified) {
+          return;
+        }
+      } else if (this.showVerificationField && !this.verificationCode) {
+        // 인증 코드가 보여지지만 입력되지 않은 경우
+        this.snackbarColor = "error";
+        this.snackbarText = "인증 코드를 입력해주세요.";
+        this.snackbar = true;
+        return;
+      } else if (!this.showVerificationField) {
+        // 인증 코드 요청 자체를 하지 않은 경우
+        this.snackbarColor = "error";
+        this.snackbarText =
+          "이메일 인증이 필요합니다. 인증 코드 버튼을 클릭해주세요.";
+        this.snackbar = true;
+        return;
+      }
+
+      this.registering = true;
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
         const response = await axios.post(`${API_BASE_URL}/api/user/register`, {
@@ -112,28 +174,103 @@ export default {
           password: this.password,
         });
 
-        // Set color to info for successful registration
-        this.snackbarColor = "info";
-        this.snackbarText = response.data.message;
-        console.log(response.data.message);
+        this.snackbarColor = "success";
+        this.snackbarText =
+          response.data.message || "회원가입이 완료되었습니다!";
+        this.snackbar = true;
 
-        // 회원가입 성공 시 로그인 화면으로 이동
+        // 회원가입 성공 후 로그인 페이지로 이동
         setTimeout(() => {
           this.$router.push("/Login");
-        }, 700); // 700ms 후 이동
+        }, 1500);
       } catch (error) {
-        console.error("서버 응답 오류:", error.response); // 전체 응답 확인
+        console.error("서버 응답 오류:", error.response);
 
-        // Set color to error for existing email or other errors
         this.snackbarColor = "error";
         this.snackbarText =
-          error.response?.data.message || "오류가 발생했습니다.";
+          error.response?.data.message || "회원가입 중 오류가 발생했습니다.";
         this.snackbar = true;
+      } finally {
+        this.registering = false;
       }
-      this.snackbar = true;
     },
+
     goToLogin() {
       this.$router.push("/Login");
+    },
+
+    // 인증 코드 발송 API 호출
+    async sendVerificationCode() {
+      // 이메일 유효성 확인
+      if (!this.email || !/.+@(gmail\.com|naver\.com)$/.test(this.email)) {
+        this.snackbarColor = "error";
+        this.snackbarText = "올바른 이메일을 먼저 입력해주세요.";
+        this.snackbar = true;
+        return;
+      }
+
+      this.sendingCode = true;
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const response = await axios.post(
+          `${API_BASE_URL}/api/mail/send-code`,
+          {
+            email: this.email,
+          }
+        );
+
+        // 인증 입력창 표시
+        this.showVerificationField = true;
+        this.snackbarColor = "success";
+        this.snackbarText =
+          response.data.message || "인증 코드가 이메일로 전송되었습니다.";
+        this.snackbar = true;
+      } catch (error) {
+        console.error("인증 코드 전송 오류:", error.response);
+        this.snackbarColor = "error";
+        this.snackbarText =
+          error.response?.data.message ||
+          "인증 코드 전송 중 오류가 발생했습니다.";
+        this.snackbar = true;
+      } finally {
+        this.sendingCode = false;
+      }
+    },
+
+    // 인증 코드 확인 API 호출
+    async verifyCode() {
+      if (!this.verificationCode) {
+        this.snackbarColor = "error";
+        this.snackbarText = "인증 코드를 입력해주세요.";
+        this.snackbar = true;
+        return;
+      }
+
+      this.verifyingCode = true;
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const response = await axios.post(
+          `${API_BASE_URL}/api/mail/verify-code`,
+          {
+            email: this.email,
+            code: this.verificationCode,
+          }
+        );
+
+        this.emailVerified = true;
+        this.snackbarColor = "success";
+        this.snackbarText =
+          response.data.message || "이메일 인증이 완료되었습니다.";
+        this.snackbar = true;
+      } catch (error) {
+        console.error("인증 코드 확인 오류:", error.response);
+        this.snackbarColor = "error";
+        this.snackbarText =
+          error.response?.data.message || "인증 코드가 올바르지 않습니다.";
+        this.snackbar = true;
+      } finally {
+        this.verifyingCode = false;
+      }
     },
   },
 };
@@ -175,5 +312,12 @@ export default {
   justify-content: center;
   width: 100%;
   text-align: center;
+}
+
+.email-verify-btn {
+  height: 57px; /* dense v-text-field와 맞춤 */
+  min-height: 40px;
+  font-size: 14px;
+  margin-bottom: 20px; /* 버튼 하단 약간 보정 */
 }
 </style>

@@ -93,7 +93,10 @@
                       <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
                       <li @click="duplicateMap(index)">📋 복제</li>
                       <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                      <li @click="moveToTrash(index)" class="delete-option">
+                      <li
+                        @click="moveToTrash(item.project_id, index)"
+                        class="delete-option"
+                      >
                         🗑️ 휴지통으로 이동
                       </li>
                     </ul>
@@ -136,7 +139,11 @@ import { ref, onMounted } from "vue"; // ✅ ref와 onMounted 추가
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import Project from "./Project.vue";
 import { getCurrentUser, getProject, connectSocket } from "../socket/socket"; // connectSocket 추가
-import { createProject, getUserProjects } from "../../api/projectApi"; // 프로젝트 생성 API 불러오기
+import {
+  createProject,
+  getUserProjects,
+  softDeleteProject,
+} from "../../api/projectApi"; // 프로젝트 생성 API 불러오기
 import { useRouter } from "vue-router"; // Vue Router 사용
 
 export default {
@@ -264,16 +271,26 @@ export default {
       alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
       this.closeAllMenus();
     },
-    moveToTrash(index) {
+    moveToTrash(projectId, index) {
       // 휴지통으로 이동 기능 구현
       if (
         confirm(
           `${this.mapItems[index].name}을(를) 휴지통으로 이동하시겠습니까?`
         )
       ) {
-        this.mapItems.splice(index, 1);
+        this.closeAllMenus();
+        softDeleteProject(projectId)
+          .then(() => {
+            console.log(
+              `🗑️ 프로젝트(${projectId})가 휴지통으로 이동되었습니다.`
+            );
+            this.mapItems.splice(index, 1);
+          })
+          .catch((error) => {
+            console.error("❌ 프로젝트 휴지통 이동 중 오류:", error);
+            alert("프로젝트를 휴지통으로 이동하는 중 오류가 발생했습니다.");
+          });
       }
-      this.closeAllMenus();
     },
   },
   setup() {
@@ -328,6 +345,19 @@ export default {
     const openMindMap = (projectId) => {
       console.log("🔗 MindMap으로 이동:", projectId);
       router.push(`/MindMap/${projectId}`);
+    };
+
+    // ✅ 프로젝트를 휴지통으로 이동
+    const moveToTrash = async (projectId, index) => {
+      try {
+        const result = await softDeleteProject(projectId);
+        if (result) {
+          console.log(`🗑️ 프로젝트(${projectId})가 휴지통으로 이동되었습니다.`);
+          mapItems.value.splice(index, 1); // UI에서 제거
+        }
+      } catch (error) {
+        console.error("❌ 프로젝트 휴지통 이동 중 오류:", error);
+      }
     };
 
     onMounted(() => {
@@ -416,16 +446,16 @@ export default {
 
 .map-item {
   background: #f5f5f7;
-  padding: 20px;
-  border-radius: 15px;
+  padding: 2vh 2vw;
+  border-radius: 1vw;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 220px;
-  min-height: 120px;
-  transition: transform 0.3s ease; /* 애니메이션 효과 추가 */
+  min-width: 14.5vw;
+  min-height: 20vh;
+  transition: transform 0.3s ease;
 }
 
 .map-item:hover {

@@ -1,4 +1,5 @@
 const projectService = require("../services/projectService/projectService.js");
+const { ROLE_LABELS } = require("../constants/roles");
 
 exports.createProject = async (req, res) => {
   try {
@@ -32,6 +33,57 @@ exports.getProjectsByUserId = async (req, res) => {
   }
 };
 
+// 활성 프로젝트만 조회 (deleted=0)
+exports.getActiveProjectsByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    const projects = await projectService.getActiveProjectsByUserId(user_id);
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error("활성 프로젝트 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 휴지통 프로젝트만 조회 (deleted=1)
+exports.getTrashProjectsByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    const projects = await projectService.getTrashProjectsByUserId(user_id);
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error("휴지통 프로젝트 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 프로젝트 복원
+exports.restoreProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id가 필요합니다." });
+    }
+
+    await projectService.restoreProject(project_id);
+    res.status(200).json({ message: "프로젝트가 성공적으로 복원되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트 복원 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
 exports.updateProjectAndRootNodeName = async (req, res) => {
   try {
     const { project_id } = req.params;
@@ -56,22 +108,39 @@ exports.updateProjectAndRootNodeName = async (req, res) => {
   }
 };
 
-exports.deleteProject = async (req, res) => {
+// ✅ 소프트 삭제
+exports.softDeleteProject = async (req, res) => {
   try {
     const { project_id } = req.params;
 
     if (!project_id) {
-      return res.status(400).json({ message: "프로젝트 ID가 필요합니다." });
+      return res.status(400).json({ message: "project_id가 필요합니다." });
     }
 
-    await projectService.deleteProject(project_id);
+    await projectService.softDeleteProject(project_id);
 
-    res.status(200).json({ message: "프로젝트가 성공적으로 삭제되었습니다." });
+    res.status(200).json({ message: "프로젝트가 휴지통으로 이동되었습니다." });
   } catch (error) {
-    console.error("❌ 프로젝트 삭제 오류:", error);
-    res
-      .status(500)
-      .json({ message: "삭제 중 오류 발생", error: error.message });
+    console.error("❌ 소프트 삭제 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// ✅ 완전 삭제
+exports.permanentlyDeleteProject = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id가 필요합니다." });
+    }
+
+    await projectService.permanentlyDeleteProject(project_id);
+
+    res.status(200).json({ message: "프로젝트가 완전히 삭제되었습니다." });
+  } catch (error) {
+    console.error("❌ 완전 삭제 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
 
@@ -130,6 +199,37 @@ exports.getProjectMembers = async (req, res) => {
     res.status(200).json({ members });
   } catch (error) {
     console.error("❌ 프로젝트 멤버 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 프로젝트에 유저 역할 수정
+exports.updateMemberRole = async (req, res) => {
+  try {
+    const { project_id, user_id } = req.params;
+    const { role } = req.body;
+
+    console.log("🟢 역할 업데이트 요청 받음: ", project_id, user_id, role); // 요청받은 데이터 로그
+
+    if (!role || !project_id || !user_id) {
+      return res
+        .status(400)
+        .json({ message: "프로젝트 ID, 유저 ID, 역할이 필요합니다." });
+    }
+
+    const roleValue = ROLE_LABELS[role];
+    if (roleValue === undefined) {
+      return res
+        .status(400)
+        .json({ message: "유효하지 않은 역할(role) 값입니다." });
+    }
+
+    await projectService.updateMemberRole(project_id, user_id, roleValue);
+    res
+      .status(200)
+      .json({ message: "유저 역할이 성공적으로 업데이트되었습니다." });
+  } catch (error) {
+    console.error("❌ 역할 수정 오류:", error);
     res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
