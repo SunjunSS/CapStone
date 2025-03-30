@@ -151,7 +151,8 @@ import io from "socket.io-client";
 import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
-// import { realTimeUpload } from "./realTimeUpload.js";
+
+
 
 
 export default {
@@ -171,6 +172,7 @@ export default {
       isMuted: false,
       audioDevices: [],
       selectedAudioDevice: "",
+      sttProcess: null,
       audioLevel: 0,
       speakingParticipants: {},
       connectionStatus: "disconnected",
@@ -182,6 +184,7 @@ export default {
       mediaRecorder: null, // MediaRecorder 인스턴스
       recordedChunks: [], // 녹음된 데이터
       temporaryChunks: [],
+      uploadInterval: null,
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
     };
@@ -307,13 +310,15 @@ export default {
       this.isRecording = !this.isRecording;
 
       if (this.isRecording) {
-        //this.startRecording();
         this.socket.emit("start-recording", this.roomId);
+        
         console.log("녹음 시작");
+
       } else {
-        //this.stopRecording();
         this.socket.emit("stop-recording", this.roomId);
+        
         console.log("녹음 중지");
+        
       }
     },
 
@@ -331,16 +336,32 @@ export default {
     },
 
     // 녹음 시작 메서드
-    startRecording() {
+    async startRecording() {
       if (!this.localStream) return;
 
       this.recordedChunks = [];
+      this.temporaryChunks = [];
       this.mediaRecorder = new MediaRecorder(this.localStream);
 
-      this.mediaRecorder.ondataavailable = (event) => {
+
+      this.mediaRecorder.ondataavailable = async (event) => {
+        console.log("📝 dataavailable 이벤트 발생");
         this.recordedChunks.push(event.data);
         this.temporaryChunks.push(event.data);
+
       };
+
+      this.uploadInterval = setInterval(async () => {
+        if (this.temporaryChunks.length > 0) {
+          console.log("🔄 20초 단위 실시간 데이터 업로드 시작...");
+          const blob = new Blob(this.temporaryChunks, { type: "audio/mp3" });
+          await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
+          //this.temporaryChunks = []; // 업로드 후 버퍼 초기화
+        } else {
+          console.log("아직 비어있음")
+        }
+      }, 20000); // 20초마다 업로드
+
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -348,26 +369,25 @@ export default {
           return;
         }
 
-        const blob = new Blob(this.recordedChunks, { type: "audio/wav" });
+        clearInterval(this.uploadInterval);
+
+        const blob = new Blob(this.recordedChunks, { type: "audio/mp3" });
         console.log("🎤 녹음 데이터 준비 완료, 업로드 시작...");
 
         // 서버로 audio파일을 업로드함
         try {
-          await uploadAudio(blob, this.roomId, this.userNickname);
+          await uploadAudio(blob, this.roomId, this.userNickname, "upload");
           console.log("✅ 업로드 성공!");
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
         }
-        clearInterval(this.uploadInterval);
+        
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(19000);
       this.isRecording = true;
 
     },
-
-
-    
 
     // 녹음 중지 메서드
     stopRecording() {
@@ -424,6 +444,7 @@ export default {
           this.checkRecording();
         });
 
+
         this.socket.on("return-recording", (data) => {
 
           const { recordingData, fileBuffer } = data;
@@ -452,9 +473,15 @@ export default {
           const nodes = recordingData.minutes.recommendNodes
 
           console.log("🟢 반환된 추천 노드: ", nodes)
-          console.log("🟢 변환된 응답값:", report);
           this.meetingContent = report;
         });
+
+        this.socket.on("return-keyword",(data) => {
+
+          const { recordingData, fileBuffer } = data;
+          const jsonString = JSON.stringify(recordingData, null, 2);
+          console.log(`반환된 키워드: ${jsonString}`)
+        })
 
         this.socket.on("connect_error", (error) => {
           this.connectionStatus = "Error";

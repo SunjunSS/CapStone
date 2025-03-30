@@ -1,20 +1,20 @@
-export async function realTimeUpload(recordedChunks, roomId) {
+export async function realTimeUpload(recordedChunks, roomId, nickname) {
   
   if (recordedChunks.length === 0) return;
 
-  const blob = new Blob(recordedChunks, { type: "audio/wav" });
-  console.log("📤 25초마다 자동 업로드 진행 중...");
+  const blob = new Blob(recordedChunks, { type: "audio/mp3" });
+  console.log("📤 15초마다 자동 업로드 진행 중...");
 
   if (!blob || !roomId) {
-      console.error("❌ Missing audio blob or roomId");
-      return reject("Missing audio blob or roomId");
+      console.error("❌ Missing roomId");
+      return reject("Missing roomId");
     }
 
     const formData = new FormData();
     formData.append("roomId", roomId);
     formData.append(
-      "audio",
-      new File([blob], "audio.wav", { type: "audio/wav" })
+      "stt",
+      new File([blob], `${roomId}:${nickname}.mp3`, { type: "audio/mp3" })
     );
 
     try {
@@ -29,13 +29,10 @@ export async function realTimeUpload(recordedChunks, roomId) {
         }
       );
 
-      console.log("✅ 업로드 성공!");
+      // upload 확인
+      console.log("✅ 실시간 업로드 성공!");
 
-       if (response.data && response.data.nodes) {
-         updateMindMap(response.data.nodes);
-       }
-
-       
+      // 응답 확인
       resolve(response);
     } catch (error) {
       console.error("❌ 업로드 오류:", error);

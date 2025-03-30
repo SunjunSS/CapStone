@@ -22,12 +22,14 @@ exports.convertToMP3 = async (inputPath) => {
   }
 };
 
-exports.processIndividualFile = async (roomAudioBuffers) => {
+exports.processIndividualFile = async (roomAudioBuffers, isRealTime) => {
   const userSpeech = {}; // 멤버별 음성 텍스트 저장
   const speakerNames = []; // 화자 이름 목록
 
   try {
     if (roomAudioBuffers == null) return;
+
+   
 
     // 각 멤버의 음성텍스트를 저장
     for (const userObject of roomAudioBuffers) {
@@ -38,7 +40,7 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
       );
 
       const inputPath = await convertMP3(userObject.inputPath, outputPath);
-      const response = await callClovaSpeechAPI(inputPath); // 음성 텍스트 얻기
+      const response = await callClovaSpeechAPI(outputPath); // 음성 텍스트 얻기
       
       userSpeech[userObject.nickname] = response; // 닉네임과 음성 텍스트 매핑
       speakerNames.push(userObject.nickname); // 화자 이름 목록에 추가
@@ -50,7 +52,7 @@ exports.processIndividualFile = async (roomAudioBuffers) => {
     
     const nodeData = data
 
-    const openAIResponse = await askOpenAI(userSpeech, speakerNames, nodeData);
+    const openAIResponse = await askOpenAI(userSpeech, speakerNames, nodeData, isRealTime);
 
     const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
 

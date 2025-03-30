@@ -27,6 +27,8 @@ module.exports = (io) => {
         const nickname = req.body.nickname;
         const inputPath = req.file.path;
         
+        const isRealTime = req.path.includes("realTime");
+        
 
         console.log(`🎤 파일 저장 완료: ${inputPath}`);
 
@@ -77,26 +79,26 @@ module.exports = (io) => {
           `🎶 ${expectedUsers}명 모두 업로드 완료`
         );
 
-        const { openAIResponse, mixedAudioPath }  = await processIndividualFile(roomAudioBuffers[roomId]);
+
+        const { openAIResponse, mixedAudioPath }  = await processIndividualFile(roomAudioBuffers[roomId], isRealTime);
 
         if(openAIResponse == null) {
           console.log("audioController: ai응답이 비었습니다.")
         }
         console.log("🔹 OpenAI 응답 타입:", typeof openAIResponse);
         
-        // const { openAIResponse } = await processAudioFile(
-        //   mp3Path, roomAudioBuffers[roomId].length
-        // );
+       
 
-        const mp3Buffer = fs.readFileSync(mixedAudioPath);
+        // realTime의 경우는 음성파일 반환을 안하며, 돌려주는 코드가 다름
+        const mp3Buffer = isRealTime ? null : fs.readFileSync(mixedAudioPath);
 
-        io.to(roomId).emit("return-recording", {
-          recordingData: openAIResponse,
-          fileBuffer: mp3Buffer.toString("base64"),
-        });
-
-        // const mp3Path = await mixAndConvertAudio(roomId, roomAudioBuffers);
-        // console.log(`✅ 믹싱 성공: ${mp3Path}`);
+        io.to(roomId).emit(
+          isRealTime ? "return-keyword" : "return-recording",
+          {
+            recordingData: openAIResponse,
+            fileBuffer: isRealTime ? null : mp3Buffer.toString("base64"), 
+          }
+        );
 
 
         // 처리 후 해당 방의 업로드 리스트 초기화
