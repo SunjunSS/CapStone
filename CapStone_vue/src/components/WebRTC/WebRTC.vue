@@ -473,7 +473,6 @@ export default {
           const nodes = recordingData.minutes.recommendNodes
 
           console.log("🟢 반환된 추천 노드: ", nodes)
-          console.log("🟢 변환된 응답값:", report);
           this.meetingContent = report;
         });
 
