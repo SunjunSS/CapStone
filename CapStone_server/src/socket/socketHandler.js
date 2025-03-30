@@ -229,6 +229,16 @@ module.exports = (io) => {
       }
     });
 
+    // 역할 변경 이벤트 처리
+    socket.on("roleChanged", (data) => {
+      console.log(
+        `👤 역할 변경 이벤트: ${data.email}의 역할이 ${data.role}로 변경됨`
+      );
+
+      // 같은 방에 있는 다른 모든 클라이언트에게 전파
+      socket.to(data.roomId).emit("roleChanged", data);
+    });
+
     // 연결 해제 처리
     socket.on("disconnect", () => {
       console.log("🔴 사용자 연결 종료:", socket.id);

@@ -274,7 +274,7 @@ export default {
     };
 
     const updateRole = async (member) => {
-      // 첫 번째 팀원 (index 0)의 역할은 변경할 수 없도록 처리 -> 첫 번째 팀원이 프로젝트 생성자
+      // 첫 번째 팀원 (index 0)의 역할은 변경할 수 없도록 처리
       if (invitedMembers.value.indexOf(member) === 0) {
         showToast("프로젝트 생성자의 역할은 변경할 수 없습니다.", true);
         return;
@@ -284,8 +284,38 @@ export default {
       try {
         // API 호출하여 역할 업데이트
         await updateUserRole(paramProject_id.value, member.user_id, newRole);
-        member.isAdmin = newRole === "viewer" ? 2 : 3; // 로컬에서 역할 업데이트
-        showToast("역할이 성공적으로 변경되었습니다.");
+
+        // 로컬에서 역할 업데이트
+        member.isAdmin = newRole === "viewer" ? 2 : 3;
+
+        // 소켓 이벤트 발생 - 같은 프로젝트의 다른 사용자들에게 알림
+        socket.emit("roleChanged", {
+          roomId: roomId.value,
+          userId: member.user_id,
+          email: member.email,
+          name: member.name || "",
+          role: newRole,
+          project_id: paramProject_id.value,
+          updatedBy: currentUserEmail.value,
+        });
+
+        // 본인의 역할을 변경했을 때도 즉시 반영
+        if (member.email === currentUserEmail.value) {
+          isViewer.value = newRole === "viewer";
+
+          // 자신을 뷰어로 변경했다면 모달창 닫기
+          if (isViewer.value && isInviteModalOpen.value) {
+            isInviteModalOpen.value = false;
+          }
+
+          const message = isViewer.value
+            ? "당신의 역할이 뷰어로 변경되었습니다. 편집 권한이 제한됩니다."
+            : "당신의 역할이 편집자로 변경되었습니다. 이제 편집이 가능합니다.";
+
+          showToast(message);
+        } else {
+          showToast("역할이 성공적으로 변경되었습니다.");
+        }
       } catch (error) {
         console.error("❌ 역할 변경 실패:", error);
         showToast("역할 변경에 실패했습니다.", true);
@@ -1433,6 +1463,38 @@ export default {
           selectedNode.value = null;
         }
       });
+
+      window.addEventListener("role-changed", async (event) => {
+        const data = event.detail;
+
+        // 멤버 목록에서 해당 사용자 찾기
+        const member = invitedMembers.value.find(
+          (m) => m.user_id === data.userId
+        );
+        if (member) {
+          // 역할 업데이트 (viewer = 2, editor = 3)
+          member.isAdmin = data.role === "viewer" ? 2 : 3;
+        }
+
+        // 현재 사용자의 역할이 변경된 경우 권한 즉시 업데이트
+        if (data.email === currentUserEmail.value) {
+          // 역할 상태 업데이트
+          isViewer.value = data.role === "viewer";
+
+          // 뷰어로 변경된 경우, 모달창이 열려있다면 닫기
+          if (isViewer.value && isInviteModalOpen.value) {
+            isInviteModalOpen.value = false;
+          }
+
+          // 알림 메시지
+          const message = isViewer.value
+            ? "당신의 역할이 뷰어로 변경되었습니다. 편집 권한이 제한됩니다."
+            : "당신의 역할이 편집자로 변경되었습니다. 이제 편집이 가능합니다.";
+
+          // 토스트 알림 표시
+          showToast(message);
+        }
+      });
     });
 
     onBeforeUnmount(() => {
@@ -1443,6 +1505,9 @@ export default {
 
       // 🔥 노드 삭제 이벤트 리스너 제거
       window.removeEventListener("node-deleted", () => {});
+
+      // 이벤트 리스너 제거
+      window.removeEventListener("role-changed", () => {});
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달

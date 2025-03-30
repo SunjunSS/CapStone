@@ -183,6 +183,14 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     }
   });
 
+  // roleChanged 이벤트 핸들러 수정
+  socket.on("roleChanged", (data) => {
+    console.log("👤 역할 변경 이벤트 수신:", data);
+
+    // 커스텀 이벤트 발생 - MindMap.vue에서 처리
+    window.dispatchEvent(new CustomEvent("role-changed", { detail: data }));
+  });
+
   console.log("✅ WebSocket 이벤트 리스너 등록 완료");
 };
 
@@ -202,6 +210,7 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeUpdated");
   socket.off("nodeDeleted");
   socket.off("nodeMoved");
+  socket.off("roleChanged"); // 역할 변경 이벤트 리스너 해제 추가
 
   if (roomIdValue) {
     socket.emit("leave-room", { roomId: roomIdValue, userId });
