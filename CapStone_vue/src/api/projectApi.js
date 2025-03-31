@@ -153,3 +153,16 @@ export const updateUserRole = async (projectId, userId, role) => {
     throw error;
   }
 };
+
+export const removeUserFromProject = async (projectId, userId) => {
+  try {
+    const response = await axios.delete(
+      `${getProjectUrl()}/${projectId}/members/${userId}`
+    );
+    console.log("🟢 유저 제거 응답:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ 프로젝트에서 유저 제거 오류:", error);
+    throw error;
+  }
+};
