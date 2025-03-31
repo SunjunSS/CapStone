@@ -174,7 +174,7 @@ export default {
           password: this.password,
         });
 
-        this.snackbarColor = "success";
+        this.snackbarColor = "info";
         this.snackbarText =
           response.data.message || "회원가입이 완료되었습니다!";
         this.snackbar = true;
@@ -221,7 +221,7 @@ export default {
 
         // 인증 입력창 표시
         this.showVerificationField = true;
-        this.snackbarColor = "success";
+        this.snackbarColor = "info";
         this.snackbarText =
           response.data.message || "인증 코드가 이메일로 전송되었습니다.";
         this.snackbar = true;
@@ -258,7 +258,7 @@ export default {
         );
 
         this.emailVerified = true;
-        this.snackbarColor = "success";
+        this.snackbarColor = "info";
         this.snackbarText =
           response.data.message || "이메일 인증이 완료되었습니다.";
         this.snackbar = true;
