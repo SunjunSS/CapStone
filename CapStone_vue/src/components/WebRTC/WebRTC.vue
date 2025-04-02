@@ -376,7 +376,7 @@ export default {
 
         // 서버로 audio파일을 업로드함
         try {
-          await uploadAudio(blob, this.roomId, this.userNickname, "upload");
+          await uploadAudio(blob, this.roomId, this.userNickname, "meeting");
           console.log("✅ 업로드 성공!");
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
@@ -478,7 +478,7 @@ export default {
 
         this.socket.on("return-keyword",(data) => {
 
-          const { recordingData, fileBuffer } = data;
+          const { recordingData } = data;
           const jsonString = JSON.stringify(recordingData, null, 2);
           console.log(`반환된 키워드: ${jsonString}`)
         })
