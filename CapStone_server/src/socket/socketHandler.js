@@ -8,19 +8,13 @@ const socketSessions = require("./socketSessions");
 const roomNodes = {}; // 노드 저장 객체 추가 (누락되어 있었음)
 const roomNicknames = {}; // 방별 닉네임 정보 저장 객체 추가
 
-
-
-
-
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("🟢 사용자 연결됨:", socket.id);
 
-    
     // 로그인 핸들러 실행
     loginHandler(socket);
 
-    
     // 방 참가 처리
     socket.on("join-room", ({ roomId, userId, nickname }) => {
       socket.join(roomId);
@@ -35,11 +29,8 @@ module.exports = (io) => {
       // 방이 없으면 생성
       if (!rooms[roomId]) {
         rooms[roomId] = {};
-
-       
       }
       rooms[roomId][socket.id] = userId;
-
 
       // 닉네임 정보 저장
       if (!roomNicknames[roomId]) {
@@ -100,13 +91,11 @@ module.exports = (io) => {
       io.to(roomId).emit("sync-recording", true);
       console.log(`📡 sync-recording 이벤트 전송 - Room ID: ${roomId}`);
       roomAudioBuffers[roomId] = [];
-
     });
 
     // 녹음 중지 처리
     socket.on("stop-recording", (roomId) => {
       console.log(`Recording stopped in room ${roomId}`);
-
 
       recordingStatus[roomId] = false;
       io.to(roomId).emit("sync-recording", false);
@@ -245,6 +234,16 @@ module.exports = (io) => {
 
       // 같은 방에 있는 다른 모든 클라이언트에게 전파
       socket.to(data.roomId).emit("roleChanged", data);
+    });
+
+    // 멤버 제거 이벤트 처리
+    socket.on("memberRemoved", (data) => {
+      console.log(
+        `👤 멤버 제거 이벤트: ${data.email}님이 ${data.removedBy}에 의해 프로젝트에서 제거됨`
+      );
+
+      // 같은 방에 있는 다른 모든 클라이언트에게 전파
+      socket.to(data.roomId).emit("memberRemoved", data);
     });
 
     // 연결 해제 처리

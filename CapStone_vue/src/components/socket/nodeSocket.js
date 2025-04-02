@@ -191,6 +191,14 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     window.dispatchEvent(new CustomEvent("role-changed", { detail: data }));
   });
 
+  // memberRemoved 이벤트 핸들러 추가
+  socket.on("memberRemoved", (data) => {
+    console.log("👤 멤버 제거 이벤트 수신:", data);
+
+    // 커스텀 이벤트 발생 - MindMap.vue에서 처리
+    window.dispatchEvent(new CustomEvent("member-removed", { detail: data }));
+  });
+
   console.log("✅ WebSocket 이벤트 리스너 등록 완료");
 };
 
@@ -211,6 +219,7 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   socket.off("nodeDeleted");
   socket.off("nodeMoved");
   socket.off("roleChanged"); // 역할 변경 이벤트 리스너 해제 추가
+  socket.off("memberRemoved");
 
   if (roomIdValue) {
     socket.emit("leave-room", { roomId: roomIdValue, userId });

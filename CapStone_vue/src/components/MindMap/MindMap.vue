@@ -1,4 +1,4 @@
---초대된 팀원 역할 변경 기능 추가--
+--팀원 삭제 UI추가--
 
 <template>
   <div class="app-container">
@@ -145,8 +145,18 @@
             >
               <div class="member-info">
                 <div class="member-email">{{ member.email }}</div>
-                <div class="member-name">
-                  {{ member.name || "닉네임 없음" }}
+                <div class="member-name-section">
+                  <div class="member-name">
+                    {{ member.name || "닉네임 없음" }}
+                  </div>
+                  <!-- 삭제 버튼을 닉네임 옆으로 이동 -->
+                  <button
+                    v-if="invitedMembers.indexOf(member) !== 0"
+                    @click="confirmDeleteMember(member)"
+                    class="delete-member-btn"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
               <button
@@ -196,6 +206,7 @@ import {
   addUserToProject,
   getProjectMembers,
   updateUserRole,
+  removeUserFromProject,
 } from "@/api/projectApi";
 
 export default {
@@ -319,6 +330,57 @@ export default {
       } catch (error) {
         console.error("❌ 역할 변경 실패:", error);
         showToast("역할 변경에 실패했습니다.", true);
+      }
+    };
+
+    const confirmDeleteMember = async (member) => {
+      // 프로젝트 생성자(첫 번째 멤버)는 제거할 수 없음
+      if (invitedMembers.value.indexOf(member) === 0) {
+        showToast("프로젝트 생성자는 제거할 수 없습니다.", true);
+        return;
+      }
+
+      if (
+        confirm(
+          `"${member.name || member.email}" 님을 프로젝트에서 제거하시겠습니까?`
+        )
+      ) {
+        try {
+          // API 호출하여 멤버 제거
+          await removeUserFromProject(paramProject_id.value, member.user_id);
+
+          // 로컬 상태에서 멤버 제거
+          invitedMembers.value = invitedMembers.value.filter(
+            (m) => m.user_id !== member.user_id
+          );
+
+          // 소켓 이벤트 발생 - 같은 프로젝트의 다른 사용자들에게 알림
+          socket.emit("memberRemoved", {
+            roomId: roomId.value,
+            userId: member.user_id,
+            email: member.email,
+            name: member.name || "",
+            project_id: paramProject_id.value,
+            removedBy: currentUserEmail.value,
+          });
+
+          // 자기 자신을 제거했을 경우 처리
+          if (member.email === currentUserEmail.value) {
+            showToast("당신은 더 이상 이 프로젝트의 멤버가 아닙니다.");
+            setTimeout(() => {
+              router.push("/MyMap");
+            }, 1000);
+          } else {
+            showToast(
+              `"${
+                member.name || member.email
+              }" 님이 프로젝트에서 제거되었습니다.`
+            );
+          }
+        } catch (error) {
+          console.error("❌ 멤버 제거 실패:", error);
+          showToast("멤버 제거에 실패했습니다.", true);
+        }
       }
     };
 
@@ -1495,6 +1557,26 @@ export default {
           showToast(message);
         }
       });
+
+      window.addEventListener("member-removed", (event) => {
+        const data = event.detail;
+
+        // 해당 사용자가 현재 로그인한 사용자인 경우
+        if (data.email === currentUserEmail.value) {
+          showToast("당신은 더 이상 이 프로젝트의 멤버가 아닙니다.");
+          setTimeout(() => {
+            router.push("/MyMap");
+          }, 1000);
+        } else {
+          // 멤버 목록에서 제거된 사용자 찾기
+          invitedMembers.value = invitedMembers.value.filter(
+            (m) => m.user_id !== data.userId
+          );
+          showToast(
+            `"${data.name || data.email}" 님이 프로젝트에서 제거되었습니다.`
+          );
+        }
+      });
     });
 
     onBeforeUnmount(() => {
@@ -1508,6 +1590,8 @@ export default {
 
       // 이벤트 리스너 제거
       window.removeEventListener("role-changed", () => {});
+
+      window.removeEventListener("member-removed", () => {});
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달
@@ -1571,6 +1655,7 @@ export default {
       isViewer,
       invitedMembers,
       updateRole,
+      confirmDeleteMember,
     };
   },
 };
@@ -2059,5 +2144,64 @@ button:disabled {
 
 .member-role.editor {
   background-color: #0898ff;
+}
+
+/* 멤버 이름 섹션 스타일 (새로 추가) */
+.member-name-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 기존 member-actions 스타일은 유지 */
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 삭제 버튼 스타일 수정 - 더 작고 가벼운 느낌으로 */
+.delete-member-btn {
+  background-color: transparent;
+  color: #ff4444;
+  border: none;
+  font-size: 14px; /* 글꼴 크기 약간 줄임 */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; /* 더 작게 */
+  height: 20px; /* 더 작게 */
+  border-radius: 50%;
+  padding: 0;
+  transition: all 0.2s ease;
+  margin-left: 2px; /* 닉네임과의 간격 */
+}
+
+.delete-member-btn:hover {
+  background-color: #ffeeee;
+  color: #ff4444;
+}
+
+/* 나머지 스타일은 그대로 유지 */
+.delete-confirm-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.delete-confirm-btn:hover {
+  background: #ff0000;
+}
+
+.delete-confirm p {
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
 </style>
