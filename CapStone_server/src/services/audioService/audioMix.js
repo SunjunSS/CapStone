@@ -16,7 +16,7 @@ async function mixAudio(folderPath, outputPath) {
 
       if (inputPaths.length === 0) {
         return reject(
-          new Error("No .wav files found in the specified folder.")
+          new Error("No audio files found in the specified folder.")
         );
       }
 

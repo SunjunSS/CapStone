@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export default function uploadAudio(blob, roomId, nickname, endpoint = "upload") {
+export default function uploadAudio(blob, roomId, nickname, type = "meeting") {
   return new Promise(async (resolve, reject) => {
     if (!blob || !roomId) {
       console.error("❌ Missing audio blob or roomId");
@@ -15,6 +15,7 @@ export default function uploadAudio(blob, roomId, nickname, endpoint = "upload")
 
     const formData = new FormData();
     formData.append("roomId", roomId);
+    formData.append("type", type);
     formData.append("nickname", nickname);
     formData.append(
       "audio",
@@ -26,7 +27,7 @@ export default function uploadAudio(blob, roomId, nickname, endpoint = "upload")
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
       const response = await axios.post(
-        `${API_BASE_URL}/api/audio/${endpoint}`, // ✅ API URL 수정
+        `${API_BASE_URL}/api/audio/${type}`, // ✅ API URL 수정
         formData,
         {
           headers: {
@@ -35,7 +36,7 @@ export default function uploadAudio(blob, roomId, nickname, endpoint = "upload")
         }
       );
 
-      console.log(`✅ ${endpoint}요청 : 업로드 성공!`);
+      console.log(`✅ ${type}요청 : 업로드 성공!`);
       resolve(response);
     } catch (error) {
       console.error("❌ 업로드 오류:", error);

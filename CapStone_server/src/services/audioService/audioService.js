@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs");
+
 const { convertMP3 } = require("./convertMP3");
 const { mixAudio } = require("./audioMix");
 const { callClovaSpeechAPI } = require("./callClovaSpeech");
@@ -10,30 +11,20 @@ const nodeService = require("../nodeService/nodeService")
 const audioFolder = path.join(__dirname, "../../../storage/audio");
 const tempAudioFolder = path.join(__dirname, "../../../storage/temp_audio");
 
-// .wav -> .mp3 변환
-exports.convertToMP3 = async (inputPath) => {
-  const fileName = path.basename(inputPath, ".wav"); // 원본 파일명 가져오기
-  const outputPath = path.join(audioFolder, `${fileName}.mp3`);
-  try {
-    return await convertToMP3(inputPath, outputPath);
-  } catch (error) {
-    console.error("❌ MP3 변환 오류:", error);
-    throw new Error("MP3 변환 중 오류 발생");
-  }
-};
 
-exports.processIndividualFile = async (roomAudioBuffers, isRealTime) => {
+
+exports.processIndividualFile = async (roomAudioBuffers, roomId, isRealTime) => {
   const userSpeech = {}; // 멤버별 음성 텍스트 저장
   const speakerNames = []; // 화자 이름 목록
 
   try {
     if (roomAudioBuffers == null) return;
 
-   
+    // 처음 한 번만 tempFolder 설정
+    const userTempFolder = path.dirname(roomAudioBuffers[0].inputPath);
 
     // 각 멤버의 음성텍스트를 저장
     for (const userObject of roomAudioBuffers) {
-
       const outputPath = userObject.inputPath.replace(
         path.join("temp_audio"),
         path.join("audio")
@@ -41,24 +32,38 @@ exports.processIndividualFile = async (roomAudioBuffers, isRealTime) => {
 
       const inputPath = await convertMP3(userObject.inputPath, outputPath);
       const response = await callClovaSpeechAPI(outputPath); // 음성 텍스트 얻기
-      
+
       userSpeech[userObject.nickname] = response; // 닉네임과 음성 텍스트 매핑
       speakerNames.push(userObject.nickname); // 화자 이름 목록에 추가
     }
 
     // OpenAI에 전달할 데이터 준비
 
-    const { success, data } = await nodeService.getMindmapByProjectId(1)
-    
-    const nodeData = data
+    const { success, data } = await nodeService.getMindmapByProjectId(1);
 
-    const openAIResponse = await askOpenAI(userSpeech, speakerNames, nodeData, isRealTime);
+    const nodeData = data;
 
-    const mixedAudioPath = await mixAudio(audioFolder, audioFolder);
+    const openAIResponse = await askOpenAI(
+      userSpeech,
+      speakerNames,
+      nodeData,
+      isRealTime
+    );
+
+    const audioType = isRealTime ? "realTime" : "meeting";
+
+    const userAudioFolder = path.join(audioFolder, audioType, roomId);
+
+    if (!fs.existsSync(userAudioFolder)) {
+      fs.mkdirSync(userAudioFolder, { recursive: true });
+    }
+
+
+    const mixedAudioPath = await mixAudio(userAudioFolder, userAudioFolder);
 
     // 파일 삭제
-    deleteFiles(tempAudioFolder);
-    deleteFiles(audioFolder);
+    deleteFiles(userTempFolder);
+    deleteFiles(userAudioFolder);
 
     return { openAIResponse, mixedAudioPath };
   } catch (error) {
@@ -121,5 +126,17 @@ exports.processRealTimeAudio = async (mp3Path, mindMap) => {
   } catch (error) {
     console.error("❌ 음성 인식 및 분석 오류:", error);
     throw new Error("음성 인식 및 분석 중 오류 발생");
+  }
+};
+
+// .wav -> .mp3 변환
+exports.convertToMP3 = async (inputPath) => {
+  const fileName = path.basename(inputPath, ".wav"); // 원본 파일명 가져오기
+  const outputPath = path.join(audioFolder, `${fileName}.mp3`);
+  try {
+    return await convertToMP3(inputPath, outputPath);
+  } catch (error) {
+    console.error("❌ MP3 변환 오류:", error);
+    throw new Error("MP3 변환 중 오류 발생");
   }
 };
