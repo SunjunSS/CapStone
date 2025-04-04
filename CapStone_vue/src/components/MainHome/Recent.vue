@@ -1,5 +1,7 @@
+<--Recent.vue-->
+
 <template>
-  <div class="mymap-container">
+  <div class="recent-container">
     <!-- 사이드바 -->
     <MainHomeSideBar />
 
@@ -45,7 +47,11 @@
                     />
                   </div>
                   <span class="map-icon">🌟</span>
-                  {{ item.name }}
+                  <span
+                    @click="openMindMap(item.project_id)"
+                    style="cursor: pointer"
+                    >{{ item.name }}</span
+                  >
                 </td>
                 <td class="creator-column">{{ item.creator }}</td>
                 <td class="date-column">{{ item.date }}</td>
@@ -59,10 +65,13 @@
                     ref="menuDropdown"
                   >
                     <ul>
-                      <li @click="openMap(index)">🗝️ 열기</li>
+                      <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
                       <li @click="duplicateMap(index)">📋 복제</li>
                       <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                      <li @click="moveToTrash(index)" class="delete-option">
+                      <li
+                        @click="moveToTrash(item.project_id, index)"
+                        class="delete-option"
+                      >
                         🗑️ 휴지통으로 이동
                       </li>
                     </ul>
@@ -104,31 +113,31 @@
 </template>
 
 <script>
+import { ref, onMounted } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
+import { getCurrentUser, getProject, connectSocket } from "../socket/socket";
+import {
+  createProject,
+  getUserProjects,
+  softDeleteProject,
+} from "../../api/projectApi";
+import { useRouter } from "vue-router";
 
 export default {
-  name: "MyMap",
+  name: "Recent",
   components: {
     MainHomeSideBar,
   },
   data() {
     return {
-      mapItems: [
-        {
-          name: "나의 새 마인드맵",
-          creator: "kim",
-          date: "Jan 22, 2025",
-          selected: false,
-          showMenu: false,
-        },
-        {
-          name: "캡스톤 마인드맵 탐색",
-          creator: "kim",
-          date: "Feb 10, 2025",
-          selected: false,
-          showMenu: false,
-        },
-      ],
+      // mapItems: [],
+      isProjectDialogOpen: false,
+      teamName: "",
+      teamDescription: "",
+      teamTopic: "",
+      topics: [], // 예시 주제
+      currentUser: null,
+      email: null,
     };
   },
   computed: {
@@ -139,7 +148,67 @@ export default {
       return this.mapItems.filter((item) => item.selected).length;
     },
   },
+  watch: {
+    currentUser: {
+      handler(newUser) {
+        console.log("실행됨 --- 유저");
+        if (newUser && newUser.email) {
+          console.log(`프로젝트 요청 실행 --`);
+          this.loadProjects();
+        }
+      },
+      deep: true,
+    },
+  },
   methods: {
+    handleLogout() {
+      emitLogout(() => {
+        console.log("✔️ 로그아웃 후 UI 업데이트");
+
+        this.currentUser = null; // 로그인한 사용자 정보 초기화
+        this.email = null; // 이메일 초기화
+        this.mapItems = []; // 지도 아이템 목록 초기화
+
+        this.$router.push("/"); // 홈 화면으로 이동
+      });
+    },
+
+    loadProjects() {
+      if (this.currentUser) {
+        getProject(this.currentUser.email, (projects) => {
+          console.log(`프로젝트 내부`);
+          this.mapItems = projects.map((project) => ({
+            project_id: project.project_id,
+            name: project.name,
+            description: project.description,
+            topic: project.topic,
+            tema_id: project.team_id,
+            selected: false,
+            showMenu: false,
+          }));
+          console.log(`프로젝트 개수: ${this.mapItems.length}`);
+        });
+      }
+      console.log("흠");
+    },
+
+    loadCurrentUser() {
+      this.currentUser = getCurrentUser(); // 로그인된 유저 정보를 받아옴
+      if (this.currentUser) {
+        this.email = this.currentUser.email;
+        console.log("현재 로그인된 유저:", this.email);
+      } else {
+        console.log("로그인된 유저가 없습니다.");
+      }
+    },
+
+    openProjectDialog() {
+      this.$router.push("/Project");
+    },
+    close() {
+      this.isProjectDialogOpen = false;
+    },
+
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -164,9 +233,9 @@ export default {
         item.showMenu = false;
       });
     },
-    openMap(index) {
-      // 맵 열기 기능 구현
-      alert(`${this.mapItems[index].name} 열기`);
+    openMindMap(projectId) {
+      console.log("🔗 MindMap으로 이동:", projectId);
+      this.$router.push(`/MindMap/${projectId}`);
       this.closeAllMenus();
     },
     duplicateMap(index) {
@@ -176,22 +245,79 @@ export default {
     },
     moveToFavorite(index) {
       // 즐겨찾기 추가 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에에 추가`);
+      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
       this.closeAllMenus();
     },
-    moveToTrash(index) {
+    moveToTrash(projectId, index) {
       // 휴지통으로 이동 기능 구현
       if (
         confirm(
           `${this.mapItems[index].name}을(를) 휴지통으로 이동하시겠습니까?`
         )
       ) {
-        this.mapItems.splice(index, 1);
+        this.closeAllMenus();
+        softDeleteProject(projectId)
+          .then(() => {
+            console.log(
+              `🗑️ 프로젝트(${projectId})가 휴지통으로 이동되었습니다.`
+            );
+            this.mapItems.splice(index, 1);
+          })
+          .catch((error) => {
+            console.error("❌ 프로젝트 휴지통 이동 중 오류:", error);
+            alert("프로젝트를 휴지통으로 이동하는 중 오류가 발생했습니다.");
+          });
       }
-      this.closeAllMenus();
     },
   },
+  setup() {
+    const router = useRouter(); // Vue Router 인스턴스 가져오기
+    const mapItems = ref([]); // 프로젝트 목록을 ref로 선언
+
+    // 세션에서 userId 가져오기
+    const userId = sessionStorage.getItem("userId");
+
+    // 서버에서 프로젝트 목록 불러오기
+    const loadProjects = async () => {
+      try {
+        if (!userId) {
+          console.error("❌ 사용자 ID가 없습니다.");
+          return;
+        }
+
+        const projects = await getUserProjects(userId);
+
+        mapItems.value = projects.map((p) => ({
+          project_id: p.project_id,
+          name: p.name,
+          creator: p.creator, // 서버에서 만든 사람 정보
+          date: p.date, // 서버에서 수정 날짜 정보
+          selected: false,
+          showMenu: false,
+        }));
+
+        console.log("🟢 프로젝트 불러오기 성공:", mapItems.value);
+      } catch (error) {
+        console.error("❌ 프로젝트 목록 불러오기 오류:", error);
+      }
+    };
+
+    onMounted(() => {
+      connectSocket(() => {
+        loadProjects();
+      });
+    });
+
+    return {
+      mapItems,
+    };
+  },
   mounted() {
+    // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
+    connectSocket(() => {
+      this.loadCurrentUser();
+    });
+
     // 메뉴 외부 클릭 시 메뉴 닫기
     document.addEventListener("click", this.closeAllMenus);
   },
@@ -212,7 +338,7 @@ export default {
   background-color: #e3f2fd;
 }
 
-.mymap-container {
+.recent-container {
   display: flex;
   min-height: 100vh;
 }

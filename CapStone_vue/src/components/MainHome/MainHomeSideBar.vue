@@ -23,7 +23,7 @@
                 d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
               />
             </svg>
-            <span>내 지도</span>
+            <span>지도 생성</span>
           </div>
         </div>
 
@@ -361,7 +361,7 @@ export default {
 }
 
 .not-logged-in {
-  font-size: 11px; /* 로그인하지 않은 상태일 때 더 작은 폰트 크기 */
+  font-size: 10.9px; /* 로그인하지 않은 상태일 때 더 작은 폰트 크기 */
   margin-bottom: 8px;
   color: rgba(255, 255, 255, 0.7); /* 옵션: 약간 다른 색상 */
 }
