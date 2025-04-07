@@ -3,7 +3,7 @@ import fs from "fs";
 
 
 const json = {
-  speakerNames: ["kiup"],
+  speakerNames: ["kiup","문권", "이희찬", "김선준"],
   srt: [
     {
       time: "00:00:01,000 --> 00:00:10,530",
@@ -77,7 +77,7 @@ async function downloadPDF() {
     const doc = await createPDF(json);
     const pdfBuffer = doc.output("arraybuffer");
 
-    fs.writeFileSync("회의록.pdf", Buffer.from(pdfBuffer));
+    fs.writeFileSync("회의록2.pdf", Buffer.from(pdfBuffer));
     console.log("✅ 회의록.pdf 생성 완료 (Node.js 환경)");
   } catch (err) {
     console.error("❌ PDF 생성 중 오류:", err);

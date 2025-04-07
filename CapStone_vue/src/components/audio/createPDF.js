@@ -69,6 +69,7 @@ export default async function createPDF(data) {
 
   // 📝 SRT 대화
   doc.addPage();
+
   doc.text("● 대화내용 (SRT)", 10, 10);
 
   const srtTable = srt.map((item) => [
@@ -78,7 +79,7 @@ export default async function createPDF(data) {
 
   autoTable(doc, {
     startY: 16,
-    head: [["시간", "내용"]],
+    head: [["Time", "Content"]],
     body: srtTable,
     styles: { font: "NotoSansKR", overflow: "linebreak" },
     columnStyles: {

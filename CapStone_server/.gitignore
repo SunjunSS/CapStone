@@ -7,5 +7,6 @@
 
 node_modules/
 
-google_key/*.json
-!/google_key/.gitkeep
+
+
+CapStone_server/google_key/*.json
