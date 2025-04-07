@@ -7,4 +7,5 @@
 
 node_modules/
 
-/google_key/planar-lacing-454709-b6-06cea798e131.json
+google_key/*.json
+!/google_key/.gitkeep
