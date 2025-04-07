@@ -1,5 +1,3 @@
-<--svg추가 MyMap.vue-->
-
 <template>
   <div class="mymap-container">
     <!-- 사이드바 -->
@@ -8,7 +6,12 @@
     <!-- 콘텐츠 영역 -->
     <main class="content">
       <div class="svg-container">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 495">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 800 495"
+          class="full-viewport-svg"
+          ref="svgRef"
+        >
           <defs>
             <!-- Enhanced Modern Background Gradient -->
             <linearGradient
@@ -950,7 +953,7 @@
 </template>
 
 <script>
-import { onMounted } from "vue";
+import { onMounted, onBeforeUnmount, ref } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import { connectSocket } from "../socket/socket";
 import { createProject } from "../../api/projectApi";
@@ -963,6 +966,8 @@ export default {
   },
   setup() {
     const router = useRouter();
+    const svgContainerRef = ref(null);
+    const svgRef = ref(null);
 
     // 세션에서 userId 가져오기
     const userId = sessionStorage.getItem("userId");
@@ -985,14 +990,84 @@ export default {
       }
     };
 
+    // SVG를 사이드바를 제외한 전체 영역에 맞추기 위한 함수
+    const adjustSvgSize = () => {
+      const svgElement = svgRef.value;
+      if (svgElement) {
+        // 사이드바 너비 (이미 content에 패딩으로 적용되어 있음)
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // SVG 크기 설정 (전체 너비에 맞춤)
+        svgElement.setAttribute("width", "100%");
+        svgElement.setAttribute("height", viewportHeight);
+
+        // 뷰박스 비율 조정
+        const aspectRatio = 800 / 495;
+        const availableWidth = viewportWidth; // 사이드바는 이미 패딩으로 처리되어 있음
+        const newHeight = availableWidth / aspectRatio;
+
+        if (newHeight < viewportHeight) {
+          svgElement.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        } else {
+          svgElement.setAttribute("preserveAspectRatio", "xMidYMid slice");
+        }
+      }
+    };
+
+    // 휠 이벤트 처리를 위한 변수
+    let isScrolling = false;
+    let scrollTimeout;
+
+    // 휠 이벤트 핸들러
+    const handleWheel = (event) => {
+      // 이미 스크롤 중이면 추가 이벤트 무시
+      if (isScrolling) return;
+
+      // 아래로 스크롤하는 경우 (deltaY가 양수)
+      if (event.deltaY > 50) {
+        isScrolling = true;
+
+        // 연속된 스크롤 이벤트 방지를 위한 디바운싱
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          console.log("아래로 스크롤 감지, Recent 페이지로 이동합니다");
+          router.push("/Recent");
+
+          // 스크롤 상태 초기화 (다음 페이지에서 정상 작동하도록)
+          setTimeout(() => {
+            isScrolling = false;
+          }, 500);
+        }, 300);
+      }
+    };
+
     onMounted(() => {
       connectSocket(() => {
         console.log("소켓 연결 완료");
       });
+
+      // 초기 SVG 크기 조정
+      adjustSvgSize();
+
+      // 윈도우 리사이즈 이벤트에 반응하여 SVG 크기 재조정
+      window.addEventListener("resize", adjustSvgSize);
+
+      // 휠 이벤트 리스너 등록
+      window.addEventListener("wheel", handleWheel, { passive: false });
+    });
+
+    onBeforeUnmount(() => {
+      // 컴포넌트 언마운트 시 이벤트 리스너 제거 및 타이머 정리
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("resize", adjustSvgSize);
+      clearTimeout(scrollTimeout);
     });
 
     return {
       createAndOpenMap,
+      svgContainerRef,
+      svgRef,
     };
   },
   mounted() {
@@ -1007,26 +1082,47 @@ export default {
 <style scoped>
 .mymap-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 .content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  margin-left: 0; /* 0으로 변경 */
+  box-sizing: border-box; /* 박스 크기에 패딩과 테두리 포함 */
 }
 
 .svg-container {
-  margin: -40px; /* MainHomeSideBar의 padding을 상쇄 */
-  width: calc(100% + 40px); /* 너비를 padding만큼 확장 */
-  overflow: hidden; /* 필요한 경우 오버플로우 방지 */
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  margin: 0; /* 마진 제거 */
+  padding: 0; /* 패딩 제거 */
 }
 
-/* SVG 버튼 공통 스타일 */
+/* SVG 전체 화면 설정 */
+.full-viewport-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  margin: 0; /* 마진 제거 */
+  padding: 0; /* 패딩 제거 */
+}
+
+/* 나머지 스타일은 동일하게 유지 */
 .svg-button {
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-/* 기본 상태 */
 .btn-bg {
   fill: #000000;
   opacity: 0.2;
@@ -1045,13 +1141,24 @@ export default {
   transition: all 0.3s ease;
 }
 
-/* 호버 상태 */
 .svg-button:hover .btn-bg {
   fill: #ffffff;
   opacity: 1;
 }
 
 .svg-button:hover .btn-text {
-  fill: rgb(56, 72, 177); /* 진한 파란 계열 */
+  fill: rgb(56, 72, 177);
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    padding-left: 0; /* 모바일에서 패딩도 제거 */
+  }
+
+  .svg-container {
+    margin: 0;
+    width: 100%;
+  }
 }
 </style>

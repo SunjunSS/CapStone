@@ -4,8 +4,11 @@
     <MainHomeSideBar />
 
     <!-- 콘텐츠 영역 -->
-    <main class="content">
-      <header class="content-header">
+    <main class="content slide-up-animation">
+      <header
+        class="content-header slide-up-animation"
+        style="animation-delay: 0.1s"
+      >
         <h2>휴지통에 버린 지도</h2>
         <button
           class="clear-trash-button"
@@ -16,7 +19,10 @@
         </button>
       </header>
 
-      <section class="map-list">
+      <section
+        class="map-list slide-up-animation"
+        style="animation-delay: 0.2s"
+      >
         <!-- mapItems가 있을 때 테이블 표시 -->
         <div v-if="mapItems.length > 0">
           <div class="map-list-header">
@@ -119,7 +125,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, onBeforeUnmount } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import { useRouter } from "vue-router";
 import {
@@ -140,6 +146,33 @@ export default {
 
     // 세션에서 userId 가져오기
     const userId = sessionStorage.getItem("userId");
+
+    // 휠 이벤트 처리를 위한 변수
+    let isScrolling = false;
+    let scrollTimeout;
+
+    // 휠 이벤트 핸들러
+    const handleWheel = (event) => {
+      // 이미 스크롤 중이면 추가 이벤트 무시
+      if (isScrolling) return;
+
+      // 위로 스크롤하는 경우 (deltaY가 음수)
+      if (event.deltaY < -50) {
+        isScrolling = true;
+
+        // 연속된 스크롤 이벤트 방지를 위한 디바운싱
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          console.log("위로 스크롤 감지, Favorite 페이지로 이동합니다");
+          router.push("/Favorite");
+
+          // 스크롤 상태 초기화 (다음 페이지에서 정상 작동하도록)
+          setTimeout(() => {
+            isScrolling = false;
+          }, 500);
+        }, 300);
+      }
+    };
 
     // 휴지통에 있는 프로젝트 목록 로드
     const loadTrashProjects = async () => {
@@ -305,6 +338,14 @@ export default {
       loadTrashProjects();
       // 메뉴 외부 클릭 시 메뉴 닫기
       document.addEventListener("click", closeAllMenus);
+      // 휠 이벤트 리스너 등록
+      window.addEventListener("wheel", handleWheel, { passive: false });
+    });
+
+    onBeforeUnmount(() => {
+      // 컴포넌트 언마운트 시 휠 이벤트 리스너 제거 및 타이머 정리
+      window.removeEventListener("wheel", handleWheel);
+      clearTimeout(scrollTimeout);
     });
 
     return {
@@ -625,6 +666,88 @@ export default {
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* 콘텐츠 영역 애니메이션 */
+.slide-up-animation {
+  animation: slideUp 0.6s ease-out forwards;
+  transform: translateY(30px);
+  opacity: 0;
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 테이블 행에 지연된 애니메이션 적용 */
+.map-list table tr {
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.map-list table tr:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.map-list table tr:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.map-list table tr:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.map-list table tr:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.map-list table tr:nth-child(5) {
+  animation-delay: 0.5s;
+}
+.map-list table tr:nth-child(6) {
+  animation-delay: 0.6s;
+}
+.map-list table tr:nth-child(7) {
+  animation-delay: 0.7s;
+}
+.map-list table tr:nth-child(8) {
+  animation-delay: 0.8s;
+}
+.map-list table tr:nth-child(9) {
+  animation-delay: 0.9s;
+}
+.map-list table tr:nth-child(10) {
+  animation-delay: 1s;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 빈 상태 애니메이션 */
+.empty-trash-container {
+  animation: fadeIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 </style>

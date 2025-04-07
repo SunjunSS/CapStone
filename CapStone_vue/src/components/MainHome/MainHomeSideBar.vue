@@ -114,7 +114,7 @@
       </div>
     </div>
 
-    <div class="main-content">
+    <div class="main-content" :class="{ 'no-padding': isMyMapPage }">
       <login-required v-if="shouldShowLoginRequired" />
       <router-view v-else></router-view>
     </div>
@@ -141,6 +141,7 @@ export default {
     const isRecentActive = computed(() => route.path === "/Recent");
     const isTrashActive = computed(() => route.path === "/TrashPage");
     const isFavoriteActive = computed(() => route.path === "/Favorite");
+    const isMyMapPage = computed(() => route.path === "/MyMap");
 
     // Changed to use sessionStorage
     const isLoggedIn = computed(() => {
@@ -220,6 +221,7 @@ export default {
       isMainRouteAndNotLoggedIn,
       userDisplayName,
       handleLogout,
+      isMyMapPage,
     };
   },
 };
@@ -311,6 +313,11 @@ export default {
   margin-left: 250px;
   flex: 1;
   padding: 20px;
+}
+
+/* MyMap 페이지용 패딩 제거 클래스 */
+.main-content.no-padding {
+  padding: 0;
 }
 
 .logo-image {
