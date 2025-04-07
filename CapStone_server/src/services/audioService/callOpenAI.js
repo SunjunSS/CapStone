@@ -38,6 +38,7 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
     아래 JSON 형식으로 정확하게 응답해주세요.
 
     {
+      "speakerNames": [${speakerNames}],
       "srt": [
         {"time": "발언시간", "speaker": "닉네임", "speech": "발언"},
       ],
@@ -133,6 +134,7 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
 
     // JSON 객체 반환
     return jsonResponse;
+    
   } catch (error) {
     console.error("오류 발생:", error);
   }
