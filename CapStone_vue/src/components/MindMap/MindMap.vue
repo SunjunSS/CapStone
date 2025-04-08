@@ -1,4 +1,5 @@
---팀원 삭제 UI추가--
+--뷰어 시 노드 드래그 비활성화 / 화면 클릭 후 드래그 시 네모 선택 박스 출력
+비활성화--
 
 <template>
   <div class="app-container">
@@ -1141,6 +1142,8 @@ export default {
         scale: currentZoom.value,
       });
 
+      myDiagram.toolManager.dragSelectingTool.isEnabled = false;
+
       // ✅ 트리 레이아웃 자동 정렬 추가
       myDiagram.addDiagramListener("SelectionMoved", (e) => {
         console.log("🔄 노드 이동 완료, 트리 레이아웃 재정렬 실행");
@@ -1218,28 +1221,26 @@ export default {
           resizable: false,
           layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
 
-          // ✅ 노드 드래그 가능
-          movable: true,
+          // 기본값은 false, 바인딩으로 변경
+          movable: false,
 
-          // ✅ 드래그 시작 이벤트 (마우스로 드래그하면 true)
+          // ✅ 드래그 시작 이벤트
           mouseDragEnter: (e, node) => {
             console.log("🟢 노드 드래그 시작됨!", node.data);
             isNodeDragging.value = true;
-            isDragging.value = false; // 🔥 노드를 드래그하는 동안 화면 드래그 비활성화
+            isDragging.value = false;
           },
 
           // ✅ 드래그 종료 이벤트
           mouseDragLeave: (e, node) => {
             console.log("🛑 노드 드래그 종료됨!", node.data);
             isNodeDragging.value = false;
-
-            // 화면 드래그 다시 활성화 (단, 다른 노드를 계속 드래그 중이면 활성화하지 않음)
             if (!myDiagram.selection.first()) {
               isDragging.value = true;
             }
           },
 
-          // ✅ 드롭 이벤트 (다른 노드 위에 놓았을 때 부모 변경)
+          // ✅ 드롭 이벤트
           mouseDrop: (e, node) => {
             const draggedNode = e.diagram.selection.first();
             if (!draggedNode || draggedNode === node) return;
@@ -1258,13 +1259,11 @@ export default {
               project_id: paramProject_id.value,
             });
 
-            // 🔥 드래그 종료 시 `isNodeDragging` 초기화
-            console.log("✅ 노드 드래그 완료! 위치 변경됨:", node.data);
             isNodeDragging.value = false;
-            isDragging.value = false; // 🔴 화면 드래그도 비활성화
+            isDragging.value = false;
           },
 
-          // ✅ 더블 클릭 시 노드 이름 편집
+          // ✅ 더블 클릭으로 노드 이름 편집
           doubleClick: (e, node) => {
             if (isViewer.value) {
               console.log("👁️‍🗨️ Viewer 권한 - 노드 이름 편집 비활성화됨");
@@ -1310,7 +1309,6 @@ export default {
                 e.preventDefault();
                 activeInputField.value?.blur();
               }
-
               if (e.key === "Backspace") {
                 const textContent = inputField.value.replace(editEmoji, "");
                 if (
@@ -1330,7 +1328,7 @@ export default {
                 .trim();
 
               if (!updatedText) {
-                updatedText = "새 노드"; // 빈 값이면 기본 텍스트로 대체
+                updatedText = "새 노드";
               }
 
               if (document.body.contains(activeInputField.value)) {
@@ -1346,7 +1344,6 @@ export default {
               }
 
               myDiagram.model.setDataProperty(node.data, "name", updatedText);
-
               myDiagram.startTransaction("update text");
               myDiagram.layoutDiagram(true);
               myDiagram.commitTransaction("update text");
@@ -1367,12 +1364,9 @@ export default {
             inputField.addEventListener("input", handleInput);
             inputField.addEventListener("blur", completeEditing);
             inputField.addEventListener("keydown", handleTextFieldKeyDown);
-
-            // 🔥 이 부분을 여기에 추가
             inputField.addEventListener("keydown", (e) => {
               const isSelectAll =
                 (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
-
               if (isSelectAll) {
                 e.preventDefault();
                 const emojiOffset = editEmoji.length;
@@ -1385,6 +1379,9 @@ export default {
           },
         },
 
+        // 🔹 드래그 가능 여부를 isViewer 상태에 따라 바인딩
+        new go.Binding("movable", "", () => !isViewer.value).ofObject(),
+
         new go.Binding("isSelected", "isSelected"),
         new go.Binding("zOrder", "isSelected", (s) => (s ? 1 : 0)).makeTwoWay(),
 
@@ -1396,7 +1393,6 @@ export default {
             desiredSize: new go.Size(NaN, NaN),
             minSize: new go.Size(100, 40),
           },
-
           $(
             go.Shape,
             "RoundedRectangle",
@@ -1409,24 +1405,20 @@ export default {
               toSpot: go.Spot.LeftSide,
               parameter1: 20,
             },
-            // ✅ 루트 노드는 배경색 변경
             new go.Binding("fill", "parent", (p) =>
               p === 0 ? "#FFA500" : "white"
             ),
             new go.Binding("stroke", "isSelected", (s) =>
               s ? "rgb(0, 170, 255)" : "rgba(0, 0, 255, .15)"
             ),
-            // ✅ AI 추천 노드는 점선 처리
             new go.Binding("strokeDashArray", "isSuggested", (isSuggested) =>
               isSuggested ? [10, 5] : null
             )
           ),
-
           $(
             go.Panel,
             "Horizontal",
             { margin: 8 },
-
             $(
               go.TextBlock,
               {
@@ -1443,7 +1435,6 @@ export default {
                 (name) => name && name.startsWith("*")
               )
             ),
-
             $(
               go.TextBlock,
               {
@@ -1517,6 +1508,12 @@ export default {
 
       await checkUserRole();
       initDiagram();
+
+      watchEffect(() => {
+        if (myDiagram && isViewer.value !== null) {
+          myDiagram.updateAllTargetBindings();
+        }
+      });
 
       window.addEventListener("keydown", handleKeyDown);
 
