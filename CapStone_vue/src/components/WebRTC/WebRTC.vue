@@ -33,7 +33,7 @@
     </div>
     <div v-else class="meeting-container">
       <div class="meeting-header">
-        <h2 class="room-title">Room: {{ roomId }}</h2>
+        <h2 class="room-title">Room: {{ displayRoomId }}</h2>
         <div class="connection-info">
           <span
             class="status-badge"
@@ -204,6 +204,11 @@ export default {
         sessionStorage.getItem("isLoggedIn") === "true" &&
         sessionStorage.getItem("userEmail") !== null
       );
+    },
+
+    // 표시용 방 번호 (숫자만)
+    displayRoomId() {
+      return this.roomId.replace("project-audio-", "");
     },
   },
   methods: {
