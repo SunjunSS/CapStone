@@ -1,26 +1,13 @@
 <template>
   <div id="app">
     <div v-if="!joined" class="login-container">
-      <!-- 기존 로그인 컨테이너 코드는 그대로 유지 -->
       <div class="login-box">
         <h1 class="title">음성 회의실</h1>
-        <p class="subtitle">
-          방 번호를 입력하여<br />
-          회의에 참여하세요
-        </p>
+        <p class="subtitle">음성 회의방에 참여하세요</p>
 
         <div class="input-group">
-          <input
-            v-model="roomId"
-            placeholder="방 번호를 입력하세요"
-            class="room-input"
-            :class="{ 'input-filled': roomId.length > 0 }"
-          />
-          <button
-            @click="joinRoom"
-            :disabled="joining || !roomId"
-            class="join-button"
-          >
+          <!-- 방 번호 입력 필드 제거 -->
+          <button @click="joinRoom" :disabled="joining" class="join-button">
             {{ joining ? "입장중..." : "회의실 입장하기" }}
           </button>
         </div>
@@ -152,11 +139,15 @@ import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 
-
-
-
 export default {
   name: "AudioMeetingApp",
+  props: {
+    // roomId props 추가
+    autoJoinRoomId: {
+      type: String,
+      default: "",
+    },
+  },
   data() {
     return {
       socket: null,
@@ -189,6 +180,14 @@ export default {
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
     };
   },
+  // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
+  mounted() {
+    if (this.autoJoinRoomId) {
+      // props로 받은 roomId를 바로 설정
+      this.roomId = this.autoJoinRoomId;
+      // 자동 참가는 하지 않고, 사용자가 버튼을 클릭할 때만 참가
+    }
+  },
   computed: {
     // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
     userNickname() {
@@ -218,8 +217,20 @@ export default {
       return this.participantNicknames[userId] || userId;
     },
 
+    // joinRoom 메서드에서 방 번호 검증 부분 수정
     async joinRoom() {
       try {
+        // autoJoinRoomId를 사용
+        if (this.autoJoinRoomId) {
+          this.roomId = this.autoJoinRoomId;
+        }
+
+        // 방 번호가 있는지 확인
+        if (!this.roomId) {
+          alert("방 번호가 필요합니다.");
+          return;
+        }
+
         this.joining = true;
         console.log("Joining room:", this.roomId);
         this.isMuted = false;
@@ -311,14 +322,12 @@ export default {
 
       if (this.isRecording) {
         this.socket.emit("start-recording", this.roomId);
-        
-        console.log("녹음 시작");
 
+        console.log("녹음 시작");
       } else {
         this.socket.emit("stop-recording", this.roomId);
-        
+
         console.log("녹음 중지");
-        
       }
     },
 
@@ -343,12 +352,10 @@ export default {
       this.temporaryChunks = [];
       this.mediaRecorder = new MediaRecorder(this.localStream);
 
-
       this.mediaRecorder.ondataavailable = async (event) => {
         console.log("📝 dataavailable 이벤트 발생");
         this.recordedChunks.push(event.data);
         this.temporaryChunks.push(event.data);
-
       };
 
       this.uploadInterval = setInterval(async () => {
@@ -358,10 +365,9 @@ export default {
           await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
           //this.temporaryChunks = []; // 업로드 후 버퍼 초기화
         } else {
-          console.log("아직 비어있음")
+          console.log("아직 비어있음");
         }
       }, 20000); // 20초마다 업로드
-
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -381,12 +387,10 @@ export default {
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
         }
-        
       };
 
       this.mediaRecorder.start(19000);
       this.isRecording = true;
-
     },
 
     // 녹음 중지 메서드
@@ -444,16 +448,22 @@ export default {
           this.checkRecording();
         });
 
-
         this.socket.on("return-recording", (data) => {
-
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
-          
 
           // base64로 전달된 MP3 파일을 Blob으로 변환
-          const audioBlob = new Blob([new Uint8Array(atob(fileBuffer).split("").map((c) => c.charCodeAt(0)))], { type: "audio/mp3" });
+          const audioBlob = new Blob(
+            [
+              new Uint8Array(
+                atob(fileBuffer)
+                  .split("")
+                  .map((c) => c.charCodeAt(0))
+              ),
+            ],
+            { type: "audio/mp3" }
+          );
 
           // 파일을 URL로 변환
           const audioUrl = URL.createObjectURL(audioBlob);
@@ -464,24 +474,20 @@ export default {
           link.download = `${this.roomId}_audio.mp3`; // 파일명 설정
           link.click();
 
-          
           // 회의록 업데이트
-          const report = meetingContent(
-            recordingData
-          );
+          const report = meetingContent(recordingData);
 
-          const nodes = recordingData.minutes.recommendNodes
+          const nodes = recordingData.minutes.recommendNodes;
 
-          console.log("🟢 반환된 추천 노드: ", nodes)
+          console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;
         });
 
-        this.socket.on("return-keyword",(data) => {
-
+        this.socket.on("return-keyword", (data) => {
           const { recordingData } = data;
           const jsonString = JSON.stringify(recordingData, null, 2);
-          console.log(`반환된 키워드: ${jsonString}`)
-        })
+          console.log(`반환된 키워드: ${jsonString}`);
+        });
 
         this.socket.on("connect_error", (error) => {
           this.connectionStatus = "Error";
