@@ -119,7 +119,18 @@
 
       <div class="report-section">
         <h3 class="section-title">회의 기록</h3>
+
         <div class="meeting-report" v-html="meetingContent"></div>
+
+        <!-- ✅ 카드 내부로 이동, 가운데 정렬을 위한 wrapper 추가 -->
+        <div class="download-buttons-centered">
+          <button class="download-button" @click="downloadAudio">
+            음성파일 다운로드
+          </button>
+          <button class="download-button" @click="downloadPDF">
+            PDF 다운로드
+          </button>
+        </div>
       </div>
 
       <button
@@ -138,6 +149,8 @@ import io from "socket.io-client";
 import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
+import meetingPDF from "../audio/meetingPDF";
+
 
 export default {
   name: "AudioMeetingApp",
@@ -178,6 +191,8 @@ export default {
       uploadInterval: null,
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
+      audioBlob: null,
+      pdfBlob: null,
     };
   },
   // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
@@ -453,7 +468,8 @@ export default {
           this.checkRecording();
         });
 
-        this.socket.on("return-recording", (data) => {
+        this.socket.on("return-recording", async (data) => {
+
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
@@ -473,16 +489,20 @@ export default {
           // 파일을 URL로 변환
           const audioUrl = URL.createObjectURL(audioBlob);
 
-          // 다운로드 링크 생성
-          const link = document.createElement("a");
-          link.href = audioUrl;
-          link.download = `${this.roomId}_audio.mp3`; // 파일명 설정
-          link.click();
+          this.audioBlob = audioBlob;
 
           // 회의록 업데이트
           const report = meetingContent(recordingData);
 
+          // 📄 회의록 PDF 생성
+          const doc = await meetingPDF(recordingData);
+          const pdfBlob = await doc.output("blob");
+          this.pdfBlob = pdfBlob;
+
+          console.log("📄PDF 생성완료");
+
           const nodes = recordingData.minutes.recommendNodes;
+
 
           console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;
@@ -799,6 +819,32 @@ export default {
           alert("Failed to switch audio device");
         }
       }
+    },
+
+    downloadAudio() {
+      if (!this.audioBlob) {
+        alert("아직 음성 녹음이 존재하지 않습니다.");
+        return;
+      }
+      const audioUrl = URL.createObjectURL(this.audioBlob);
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = `${this.roomId}_audio.mp3`;
+      link.click();
+      URL.revokeObjectURL(audioUrl);
+    },
+
+    downloadPDF() {
+      if (!this.pdfBlob) {
+        alert("아직 PDF 회의록이 존재하지 않습니다.");
+        return;
+      }
+      const pdfUrl = URL.createObjectURL(this.pdfBlob);
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.download = `${this.roomId}_회의록.pdf`;
+      link.click();
+      URL.revokeObjectURL(pdfUrl);
     },
 
     async reconnect() {
@@ -1373,5 +1419,27 @@ export default {
 
 .Error:hover {
   background: #d4ac0d;
+}
+
+.download-button {
+  padding: 10px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-button:hover {
+  background: #2980b9;
+}
+
+.download-buttons-centered {
+  display: flex;
+  justify-content: center; /* 중앙 정렬 */
+  gap: 10px;
+  margin-top: 20px;
 }
 </style>
