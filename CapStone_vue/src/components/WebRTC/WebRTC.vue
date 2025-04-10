@@ -151,6 +151,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
+import meetingPDF from "../audio/meetingPDF";
 
 
 
@@ -445,7 +446,7 @@ export default {
         });
 
 
-        this.socket.on("return-recording", (data) => {
+        this.socket.on("return-recording",async (data) => {
 
           const { recordingData, fileBuffer } = data;
 
@@ -469,6 +470,21 @@ export default {
           const report = meetingContent(
             recordingData
           );
+
+          // 📄 회의록 PDF 생성
+          const doc = await meetingPDF(recordingData);
+          const pdfBlob = await doc.output("blob");
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+          const pdfLink = document.createElement("a");
+          pdfLink.href = pdfUrl;
+          pdfLink.download = `${this.roomId}_회의록.pdf`;
+          document.body.appendChild(pdfLink);
+          pdfLink.click();
+          document.body.removeChild(pdfLink);
+          URL.revokeObjectURL(pdfUrl);
+
+          console.log('📄PDF 생성완료');
+          
 
           const nodes = recordingData.minutes.recommendNodes
 

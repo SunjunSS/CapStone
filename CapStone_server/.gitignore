@@ -7,4 +7,6 @@
 
 node_modules/
 
-/google_key/planar-lacing-454709-b6-06cea798e131.json
+
+
+CapStone_server/google_key/*.json

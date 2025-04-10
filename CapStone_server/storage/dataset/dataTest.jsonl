@@ -1,0 +1,11 @@
+
+{"messages": [
+    {"role": "system", "content": "너는 키워드 추출 AI 모델이야. 사용자 입력에서 핵심 키워드를 찾아 쉼표로 구분된 문자열로 출력해."},
+    {"role": "user", "content": "딥러닝은 머신러닝의 한 분야로, 인공신경망을 기반으로 한다."},
+    {"role": "assistant", "content": "딥러닝, 머신러닝, 인공신경망"}
+]}
+{"messages": [
+    {"role": "system", "content": "너는 키워드 추출 AI 모델이야. 사용자 입력에서 핵심 키워드를 찾아 쉼표로 구분된 문자열로 출력해."},
+    {"role": "user", "content": "자연어처리는 컴퓨터가 인간의 언어를 이해하고 처리하는 기술이다."},
+    {"role": "assistant", "content": "자연어처리, 컴퓨터, 언어"}
+]}
