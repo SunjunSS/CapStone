@@ -1,26 +1,13 @@
 <template>
   <div id="app">
     <div v-if="!joined" class="login-container">
-      <!-- 기존 로그인 컨테이너 코드는 그대로 유지 -->
       <div class="login-box">
         <h1 class="title">음성 회의실</h1>
-        <p class="subtitle">
-          방 번호를 입력하여<br />
-          회의에 참여하세요
-        </p>
+        <p class="subtitle">음성 회의방에 참여하세요</p>
 
         <div class="input-group">
-          <input
-            v-model="roomId"
-            placeholder="방 번호를 입력하세요"
-            class="room-input"
-            :class="{ 'input-filled': roomId.length > 0 }"
-          />
-          <button
-            @click="joinRoom"
-            :disabled="joining || !roomId"
-            class="join-button"
-          >
+          <!-- 방 번호 입력 필드 제거 -->
+          <button @click="joinRoom" :disabled="joining" class="join-button">
             {{ joining ? "입장중..." : "회의실 입장하기" }}
           </button>
         </div>
@@ -46,7 +33,7 @@
     </div>
     <div v-else class="meeting-container">
       <div class="meeting-header">
-        <h2 class="room-title">Room: {{ roomId }}</h2>
+        <h2 class="room-title">Room: {{ displayRoomId }}</h2>
         <div class="connection-info">
           <span
             class="status-badge"
@@ -164,8 +151,16 @@ import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 import meetingPDF from "../audio/meetingPDF";
 
+
 export default {
   name: "AudioMeetingApp",
+  props: {
+    // roomId props 추가
+    autoJoinRoomId: {
+      type: String,
+      default: "",
+    },
+  },
   data() {
     return {
       socket: null,
@@ -200,6 +195,14 @@ export default {
       pdfBlob: null,
     };
   },
+  // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
+  mounted() {
+    if (this.autoJoinRoomId) {
+      // props로 받은 roomId를 바로 설정
+      this.roomId = this.autoJoinRoomId;
+      // 자동 참가는 하지 않고, 사용자가 버튼을 클릭할 때만 참가
+    }
+  },
   computed: {
     // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
     userNickname() {
@@ -217,6 +220,11 @@ export default {
         sessionStorage.getItem("userEmail") !== null
       );
     },
+
+    // 표시용 방 번호 (숫자만)
+    displayRoomId() {
+      return this.roomId.replace("project-audio-", "");
+    },
   },
   methods: {
     // 사용자의 닉네임을 가져오는 함수
@@ -229,8 +237,20 @@ export default {
       return this.participantNicknames[userId] || userId;
     },
 
+    // joinRoom 메서드에서 방 번호 검증 부분 수정
     async joinRoom() {
       try {
+        // autoJoinRoomId를 사용
+        if (this.autoJoinRoomId) {
+          this.roomId = this.autoJoinRoomId;
+        }
+
+        // 방 번호가 있는지 확인
+        if (!this.roomId) {
+          alert("방 번호가 필요합니다.");
+          return;
+        }
+
         this.joining = true;
         console.log("Joining room:", this.roomId);
         this.isMuted = false;
@@ -449,6 +469,7 @@ export default {
         });
 
         this.socket.on("return-recording", async (data) => {
+
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
@@ -465,6 +486,9 @@ export default {
             { type: "audio/mp3" }
           );
 
+          // 파일을 URL로 변환
+          const audioUrl = URL.createObjectURL(audioBlob);
+
           this.audioBlob = audioBlob;
 
           // 회의록 업데이트
@@ -478,6 +502,7 @@ export default {
           console.log("📄PDF 생성완료");
 
           const nodes = recordingData.minutes.recommendNodes;
+
 
           console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;

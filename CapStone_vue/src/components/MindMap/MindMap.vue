@@ -9,7 +9,7 @@
         {{ sidebarOpen ? "◀" : "▶" }}
       </div>
       <div class="sidebar-content" v-show="sidebarOpen">
-        <WebRTC />
+        <WebRTC :autoJoinRoomId="autoJoinRoomId" />
       </div>
     </div>
 
@@ -502,6 +502,9 @@ export default {
     };
 
     const paramProject_id = ref(route.params.project_id); // ✅ URL에서 project_id 가져오기
+    const autoJoinRoomId = computed(
+      () => `project-audio-${paramProject_id.value}`
+    );
 
     // roomId를 paramProject_id 기반으로 동적으로 설정
     const roomId = computed(() => `project-${paramProject_id.value}`);
@@ -1653,6 +1656,8 @@ export default {
       invitedMembers,
       updateRole,
       confirmDeleteMember,
+
+      autoJoinRoomId,
     };
   },
 };
