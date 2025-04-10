@@ -21,5 +21,12 @@ const ProjectMeeting = sequelize.define(
             type: DataTypes.DATE,
             allowNull: false
           },
-    }
-)
+    },
+    
+    {
+        tableName: "project_meeting",
+        timestamps: false,
+      }
+);
+
+module.exports = ProjectMeeting;
