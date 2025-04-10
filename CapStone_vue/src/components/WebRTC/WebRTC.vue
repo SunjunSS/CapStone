@@ -132,7 +132,18 @@
 
       <div class="report-section">
         <h3 class="section-title">회의 기록</h3>
+
         <div class="meeting-report" v-html="meetingContent"></div>
+
+        <!-- ✅ 카드 내부로 이동, 가운데 정렬을 위한 wrapper 추가 -->
+        <div class="download-buttons-centered">
+          <button class="download-button" @click="downloadAudio">
+            음성파일 다운로드
+          </button>
+          <button class="download-button" @click="downloadPDF">
+            PDF 다운로드
+          </button>
+        </div>
       </div>
 
       <button
@@ -152,9 +163,6 @@ import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 import meetingPDF from "../audio/meetingPDF";
-
-
-
 
 export default {
   name: "AudioMeetingApp",
@@ -188,6 +196,8 @@ export default {
       uploadInterval: null,
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
+      audioBlob: null,
+      pdfBlob: null,
     };
   },
   computed: {
@@ -312,14 +322,12 @@ export default {
 
       if (this.isRecording) {
         this.socket.emit("start-recording", this.roomId);
-        
-        console.log("녹음 시작");
 
+        console.log("녹음 시작");
       } else {
         this.socket.emit("stop-recording", this.roomId);
-        
+
         console.log("녹음 중지");
-        
       }
     },
 
@@ -344,12 +352,10 @@ export default {
       this.temporaryChunks = [];
       this.mediaRecorder = new MediaRecorder(this.localStream);
 
-
       this.mediaRecorder.ondataavailable = async (event) => {
         console.log("📝 dataavailable 이벤트 발생");
         this.recordedChunks.push(event.data);
         this.temporaryChunks.push(event.data);
-
       };
 
       this.uploadInterval = setInterval(async () => {
@@ -359,10 +365,9 @@ export default {
           await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
           //this.temporaryChunks = []; // 업로드 후 버퍼 초기화
         } else {
-          console.log("아직 비어있음")
+          console.log("아직 비어있음");
         }
       }, 20000); // 20초마다 업로드
-
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -382,12 +387,10 @@ export default {
         } catch (error) {
           console.error("❌ 업로드 실패:", error.message);
         }
-        
       };
 
       this.mediaRecorder.start(19000);
       this.isRecording = true;
-
     },
 
     // 녹음 중지 메서드
@@ -445,59 +448,46 @@ export default {
           this.checkRecording();
         });
 
-
-        this.socket.on("return-recording",async (data) => {
-
+        this.socket.on("return-recording", async (data) => {
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
-          
 
           // base64로 전달된 MP3 파일을 Blob으로 변환
-          const audioBlob = new Blob([new Uint8Array(atob(fileBuffer).split("").map((c) => c.charCodeAt(0)))], { type: "audio/mp3" });
-
-          // 파일을 URL로 변환
-          const audioUrl = URL.createObjectURL(audioBlob);
-
-          // 다운로드 링크 생성
-          const link = document.createElement("a");
-          link.href = audioUrl;
-          link.download = `${this.roomId}_audio.mp3`; // 파일명 설정
-          link.click();
-
-          
-          // 회의록 업데이트
-          const report = meetingContent(
-            recordingData
+          const audioBlob = new Blob(
+            [
+              new Uint8Array(
+                atob(fileBuffer)
+                  .split("")
+                  .map((c) => c.charCodeAt(0))
+              ),
+            ],
+            { type: "audio/mp3" }
           );
+
+          this.audioBlob = audioBlob;
+
+          // 회의록 업데이트
+          const report = meetingContent(recordingData);
 
           // 📄 회의록 PDF 생성
           const doc = await meetingPDF(recordingData);
           const pdfBlob = await doc.output("blob");
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          const pdfLink = document.createElement("a");
-          pdfLink.href = pdfUrl;
-          pdfLink.download = `${this.roomId}_회의록.pdf`;
-          document.body.appendChild(pdfLink);
-          pdfLink.click();
-          document.body.removeChild(pdfLink);
-          URL.revokeObjectURL(pdfUrl);
+          this.pdfBlob = pdfBlob;
 
-          console.log('📄PDF 생성완료');
-          
+          console.log("📄PDF 생성완료");
 
-          const nodes = recordingData.minutes.recommendNodes
+          const nodes = recordingData.minutes.recommendNodes;
 
-          console.log("🟢 반환된 추천 노드: ", nodes)
+          console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;
         });
 
-        this.socket.on("return-keyword",(data) => {
-
+        this.socket.on("return-keyword", (data) => {
           const { recordingData } = data;
           const jsonString = JSON.stringify(recordingData, null, 2);
-          console.log(`반환된 키워드: ${jsonString}`)
-        })
+          console.log(`반환된 키워드: ${jsonString}`);
+        });
 
         this.socket.on("connect_error", (error) => {
           this.connectionStatus = "Error";
@@ -804,6 +794,32 @@ export default {
           alert("Failed to switch audio device");
         }
       }
+    },
+
+    downloadAudio() {
+      if (!this.audioBlob) {
+        alert("아직 음성 녹음이 존재하지 않습니다.");
+        return;
+      }
+      const audioUrl = URL.createObjectURL(this.audioBlob);
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = `${this.roomId}_audio.mp3`;
+      link.click();
+      URL.revokeObjectURL(audioUrl);
+    },
+
+    downloadPDF() {
+      if (!this.pdfBlob) {
+        alert("아직 PDF 회의록이 존재하지 않습니다.");
+        return;
+      }
+      const pdfUrl = URL.createObjectURL(this.pdfBlob);
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.download = `${this.roomId}_회의록.pdf`;
+      link.click();
+      URL.revokeObjectURL(pdfUrl);
     },
 
     async reconnect() {
@@ -1378,5 +1394,27 @@ export default {
 
 .Error:hover {
   background: #d4ac0d;
+}
+
+.download-button {
+  padding: 10px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-button:hover {
+  background: #2980b9;
+}
+
+.download-buttons-centered {
+  display: flex;
+  justify-content: center; /* 중앙 정렬 */
+  gap: 10px;
+  margin-top: 20px;
 }
 </style>
