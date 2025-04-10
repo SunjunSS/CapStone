@@ -1,15 +1,21 @@
 <template>
-  <div class="mymap-container">
+  <div class="recent-container">
     <!-- 사이드바 -->
     <MainHomeSideBar />
 
     <!-- 콘텐츠 영역 -->
-    <main class="content">
-      <header class="content-header">
+    <main class="content slide-up-animation">
+      <header
+        class="content-header slide-up-animation"
+        style="animation-delay: 0.1s"
+      >
         <h2>최근 맵</h2>
       </header>
 
-      <section class="map-list">
+      <section
+        class="map-list slide-up-animation"
+        style="animation-delay: 0.2s"
+      >
         <!-- mapItems가 있을 때 테이블 표시 -->
         <div v-if="mapItems.length > 0">
           <div class="map-list-header">
@@ -45,7 +51,11 @@
                     />
                   </div>
                   <span class="map-icon">🌟</span>
-                  {{ item.name }}
+                  <span
+                    @click="openMindMap(item.project_id)"
+                    style="cursor: pointer"
+                    >{{ item.name }}</span
+                  >
                 </td>
                 <td class="creator-column">{{ item.creator }}</td>
                 <td class="date-column">{{ item.date }}</td>
@@ -59,10 +69,13 @@
                     ref="menuDropdown"
                   >
                     <ul>
-                      <li @click="openMap(index)">🗝️ 열기</li>
+                      <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
                       <li @click="duplicateMap(index)">📋 복제</li>
                       <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                      <li @click="moveToTrash(index)" class="delete-option">
+                      <li
+                        @click="moveToTrash(item.project_id, index)"
+                        class="delete-option"
+                      >
                         🗑️ 휴지통으로 이동
                       </li>
                     </ul>
@@ -104,31 +117,31 @@
 </template>
 
 <script>
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
+import { getCurrentUser, getProject, connectSocket } from "../socket/socket";
+import {
+  createProject,
+  getUserProjects,
+  softDeleteProject,
+} from "../../api/projectApi";
+import { useRouter } from "vue-router";
 
 export default {
-  name: "MyMap",
+  name: "Recent",
   components: {
     MainHomeSideBar,
   },
   data() {
     return {
-      mapItems: [
-        {
-          name: "나의 새 마인드맵",
-          creator: "kim",
-          date: "Jan 22, 2025",
-          selected: false,
-          showMenu: false,
-        },
-        {
-          name: "캡스톤 마인드맵 탐색",
-          creator: "kim",
-          date: "Feb 10, 2025",
-          selected: false,
-          showMenu: false,
-        },
-      ],
+      // mapItems: [],
+      isProjectDialogOpen: false,
+      teamName: "",
+      teamDescription: "",
+      teamTopic: "",
+      topics: [], // 예시 주제
+      currentUser: null,
+      email: null,
     };
   },
   computed: {
@@ -139,7 +152,67 @@ export default {
       return this.mapItems.filter((item) => item.selected).length;
     },
   },
+  watch: {
+    currentUser: {
+      handler(newUser) {
+        console.log("실행됨 --- 유저");
+        if (newUser && newUser.email) {
+          console.log(`프로젝트 요청 실행 --`);
+          this.loadProjects();
+        }
+      },
+      deep: true,
+    },
+  },
   methods: {
+    handleLogout() {
+      emitLogout(() => {
+        console.log("✔️ 로그아웃 후 UI 업데이트");
+
+        this.currentUser = null; // 로그인한 사용자 정보 초기화
+        this.email = null; // 이메일 초기화
+        this.mapItems = []; // 지도 아이템 목록 초기화
+
+        this.$router.push("/"); // 홈 화면으로 이동
+      });
+    },
+
+    loadProjects() {
+      if (this.currentUser) {
+        getProject(this.currentUser.email, (projects) => {
+          console.log(`프로젝트 내부`);
+          this.mapItems = projects.map((project) => ({
+            project_id: project.project_id,
+            name: project.name,
+            description: project.description,
+            topic: project.topic,
+            tema_id: project.team_id,
+            selected: false,
+            showMenu: false,
+          }));
+          console.log(`프로젝트 개수: ${this.mapItems.length}`);
+        });
+      }
+      console.log("흠");
+    },
+
+    loadCurrentUser() {
+      this.currentUser = getCurrentUser(); // 로그인된 유저 정보를 받아옴
+      if (this.currentUser) {
+        this.email = this.currentUser.email;
+        console.log("현재 로그인된 유저:", this.email);
+      } else {
+        console.log("로그인된 유저가 없습니다.");
+      }
+    },
+
+    openProjectDialog() {
+      this.$router.push("/Project");
+    },
+    close() {
+      this.isProjectDialogOpen = false;
+    },
+
     handleCheckboxChange() {
       // 체크박스 변경 핸들러 (기존과 동일)
     },
@@ -164,9 +237,9 @@ export default {
         item.showMenu = false;
       });
     },
-    openMap(index) {
-      // 맵 열기 기능 구현
-      alert(`${this.mapItems[index].name} 열기`);
+    openMindMap(projectId) {
+      console.log("🔗 MindMap으로 이동:", projectId);
+      this.$router.push(`/MindMap/${projectId}`);
       this.closeAllMenus();
     },
     duplicateMap(index) {
@@ -176,22 +249,131 @@ export default {
     },
     moveToFavorite(index) {
       // 즐겨찾기 추가 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에에 추가`);
+      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
       this.closeAllMenus();
     },
-    moveToTrash(index) {
+    moveToTrash(projectId, index) {
       // 휴지통으로 이동 기능 구현
       if (
         confirm(
           `${this.mapItems[index].name}을(를) 휴지통으로 이동하시겠습니까?`
         )
       ) {
-        this.mapItems.splice(index, 1);
+        this.closeAllMenus();
+        softDeleteProject(projectId)
+          .then(() => {
+            console.log(
+              `🗑️ 프로젝트(${projectId})가 휴지통으로 이동되었습니다.`
+            );
+            this.mapItems.splice(index, 1);
+          })
+          .catch((error) => {
+            console.error("❌ 프로젝트 휴지통 이동 중 오류:", error);
+            alert("프로젝트를 휴지통으로 이동하는 중 오류가 발생했습니다.");
+          });
       }
-      this.closeAllMenus();
     },
   },
+  setup() {
+    const router = useRouter(); // Vue Router 인스턴스 가져오기
+    const mapItems = ref([]); // 프로젝트 목록을 ref로 선언
+
+    // 세션에서 userId 가져오기
+    const userId = sessionStorage.getItem("userId");
+
+    // 서버에서 프로젝트 목록 불러오기
+    const loadProjects = async () => {
+      try {
+        if (!userId) {
+          console.error("❌ 사용자 ID가 없습니다.");
+          return;
+        }
+
+        const projects = await getUserProjects(userId);
+
+        mapItems.value = projects.map((p) => ({
+          project_id: p.project_id,
+          name: p.name,
+          creator: p.creator, // 서버에서 만든 사람 정보
+          date: p.date, // 서버에서 수정 날짜 정보
+          selected: false,
+          showMenu: false,
+        }));
+
+        console.log("🟢 프로젝트 불러오기 성공:", mapItems.value);
+      } catch (error) {
+        console.error("❌ 프로젝트 목록 불러오기 오류:", error);
+      }
+    };
+
+    // 휠 이벤트 처리를 위한 변수
+    let isScrolling = false;
+    let scrollTimeout;
+
+    // 휠 이벤트 핸들러
+    const handleWheel = (event) => {
+      // 이미 스크롤 중이면 추가 이벤트 무시
+      if (isScrolling) return;
+
+      // 아래로 스크롤하는 경우 (deltaY가 양수)
+      if (event.deltaY > 50) {
+        isScrolling = true;
+
+        // 연속된 스크롤 이벤트 방지를 위한 디바운싱
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          console.log("아래로 스크롤 감지, Favorite 페이지로 이동합니다");
+          router.push("/Favorite");
+
+          // 스크롤 상태 초기화 (다음 페이지에서 정상 작동하도록)
+          setTimeout(() => {
+            isScrolling = false;
+          }, 500);
+        }, 300);
+      }
+      // 위로 스크롤하는 경우 (deltaY가 음수)
+      else if (event.deltaY < -50) {
+        isScrolling = true;
+
+        // 연속된 스크롤 이벤트 방지를 위한 디바운싱
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          console.log("위로 스크롤 감지, MyMap 페이지로 이동합니다");
+          router.push("/MyMap");
+
+          // 스크롤 상태 초기화 (다음 페이지에서 정상 작동하도록)
+          setTimeout(() => {
+            isScrolling = false;
+          }, 500);
+        }, 300);
+      }
+    };
+
+    onMounted(() => {
+      connectSocket(() => {
+        loadProjects();
+      });
+
+      // 휠 이벤트 리스너 등록
+      window.addEventListener("wheel", handleWheel, { passive: false });
+    });
+
+    onBeforeUnmount(() => {
+      // 컴포넌트 언마운트 시 이벤트 리스너 제거 및 타이머 정리
+      window.removeEventListener("wheel", handleWheel);
+      clearTimeout(scrollTimeout);
+    });
+
+    return {
+      mapItems,
+    };
+  },
   mounted() {
+    // 페이지 로드 시 소켓 연결 및 사용자 정보 복구
+    connectSocket(() => {
+      this.loadCurrentUser();
+    });
+
     // 메뉴 외부 클릭 시 메뉴 닫기
     document.addEventListener("click", this.closeAllMenus);
   },
@@ -212,7 +394,7 @@ export default {
   background-color: #e3f2fd;
 }
 
-.mymap-container {
+.recent-container {
   display: flex;
   min-height: 100vh;
 }
@@ -427,5 +609,87 @@ export default {
   max-width: 400px;
   margin-bottom: 24px;
   line-height: 1.5;
+}
+
+/* 콘텐츠 영역 애니메이션 */
+.slide-up-animation {
+  animation: slideUp 0.6s ease-out forwards;
+  transform: translateY(30px);
+  opacity: 0;
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 테이블 행에 지연된 애니메이션 적용 */
+.map-list table tr {
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.map-list table tr:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.map-list table tr:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.map-list table tr:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.map-list table tr:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.map-list table tr:nth-child(5) {
+  animation-delay: 0.5s;
+}
+.map-list table tr:nth-child(6) {
+  animation-delay: 0.6s;
+}
+.map-list table tr:nth-child(7) {
+  animation-delay: 0.7s;
+}
+.map-list table tr:nth-child(8) {
+  animation-delay: 0.8s;
+}
+.map-list table tr:nth-child(9) {
+  animation-delay: 0.9s;
+}
+.map-list table tr:nth-child(10) {
+  animation-delay: 1s;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 빈 상태 애니메이션 */
+.empty-recent-container {
+  animation: fadeIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 </style>
