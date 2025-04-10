@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import notoKR from "./font/NotoSansKR-Regular"
 
 
 
@@ -9,13 +8,7 @@ export default async function createPDF(data) {
   // ✅ PDF 생성
   const doc = new jsPDF();
 
-  const fontPath = path.resolve("../audio/font/NotoSansKR-Regular.ttf");
-
-  // 폰트 파일 읽기
-  const fontData = fs.readFileSync(fontPath);
-  const fontBase64 = fontData.toString("base64");
-
-  doc.addFileToVFS("NotoSansKR-Regular.ttf", fontBase64);
+  doc.addFileToVFS("NotoSansKR-Regular.ttf", notoKR);
   doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
   doc.setFont("NotoSansKR");
 
