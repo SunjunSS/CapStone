@@ -31,13 +31,19 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
       })
       .join("\n\n");
 
-      console.log(`callOpenAI 노드 데이터: ${nodeData}`)
+
+      const roots = nodeData.filter((item) => item.parent === 0);
+      console.log("테스트:   " + JSON.stringify(roots[0].name));
+      
+    
+      
 
     let finalPrompt = `
     이 음성 텍스트는 회의 중 기록된 대화입니다. 한국어로 응답해주세요.
     아래 JSON 형식으로 정확하게 응답해주세요.
 
     {
+      "rootNode": [${JSON.stringify(roots[0].name)}}],
       "speakerNames": [${speakerNames}],
       "srt": [
         {"time": "발언시간", "speaker": "닉네임", "speech": "발언"},

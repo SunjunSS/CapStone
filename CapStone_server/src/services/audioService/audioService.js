@@ -39,7 +39,9 @@ exports.processIndividualFile = async (roomAudioBuffers, roomId, isRealTime) => 
 
     // OpenAI에 전달할 데이터 준비
 
-    const { success, data } = await nodeService.getMindmapByProjectId(1);
+
+    const projectId = roomId.split("-").pop();
+    const { success, data } = await nodeService.getMindmapByProjectId(projectId);
 
     const nodeData = data;
 

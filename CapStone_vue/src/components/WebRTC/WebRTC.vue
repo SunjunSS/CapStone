@@ -191,6 +191,7 @@ export default {
       uploadInterval: null,
       meetingContent: "<p style='color: #bbb;'>아직 회의록이 없습니다.</p>", // 기본 텍스트
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
+      rootNode: null,
       audioBlob: null,
       pdfBlob: null,
     };
@@ -473,6 +474,8 @@ export default {
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
+
+          this.rootNode = recordingData.rootNode;
 
           // base64로 전달된 MP3 파일을 Blob으로 변환
           const audioBlob = new Blob(
@@ -841,8 +844,10 @@ export default {
       }
       const pdfUrl = URL.createObjectURL(this.pdfBlob);
       const link = document.createElement("a");
+      const today = new Date();
+      const date = today.toISOString().split('T')[0];
       link.href = pdfUrl;
-      link.download = `${this.roomId}_회의록.pdf`;
+      link.download = `${date}_${this.rootNode}.pdf`;
       link.click();
       URL.revokeObjectURL(pdfUrl);
     },
