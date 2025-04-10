@@ -13,7 +13,7 @@ const Project = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    createdAt: {
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: Sequelize.NOW,
@@ -23,6 +23,11 @@ const Project = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    bookmark:{
+      type: DataTypes.TINYINT(1),
+      allowNull: false,
+      defaultValue: 0,
+    }
   },
   {
     tableName: "projects",
