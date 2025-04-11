@@ -1067,6 +1067,20 @@ export default {
           today.getMonth() + 1
         ).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
 
+        // 간단한 모바일/태블릿 감지
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isMobile = /iphone|ipad|ipod|android|mobile|tablet/i.test(
+          userAgent
+        );
+
+        // 파일명 설정
+        let fileName = `${formattedDate}-${rootNodeName}`;
+        if (isMobile) {
+          const timestamp = Date.now().toString();
+          fileName += `-${timestamp}`;
+        }
+        fileName += ".png";
+
         // html2canvas로 캡처
         const canvas = await html2canvas(diagramDiv, {
           backgroundColor: "#fafafa", // 배경색 설정
@@ -1079,9 +1093,7 @@ export default {
         const imageUrl = canvas.toDataURL("image/png");
         const link = document.createElement("a");
         link.href = imageUrl;
-
-        // 새로운 파일명 형식 적용: YYYY.MM.DD-루트노드이름.png
-        link.download = `${formattedDate}-${rootNodeName}.png`;
+        link.download = fileName;
 
         document.body.appendChild(link);
         link.click();
