@@ -1280,13 +1280,25 @@ export default {
             const inputField = document.createElement("input");
             inputField.value = editEmoji + node.data.name;
 
-            inputField.style.position = "absolute";
-            inputField.style.backgroundColor = "white";
-            inputField.style.outline = "none";
-            inputField.style.maxWidth = "none";
-            inputField.style.transition = "all 0.2s ease";
-            inputField.style.zIndex = "9999";
-            inputField.style.fontFamily = "sans-serif";
+            Object.assign(inputField.style, {
+              position: "absolute",
+              backgroundColor: "white",
+              outline: "none",
+              maxWidth: "none",
+              transition: "all 0.2s ease",
+              zIndex: "9999",
+              fontFamily: "sans-serif",
+              userSelect: "text",
+              WebkitUserSelect: "text",
+              touchAction: "none",
+              fontSize: "16px",
+            });
+
+            inputField.setAttribute("type", "text");
+            inputField.setAttribute("autocomplete", "off");
+            inputField.setAttribute("autocapitalize", "off");
+            inputField.setAttribute("autocorrect", "off");
+            inputField.setAttribute("spellcheck", "false");
 
             document.body.appendChild(inputField);
 
@@ -1294,7 +1306,47 @@ export default {
             activeInputField.value = inputField;
 
             updateInputFieldPosition();
-            inputField.focus();
+
+            // ✅ 강력한 포커스 보장 로직
+            let retryCount = 0;
+            const maxRetries = 5;
+
+            const tryFocus = () => {
+              inputField.focus();
+              inputField.setSelectionRange(
+                inputField.value.length,
+                inputField.value.length
+              );
+
+              if (
+                document.activeElement !== inputField &&
+                retryCount < maxRetries
+              ) {
+                retryCount++;
+                setTimeout(tryFocus, 100);
+              }
+            };
+
+            // ✅ 브라우저 렌더링 후 안전하게 포커스
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                tryFocus();
+              }, 0);
+            });
+
+            // ✅ iOS 대응: 실제 터치 시에도 포커스 재시도
+            inputField.addEventListener("touchend", () => {
+              inputField.focus();
+              inputField.setSelectionRange(
+                inputField.value.length,
+                inputField.value.length
+              );
+            });
+
+            // 상태 관리
+            let blurTimeout = null;
+            let justOpened = true;
+            setTimeout(() => (justOpened = false), 100);
 
             const handleInput = () => {
               const textContent = inputField.value.replace(editEmoji, "");
@@ -1310,8 +1362,9 @@ export default {
             const handleTextFieldKeyDown = (e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                activeInputField.value?.blur();
+                inputField.blur();
               }
+
               if (e.key === "Backspace") {
                 const textContent = inputField.value.replace(editEmoji, "");
                 if (
@@ -1321,21 +1374,26 @@ export default {
                   e.preventDefault();
                 }
               }
+
+              const isSelectAll =
+                (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
+              if (isSelectAll) {
+                e.preventDefault();
+                inputField.setSelectionRange(
+                  editEmoji.length,
+                  inputField.value.length
+                );
+              }
             };
 
             const completeEditing = async () => {
-              if (!activeInputField.value) return;
+              if (!inputField) return;
 
-              let updatedText = activeInputField.value.value
-                .replace("✏️ ", "")
-                .trim();
+              let updatedText = inputField.value.replace(editEmoji, "").trim();
+              if (!updatedText) updatedText = "새 노드";
 
-              if (!updatedText) {
-                updatedText = "새 노드";
-              }
-
-              if (document.body.contains(activeInputField.value)) {
-                document.body.removeChild(activeInputField.value);
+              if (document.body.contains(inputField)) {
+                document.body.removeChild(inputField);
               }
 
               activeEditNode.value = null;
@@ -1365,18 +1423,19 @@ export default {
             };
 
             inputField.addEventListener("input", handleInput);
-            inputField.addEventListener("blur", completeEditing);
             inputField.addEventListener("keydown", handleTextFieldKeyDown);
-            inputField.addEventListener("keydown", (e) => {
-              const isSelectAll =
-                (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
-              if (isSelectAll) {
-                e.preventDefault();
-                const emojiOffset = editEmoji.length;
-                inputField.setSelectionRange(
-                  emojiOffset,
-                  inputField.value.length
-                );
+
+            inputField.addEventListener("blur", () => {
+              if (justOpened) return;
+              blurTimeout = setTimeout(() => {
+                completeEditing();
+              }, 100);
+            });
+
+            inputField.addEventListener("focus", () => {
+              if (blurTimeout) {
+                clearTimeout(blurTimeout);
+                blurTimeout = null;
               }
             });
           },
