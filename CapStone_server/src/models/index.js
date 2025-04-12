@@ -59,9 +59,11 @@ Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
 Node.belongsTo(Project, { foreignKey: "project_id" });
 
 //Project와 project_Meeting 관계
-Project.hasMany(projectMeeting,{foreignKey: "project_id", onDelete: "CASCADE"});
+Project.hasMany(ProjectMeeting, {
+  foreignKey: "project_id",
+  onDelete: "CASCADE",
+});
 ProjectMeeting.belongsTo(Project, { foreignKey: "project_id" });
-
 
 // ✅ 데이터베이스 동기화 함수
 const initDB = async () => {
