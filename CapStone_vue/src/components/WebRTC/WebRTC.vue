@@ -502,6 +502,9 @@ export default {
           const pdfBlob = await doc.output("blob");
           this.pdfBlob = pdfBlob;
 
+          const node = recordingData.rootNode;
+          console.log("테스트 루트 노드: "+ node);
+
           console.log("📄PDF 생성완료");
 
           const nodes = recordingData.minutes.recommendNodes;
@@ -844,10 +847,16 @@ export default {
       }
       const pdfUrl = URL.createObjectURL(this.pdfBlob);
       const link = document.createElement("a");
+      
+      
       const today = new Date();
-      const date = today.toISOString().split('T')[0];
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const date = `${year}.${month}.${day}`;
+
       link.href = pdfUrl;
-      link.download = `${date}_${this.rootNode}.pdf`;
+      link.download = `${date}-${this.rootNode}.pdf`;
       link.click();
       URL.revokeObjectURL(pdfUrl);
     },
