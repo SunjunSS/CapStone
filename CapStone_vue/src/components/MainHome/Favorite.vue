@@ -59,17 +59,19 @@
                   <button class="menu-button" @click="showMenu(index, $event)">
                     ⋯
                   </button>
-                  <div
-                    v-if="item.showMenu"
-                    class="menu-dropdown"
-                    ref="menuDropdown"
-                  >
-                    <ul>
-                      <li @click="removeFromFavorite(index)">
-                        ❌ 즐겨찾기 취소
-                      </li>
-                    </ul>
-                  </div>
+                  <teleport to="body">
+                    <div
+                      v-if="item.showMenu"
+                      class="menu-dropdown"
+                      :style="getDropdownPosition(index)"
+                    >
+                      <ul>
+                        <li @click="removeFromFavorite(index)">
+                          ❌ 즐겨찾기 취소
+                        </li>
+                      </ul>
+                    </div>
+                  </teleport>
                 </td>
               </tr>
             </tbody>
@@ -229,6 +231,18 @@ export default {
       }
     };
 
+    // setup() 함수 내에 아래 코드 추가
+    const getDropdownPosition = (index) => {
+      const button = document.querySelectorAll(".menu-button")[index];
+      if (!button) return {};
+      const rect = button.getBoundingClientRect();
+      return {
+        position: "fixed",
+        top: `${rect.bottom}px`,
+        left: `${rect.left - 100}px`,
+      };
+    };
+
     onMounted(() => {
       // 휠 이벤트 리스너 등록
       window.addEventListener("wheel", handleWheel, { passive: false });
@@ -240,7 +254,7 @@ export default {
       clearTimeout(scrollTimeout);
     });
 
-    return {};
+    return { getDropdownPosition };
   },
   mounted() {
     // 메뉴 외부 클릭 시 메뉴 닫기
