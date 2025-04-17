@@ -384,7 +384,7 @@ export default {
           console.log("🔄 20초 단위 실시간 데이터 업로드 시작...");
           const blob = new Blob(this.temporaryChunks, { type: "audio/mp3" });
           await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
-          //this.temporaryChunks = []; // 업로드 후 버퍼 초기화
+          this.temporaryChunks = []; // 업로드 후 버퍼 초기화
         } else {
           console.log("아직 비어있음");
         }
@@ -501,6 +501,9 @@ export default {
           const doc = await meetingPDF(recordingData);
           const pdfBlob = await doc.output("blob");
           this.pdfBlob = pdfBlob;
+
+          const node = recordingData.rootNode;
+          console.log("테스트 루트 노드: "+ node);
 
           console.log("📄PDF 생성완료");
 
@@ -844,10 +847,16 @@ export default {
       }
       const pdfUrl = URL.createObjectURL(this.pdfBlob);
       const link = document.createElement("a");
+      
+      
       const today = new Date();
-      const date = today.toISOString().split('T')[0];
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const date = `${year}.${month}.${day}`;
+
       link.href = pdfUrl;
-      link.download = `${date}_${this.rootNode}.pdf`;
+      link.download = `${date}-${this.rootNode}.pdf`;
       link.click();
       URL.revokeObjectURL(pdfUrl);
     },

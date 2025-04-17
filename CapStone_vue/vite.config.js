@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    host: 'localhost',  // 도메인 고정
+    host: '0.0.0.0',  // 도메인 고정
     port: 5276,         // 포트 번호 고정
     strictPort: true,   // 포트가 이미 사용 중일 때 에러 발생
     proxy: {
