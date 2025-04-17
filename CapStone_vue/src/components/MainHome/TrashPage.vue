@@ -66,23 +66,25 @@
                   <button class="menu-button" @click="showMenu(index, $event)">
                     ⋯
                   </button>
-                  <div
-                    v-if="item.showMenu"
-                    class="menu-dropdown"
-                    ref="menuDropdown"
-                  >
-                    <ul>
-                      <li @click="restoreMap(item.project_id, index)">
-                        ♻️ 복구
-                      </li>
-                      <li
-                        @click="deleteMapPermanently(item.project_id, index)"
-                        class="delete-option"
-                      >
-                        🗑️ 완전히 삭제
-                      </li>
-                    </ul>
-                  </div>
+                  <teleport to="body">
+                    <div
+                      v-if="item.showMenu"
+                      class="menu-dropdown"
+                      :style="getDropdownPosition(index)"
+                    >
+                      <ul>
+                        <li @click="restoreMap(item.project_id, index)">
+                          ♻️ 복구
+                        </li>
+                        <li
+                          @click="deleteMapPermanently(item.project_id, index)"
+                          class="delete-option"
+                        >
+                          🗑️ 완전히 삭제
+                        </li>
+                      </ul>
+                    </div>
+                  </teleport>
                 </td>
               </tr>
             </tbody>
@@ -333,6 +335,16 @@ export default {
     const selectedItemsCount = computed(() => {
       return mapItems.value.filter((item) => item.selected).length;
     });
+    const getDropdownPosition = (index) => {
+      const button = document.querySelectorAll(".menu-button")[index];
+      if (!button) return {};
+      const rect = button.getBoundingClientRect();
+      return {
+        position: "fixed",
+        top: `${rect.bottom}px`,
+        left: `${rect.left - 100}px`,
+      };
+    };
 
     onMounted(() => {
       loadTrashProjects();
@@ -350,6 +362,7 @@ export default {
 
     return {
       mapItems,
+      getDropdownPosition,
       isLoading,
       restoreMap,
       deleteMapPermanently,
