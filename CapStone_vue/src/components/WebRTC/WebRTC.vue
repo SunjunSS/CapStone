@@ -384,7 +384,7 @@ export default {
           console.log("🔄 20초 단위 실시간 데이터 업로드 시작...");
           const blob = new Blob(this.temporaryChunks, { type: "audio/mp3" });
           await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
-          //this.temporaryChunks = []; // 업로드 후 버퍼 초기화
+          this.temporaryChunks = []; // 업로드 후 버퍼 초기화
         } else {
           console.log("아직 비어있음");
         }
