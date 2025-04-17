@@ -485,6 +485,7 @@ export default {
 /* 콘텐츠 영역 애니메이션 */
 .slide-up-animation {
   animation: slideUp 0.6s ease-out forwards;
+  animation-delay: 0.4s;
   transform: translateY(30px);
   opacity: 0;
 }

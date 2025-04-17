@@ -152,11 +152,30 @@
             </pattern>
           </defs>
 
-          <!-- Enhanced Background Layers -->
-          <rect width="800" height="495" fill="url(#bg-gradient)" />
-          <rect width="800" height="495" fill="url(#circuit-pattern)" />
-          <rect width="800" height="495" fill="url(#scanline)" />
-          <rect width="800" height="495" fill="url(#dot-grid)" opacity="0.05" />
+          <!-- Enhanced Background Layers (100px씩 위아래 확장) -->
+          <rect
+            x="0"
+            y="-100"
+            width="800"
+            height="695"
+            fill="url(#bg-gradient)"
+          />
+          <rect
+            x="0"
+            y="-100"
+            width="800"
+            height="695"
+            fill="url(#circuit-pattern)"
+          />
+          <rect x="0" y="-100" width="800" height="695" fill="url(#scanline)" />
+          <rect
+            x="0"
+            y="-100"
+            width="800"
+            height="695"
+            fill="url(#dot-grid)"
+            opacity="0.05"
+          />
 
           <!-- Enhanced Tech Grid Lines -->
           <g opacity="0.3">
