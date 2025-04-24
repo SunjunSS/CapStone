@@ -284,6 +284,7 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
   }
 };
 
+// 마인드 맵 노드 중 최고 골라주는 api 요청
 exports.getBestMindmapIdea = async (project_id) => {
   try {
     const nodes = await nodeRepository.getAllNodesByProject(project_id);
