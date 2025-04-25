@@ -23,6 +23,8 @@ exports.addNodes = async (addedNodes, project_id) => {
       isSelected
     );
 
+    await projectRepository.touchProjectUpdatedAt(projectIdAsNumber);
+
     console.log("✅ 성공적으로 추가된 노드:", newNode.toJSON());
 
     return [
@@ -52,7 +54,10 @@ exports.createRootNode = async (project_id, project_name, transaction) => {
       transaction
     );
 
+    await projectRepository.touchProjectUpdatedAt(project_id, transaction);
+
     console.log("✅ 루트 노드 생성 완료:", newNode.toJSON());
+
     return newNode;
   } catch (error) {
     console.error("❌ 루트 노드 생성 중 오류:", error.message);
@@ -93,6 +98,7 @@ exports.deleteNodeWithChildren = async (id, project_id) => {
     // ✅ 노드 삭제 실행
     await nodeRepository.deleteNodesByIds([...nodesToRemove], project_id);
 
+    await projectRepository.touchProjectUpdatedAt(project_id);
     console.log(`🗑️ 요청된 노드 및 하위 노드 삭제 완료`);
     return [...nodesToRemove];
   } catch (error) {
@@ -136,6 +142,8 @@ exports.updateNode = async (id, project_id, name) => {
       console.log(`🔄 루트 노드 감지. 프로젝트(${project_id}) 이름도 변경`);
       await projectRepository.updateProjectName(project_id, name, transaction);
     }
+
+    await projectRepository.touchProjectUpdatedAt(project_id, transaction);
 
     await transaction.commit();
     return { id: parseInt(id, 10), key: parseInt(id, 10), name };
@@ -192,6 +200,7 @@ exports.moveNode = async (movedNodeId, newParentId, project_id) => {
   node.parent_key = newParentId;
   await node.save();
 
+  await projectRepository.touchProjectUpdatedAt(project_id);
   console.log("✅ [moveNode] 노드 부모 업데이트 완료");
   return node;
 };

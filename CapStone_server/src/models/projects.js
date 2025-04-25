@@ -23,11 +23,11 @@ const Project = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    bookmark:{
+    bookmark: {
       type: DataTypes.TINYINT(1),
       allowNull: false,
       defaultValue: 0,
-    }
+    },
   },
   {
     tableName: "projects",

@@ -1,4 +1,5 @@
 const { Project } = require("../models");
+const { Sequelize } = require("sequelize");
 
 exports.createProject = async (name, transaction) => {
   return await Project.create({ name }, { transaction });
@@ -11,11 +12,19 @@ exports.updateProjectName = async (project_id, newName, transaction) => {
   );
 };
 
+// 수정 시간만 갱신하는 함수
+exports.touchProjectUpdatedAt = async (project_id, transaction = null) => {
+  return await Project.update(
+    { updatedAt: Sequelize.literal("CURRENT_TIMESTAMP") },
+    { where: { project_id }, transaction }
+  );
+};
+
 // projectRepository.js 파일의 getUserProjects 함수 수정
 exports.getUserProjects = async (projectIds) => {
   try {
     return await Project.findAll({
-      attributes: ["project_id", "name", "deleted"], // 'deleted' 필드 추가
+      attributes: ["project_id", "name", "deleted", "updatedAt"], // 'deleted' 필드 추가
       where: {
         project_id: projectIds,
       },
@@ -34,7 +43,7 @@ exports.deleteProject = async (project_id, transaction) => {
   });
 };
 
-// 특정 프로젝트 정보 조회회
+// 특정 프로젝트 정보 조회
 exports.getProjectById = async (project_id) => {
   return await Project.findOne({
     where: { project_id },
