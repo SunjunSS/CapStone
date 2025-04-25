@@ -4,6 +4,7 @@ const projectRepository = require("../../repositories/projectRepository");
 const projectMemberRepository = require("../../repositories/projectMemberRepository");
 const userRepository = require("../../repositories/userRepository");
 const { ROLE_LABELS } = require("../../constants/roles");
+const { formatDateToYMDHM } = require("../../utils/dateFormatter");
 
 // 프로젝트 생성, 프로젝트 유저 매핑, 루트 노드 생성
 exports.createProjectWithUser = async (user_id) => {
@@ -123,6 +124,7 @@ exports.getActiveProjectsByUserId = async (user_id) => {
         isAdmin:
           userProjects.find((p) => p.project_id === project.project_id)
             ?.isAdmin || 0, // ✅ isAdmin 값 추가
+        date: formatDateToYMDHM(project.updatedAt), // 🔁 updatedAt → date
       };
     });
 
@@ -197,6 +199,7 @@ exports.getTrashProjectsByUserId = async (user_id) => {
         project_id: project.project_id,
         name: project.name,
         creator: creatorName, // 생성자 이름 추가
+        date: formatDateToYMDHM(project.updatedAt), // 🔁 updatedAt → date
         isAdmin:
           userProjects.find((p) => p.project_id === project.project_id)
             ?.isAdmin || 0, // ✅ isAdmin 값 추가
@@ -204,36 +207,6 @@ exports.getTrashProjectsByUserId = async (user_id) => {
     });
   } catch (error) {
     console.error("❌ 유저의 휴지통 프로젝트 조회 중 오류 발생:", error);
-    throw error;
-  }
-};
-
-// 유저ID로 프로젝트 찾기
-exports.getProjectsByUserId = async (user_id) => {
-  try {
-    // ✅ 프로젝트 멤버 서비스에서 사용자의 프로젝트 ID 목록 가져오기
-    const userProjects = await projectMemberRepository.getUserProjectIds(
-      user_id
-    );
-    if (!userProjects || userProjects.length === 0) {
-      return [];
-    }
-
-    // ✅ 프로젝트 ID 목록을 사용하여 프로젝트 정보 조회 (레포지토리 사용)
-    const projects = await projectRepository.getUserProjects(
-      userProjects.map((p) => p.project_id)
-    );
-
-    // ✅ `isAdmin` 정보를 추가하여 반환
-    return projects.map((project) => ({
-      project_id: project.project_id,
-      name: project.name,
-      isAdmin:
-        userProjects.find((p) => p.project_id === project.project_id)
-          ?.isAdmin || 0, // ✅ isAdmin 값 추가
-    }));
-  } catch (error) {
-    console.error("❌ 유저의 프로젝트 조회 중 오류 발생:", error);
     throw error;
   }
 };

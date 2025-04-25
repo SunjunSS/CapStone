@@ -17,22 +17,6 @@ exports.createProject = async (req, res) => {
   }
 };
 
-exports.getProjectsByUserId = async (req, res) => {
-  try {
-    const { user_id } = req.params;
-
-    if (!user_id) {
-      return res.status(400).json({ message: "user_id가 필요합니다." });
-    }
-
-    const projectIds = await projectService.getProjectsByUserId(user_id);
-    res.status(200).json({ projects: projectIds });
-  } catch (error) {
-    console.error("프로젝트 조회 오류:", error);
-    res.status(500).json({ message: "서버 오류", error: error.message });
-  }
-};
-
 // 활성 프로젝트만 조회 (deleted=0)
 exports.getActiveProjectsByUserId = async (req, res) => {
   try {
