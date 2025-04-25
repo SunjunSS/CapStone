@@ -15,11 +15,17 @@
         <div class="features">
           <div class="feature-item">
             <span class="feature-icon">🎧</span>
-            <span class="feature-text">실시간 음성대화</span>
+            <span class="feature-text"
+              >실시간 <br />
+              음성대화</span
+            >
           </div>
           <div class="feature-item">
             <span class="feature-icon">📝</span>
-            <span class="feature-text">회의록 자동기록</span>
+            <span class="feature-text"
+              >회의록 <br />
+              자동기록</span
+            >
           </div>
           <div class="feature-item">
             <span class="feature-icon">👥</span>
@@ -150,7 +156,6 @@ import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 import meetingPDF from "../audio/meetingPDF";
-
 
 export default {
   name: "AudioMeetingApp",
@@ -470,7 +475,6 @@ export default {
         });
 
         this.socket.on("return-recording", async (data) => {
-
           const { recordingData, fileBuffer } = data;
 
           console.log("🟢 서버에서 녹음 데이터 수신:", recordingData);
@@ -503,12 +507,11 @@ export default {
           this.pdfBlob = pdfBlob;
 
           const node = recordingData.rootNode;
-          console.log("테스트 루트 노드: "+ node);
+          console.log("테스트 루트 노드: " + node);
 
           console.log("📄PDF 생성완료");
 
           const nodes = recordingData.minutes.recommendNodes;
-
 
           console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;
@@ -847,12 +850,11 @@ export default {
       }
       const pdfUrl = URL.createObjectURL(this.pdfBlob);
       const link = document.createElement("a");
-      
-      
+
       const today = new Date();
       const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
       const date = `${year}.${month}.${day}`;
 
       link.href = pdfUrl;
