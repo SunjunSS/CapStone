@@ -70,7 +70,6 @@
                   >
                     <ul>
                       <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
-                      <li @click="duplicateMap(index)">📋 복제</li>
                       <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
                       <li
                         @click="moveToTrash(item.project_id, index)"
@@ -240,11 +239,6 @@ export default {
     openMindMap(projectId) {
       console.log("🔗 MindMap으로 이동:", projectId);
       this.$router.push(`/MindMap/${projectId}`);
-      this.closeAllMenus();
-    },
-    duplicateMap(index) {
-      // 맵 복제 기능 구현
-      alert(`${this.mapItems[index].name} 복제`);
       this.closeAllMenus();
     },
     moveToFavorite(index) {
