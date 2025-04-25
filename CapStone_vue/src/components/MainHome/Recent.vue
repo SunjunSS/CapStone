@@ -63,22 +63,24 @@
                   <button class="menu-button" @click="showMenu(index, $event)">
                     ⋯
                   </button>
-                  <div
-                    v-if="item.showMenu"
-                    class="menu-dropdown"
-                    ref="menuDropdown"
-                  >
-                    <ul>
-                      <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
-                      <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                      <li
-                        @click="moveToTrash(item.project_id, index)"
-                        class="delete-option"
-                      >
-                        🗑️ 휴지통으로 이동
-                      </li>
-                    </ul>
-                  </div>
+                  <teleport to="body">
+                    <div
+                      v-if="item.showMenu"
+                      class="menu-dropdown"
+                      :style="getDropdownPosition(index)"
+                    >
+                      <ul>
+                        <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
+                        <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
+                        <li
+                          @click="moveToTrash(item.project_id, index)"
+                          class="delete-option"
+                        >
+                          🗑️ 휴지통으로 이동
+                        </li>
+                      </ul>
+                    </div>
+                  </teleport>
                 </td>
               </tr>
             </tbody>
@@ -351,7 +353,7 @@ export default {
       return {
         position: "fixed",
         top: `${rect.bottom}px`,
-        left: `${rect.left - 100}px`,
+        left: `${rect.left - 140}px`,
       };
     };
 
