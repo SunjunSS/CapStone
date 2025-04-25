@@ -63,25 +63,22 @@
                   <button class="menu-button" @click="showMenu(index, $event)">
                     ⋯
                   </button>
-                  <teleport to="body">
-                    <div
-                      v-if="item.showMenu"
-                      class="menu-dropdown"
-                      :style="getDropdownPosition(index)"
-                    >
-                      <ul>
-                        <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
-                        <li @click="duplicateMap(index)">📋 복제</li>
-                        <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
-                        <li
-                          @click="moveToTrash(item.project_id, index)"
-                          class="delete-option"
-                        >
-                          🗑️ 휴지통으로 이동
-                        </li>
-                      </ul>
-                    </div>
-                  </teleport>
+                  <div
+                    v-if="item.showMenu"
+                    class="menu-dropdown"
+                    ref="menuDropdown"
+                  >
+                    <ul>
+                      <li @click="openMindMap(item.project_id)">🗝️ 열기</li>
+                      <li @click="moveToFavorite(index)">📌 즐겨찾기</li>
+                      <li
+                        @click="moveToTrash(item.project_id, index)"
+                        class="delete-option"
+                      >
+                        🗑️ 휴지통으로 이동
+                      </li>
+                    </ul>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -242,11 +239,6 @@ export default {
     openMindMap(projectId) {
       console.log("🔗 MindMap으로 이동:", projectId);
       this.$router.push(`/MindMap/${projectId}`);
-      this.closeAllMenus();
-    },
-    duplicateMap(index) {
-      // 맵 복제 기능 구현
-      alert(`${this.mapItems[index].name} 복제`);
       this.closeAllMenus();
     },
     moveToFavorite(index) {

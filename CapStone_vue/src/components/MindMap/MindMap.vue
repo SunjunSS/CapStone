@@ -1,5 +1,6 @@
---뷰어 시 노드 드래그 비활성화 / 화면 클릭 후 드래그 시 네모 선택 박스 출력
-비활성화--
+--3D모드 성공/디자인 수정 필요/Three.js/2D로 다시 전환 성공/텍스트 삽입
+성공/노드 동적 길이 변경/둥근모서리/직각 간선/노드 겹치기X/3D모드 캡처/3D모드
+요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)--
 
 <template>
   <div class="app-container">
@@ -39,14 +40,29 @@
         @touchmove="touchMove"
         @touchend="stopTouch"
       >
+        <!-- 더 명확한 ref 지정 -->
         <div class="mindmap-container" ref="mindmapContainer">
-          <div ref="diagramDiv" class="mindmap-content"></div>
+          <!-- 2D 마인드맵 (GoJS용) -->
+          <div ref="diagramDiv" class="mindmap-content" v-if="!is3DMode"></div>
+
+          <!-- 3D 마인드맵 (Three.js용) -->
+          <div
+            v-if="is3DMode"
+            class="three-container"
+            ref="threeCanvasRef"
+          ></div>
         </div>
 
-        <div class="zoom-controls">
+        <div class="zoom-controls" v-show="!is3DMode">
           <button @click="decreaseZoom" class="zoom-btn">-</button>
           <span class="zoom-level">{{ Math.round(currentZoom * 100) }}%</span>
           <button @click="increaseZoom" class="zoom-btn">+</button>
+        </div>
+
+        <div class="view-mode-controls">
+          <button @click="toggleViewMode" class="view-mode-btn">
+            {{ is3DMode ? "3D 모드" : "2D 모드" }}
+          </button>
         </div>
 
         <div class="delete-control">
@@ -97,8 +113,6 @@
           >
             AI 추천
           </button>
-
-          <!-- 🔹 팀원 초대 버튼 추가 -->
           <button
             @click="openInviteModal"
             class="invite-btn"
@@ -135,7 +149,6 @@
           <option value="editor">편집자</option>
         </select>
 
-        <!-- 초대한 팀원 리스트 -->
         <div v-if="invitedMembers.length > 0" class="invited-list">
           <h3>참여자</h3>
           <div class="member-card-container">
@@ -150,7 +163,6 @@
                   <div class="member-name">
                     {{ member.name || "닉네임 없음" }}
                   </div>
-                  <!-- 삭제 버튼을 닉네임 옆으로 이동 -->
                   <button
                     v-if="invitedMembers.indexOf(member) !== 0"
                     @click="confirmDeleteMember(member)"
@@ -184,11 +196,25 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, computed, watchEffect } from "vue";
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  computed,
+  watchEffect,
+  nextTick,
+  watch,
+} from "vue";
 import WebRTC from "..//WebRTC/WebRTC.vue";
 import mouseTracking from "../WebRTC/mouseTracking.vue";
 import * as go from "gojs";
 import html2canvas from "html2canvas";
+import * as THREE from "three";
+import {
+  CSS3DRenderer,
+  CSS3DObject,
+} from "three/addons/renderers/CSS3DRenderer.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
   loadMindmapFromServer,
   serverError,
@@ -258,6 +284,17 @@ export default {
     let targetPosition = null;
     const aiParentNode = ref(null); // AI 추천 노드의 부모 노드 저장 변수
 
+    const is3DMode = ref(false);
+    let threeRenderer = null;
+    let threeScene = null;
+    let threeCamera = null;
+    let threeRoot = null;
+    let animationFrameId = null;
+    const threeCanvasRef = ref(null);
+    let cssRenderer = null;
+    let cssScene = null;
+    let orbitControls = null;
+
     // 서버 통신 관련 상태 추가
     const isSaving = ref(false);
     const lastSaveTime = ref(null);
@@ -275,6 +312,535 @@ export default {
     const inviteEmail = ref("");
     const selectedRole = ref("viewer");
     const rootNodeName = ref("마인드맵"); // 루트 노드 이름 저장
+
+    // 1. Three.js 디버그 로깅 강화
+    const initThree = () => {
+      console.log("✅ initThree 진입");
+
+      // DOM 참조 확인
+      if (!threeCanvasRef.value) {
+        console.error("❌ threeCanvasRef가 없습니다 - 강제 재시도");
+        threeCanvasRef.value = document.querySelector(".three-container");
+
+        if (!threeCanvasRef.value) {
+          console.error("❌ 3D 컨테이너를 찾을 수 없음 - 초기화 중단");
+          is3DMode.value = false;
+          showToast("3D 모드를 초기화할 수 없습니다.", true);
+          return;
+        }
+      }
+
+      try {
+        // 씬(Scene) 생성 및 배경 설정
+        threeScene = new THREE.Scene();
+        threeScene.background = new THREE.Color(0xfafafa);
+        console.log("🌍 씬 생성 완료");
+
+        // 컨테이너 크기 설정
+        const width =
+          threeCanvasRef.value.clientWidth ||
+          threeCanvasRef.value.offsetWidth ||
+          800;
+        const height =
+          threeCanvasRef.value.clientHeight ||
+          threeCanvasRef.value.offsetHeight ||
+          600;
+
+        console.log("📏 컨테이너 크기:", width, height);
+
+        // 입체적인 시각화를 위한 카메라 설정 (화각 및 위치 수정)
+        threeCamera = new THREE.PerspectiveCamera(
+          60, // 시야각을 넓게 하여 더 입체적으로 보이게 함
+          width / height,
+          0.1,
+          5000 // 더 넓은 영역을 볼 수 있게 far 거리 확대
+        );
+        threeCamera.position.set(0, 200, 800); // Y축을 높여 마인드맵을 위에서 내려다보는 각도 설정
+        threeCamera.lookAt(0, 0, 0);
+        console.log("📷 카메라 설정 완료");
+
+        // WebGL 렌더러 초기화 및 크기 설정
+        threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+        threeRenderer.setPixelRatio(window.devicePixelRatio); // 고해상도 대응
+        threeRenderer.setSize(width, height);
+        threeRenderer.shadowMap.enabled = true; // 그림자 활성화
+
+        // 기존 내용 정리 및 렌더러 캔버스 추가
+        threeCanvasRef.value.innerHTML = "";
+        threeCanvasRef.value.appendChild(threeRenderer.domElement);
+        console.log("🎨 WebGL 렌더러 설정 완료");
+
+        // CSS3D 렌더러 초기화 (텍스트 등의 HTML 기반 객체 표현용)
+        cssRenderer = new CSS3DRenderer();
+        cssRenderer.setSize(width, height);
+        cssRenderer.domElement.style.position = "absolute";
+        cssRenderer.domElement.style.top = "0";
+        cssRenderer.domElement.style.pointerEvents = "none";
+        threeCanvasRef.value.appendChild(cssRenderer.domElement);
+        console.log("📜 CSS3D 렌더러 설정 완료");
+
+        // CSS3D 씬 생성
+        cssScene = new THREE.Scene();
+
+        // 기본 조명 설정 (입체감 강조용)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        threeScene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 500, 500);
+        directionalLight.castShadow = true;
+        threeScene.add(directionalLight);
+        console.log("💡 조명 설정 완료");
+
+        // 루트 노드 그룹 생성 및 추가
+        threeRoot = new THREE.Group();
+        threeScene.add(threeRoot);
+        console.log("🌳 루트 그룹 생성 완료");
+
+        // OrbitControls 초기화 - 추가된 부분
+        orbitControls = new OrbitControls(
+          threeCamera,
+          threeRenderer.domElement
+        );
+
+        // 컨트롤 설정 최적화
+        orbitControls.enableDamping = true; // 부드러운 애니메이션
+        orbitControls.dampingFactor = 0.05; // 감쇠 계수
+
+        // 이동 제한 설정
+        orbitControls.minDistance = 100; // 최소 줌 거리
+        orbitControls.maxDistance = 2000; // 최대 줌 거리
+
+        // 회전 제한 설정
+        orbitControls.minPolarAngle = Math.PI * 0.1; // 최소 수직 각도
+        orbitControls.maxPolarAngle = Math.PI * 0.9; // 최대 수직 각도
+
+        // 자동 회전 기능 제어
+        orbitControls.autoRotate = true; // 자동 회전 활성화
+        orbitControls.autoRotateSpeed = 2.2; // 회전 속도 (기본보다 느리게)
+
+        // 카메라가 물체 주변을 공전하게 설정
+        orbitControls.target.set(0, 0, 0);
+
+        console.log("🎮 OrbitControls 초기화 완료");
+
+        // 마인드맵 노드 최초 렌더링
+        renderThreeMindmap();
+        console.log("🌐 3D 마인드맵 렌더링 호출 완료");
+
+        // 애니메이션 루프 시작 (수정된 애니메이션 함수 사용)
+        animateThree();
+        console.log("🎬 Three.js 초기화 완료");
+      } catch (error) {
+        console.error("❌ Three.js 초기화 중 에러 발생:", error);
+        is3DMode.value = false;
+        showToast("3D 모드를 초기화하는 중 오류가 발생했습니다.", true);
+      }
+    };
+
+    function createRoundedRectShape(width, height, radius) {
+      const shape = new THREE.Shape();
+      const x = -width / 2;
+      const y = -height / 2;
+
+      shape.moveTo(x + radius, y);
+      shape.lineTo(x + width - radius, y);
+      shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+      shape.lineTo(x + width, y + height - radius);
+      shape.quadraticCurveTo(
+        x + width,
+        y + height,
+        x + width - radius,
+        y + height
+      );
+      shape.lineTo(x + radius, y + height);
+      shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+      shape.lineTo(x, y + radius);
+      shape.quadraticCurveTo(x, y, x + radius, y);
+      return shape;
+    }
+
+    // 3. renderThreeMindmap 함수 개선
+    const renderThreeMindmap = () => {
+      console.log("✅ [renderThreeMindmap] 함수 진입");
+
+      if (!myDiagram || !threeScene || !threeRoot) {
+        console.warn("[WARN] ❌ 필수 요소 없음:", {
+          myDiagram: !!myDiagram,
+          threeScene: !!threeScene,
+          threeRoot: !!threeRoot,
+        });
+        return;
+      }
+
+      try {
+        const nodes = myDiagram.model.nodeDataArray;
+        console.log("[DEBUG] 🧠 노드 데이터:", nodes);
+
+        if (!nodes || nodes.length === 0) {
+          console.warn("[WARN] ❌ 노드 데이터가 비어있습니다");
+          return;
+        }
+
+        const root = nodes.find((n) => !n.parent || n.parent === 0);
+        if (!root) {
+          console.warn("[WARN] ❌ 루트 노드가 존재하지 않음");
+          return;
+        }
+
+        // 그룹 클리어
+        console.log(
+          "[DEBUG] 🧹 기존 노드 초기화 전 children 수:",
+          threeRoot.children.length
+        );
+        while (threeRoot.children.length > 0) {
+          threeRoot.remove(threeRoot.children[0]);
+        }
+        console.log(
+          "[DEBUG] 🧹 초기화 후 children 수:",
+          threeRoot.children.length
+        );
+
+        // 노드 매핑
+        const nodeMap = new Map();
+        let nodeCounter = 0;
+
+        // 노드 그리기 함수
+        // 🔷 Rounded Rectangle Shape 생성 함수
+        function createRoundedRectShape(width, height, radius) {
+          const shape = new THREE.Shape();
+          const x = -width / 2;
+          const y = -height / 2;
+
+          shape.moveTo(x + radius, y);
+          shape.lineTo(x + width - radius, y);
+          shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+          shape.lineTo(x + width, y + height - radius);
+          shape.quadraticCurveTo(
+            x + width,
+            y + height,
+            x + width - radius,
+            y + height
+          );
+          shape.lineTo(x + radius, y + height);
+          shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+          shape.lineTo(x, y + radius);
+          shape.quadraticCurveTo(x, y, x + radius, y);
+          return shape;
+        }
+
+        const getSubtreeWidth = (nodeKey, nodes, baseSpacing = 140) => {
+          if (!nodeKey) return baseSpacing;
+
+          const children = nodes.filter((n) => n.parent === nodeKey);
+          if (children.length === 0) return baseSpacing;
+
+          const widths = children.map((child) => {
+            if (!child || !child.key) return baseSpacing;
+            return getSubtreeWidth(child.key, nodes, baseSpacing);
+          });
+
+          return widths.reduce((sum, w) => sum + w, 0);
+        };
+
+        // 기존과 동일한 getSubtreeWidth 함수 그대로 사용
+
+        // drawNode 함수
+        const drawNode = (
+          node,
+          parentGroup,
+          depth = 0,
+          index = 0,
+          total = 1
+        ) => {
+          nodeCounter++;
+          console.log(
+            `[DEBUG] 🔷 노드 생성 #${nodeCounter} - key: ${node.key}, name: ${node.name}`
+          );
+
+          const group = new THREE.Group();
+
+          // 텍스트 측정
+          const measureCanvas = document.createElement("canvas");
+          const measureCtx = measureCanvas.getContext("2d");
+          const fontSize = node.parent === 0 ? 40 : 27;
+          measureCtx.font = `bold ${fontSize}px Arial`;
+          const text = node.name || "새 노드";
+          const textWidth = measureCtx.measureText(text).width;
+
+          const padding = node.parent === 0 ? 30 : 20;
+          const minNodeWidth = node.parent === 0 ? 120 : 80;
+          const textScaleFactor = 0.85;
+          const nodeWidth = Math.max(
+            textWidth * textScaleFactor + padding,
+            minNodeWidth
+          );
+          const nodeHeight = node.parent === 0 ? 50 : 40;
+
+          // Geometry 생성
+          const boxDepth = 17;
+          const cornerRadius = 17;
+          const shape = createRoundedRectShape(
+            nodeWidth,
+            nodeHeight,
+            cornerRadius
+          );
+          const extrudeSettings = { depth: boxDepth, bevelEnabled: false };
+          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+          const material = new THREE.MeshBasicMaterial({
+            color: node.isSuggested
+              ? 0xe040fb
+              : node.parent === 0
+              ? 0xffa500
+              : 0x1e90ff,
+            transparent: true,
+            opacity: 1.0,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.z = -boxDepth / 2;
+          group.add(mesh);
+
+          // 텍스트 생성 (앞면)
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          canvas.width = nodeWidth * 2;
+          canvas.height = nodeHeight * 2;
+          context.fillStyle = "rgba(0, 0, 0, 0)";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.font = `bold ${fontSize}px Arial`;
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillStyle = "#FFFFFF";
+          context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.needsUpdate = true;
+
+          const textGeometry = new THREE.PlaneGeometry(nodeWidth, nodeHeight);
+          const textMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide, // 양면을 모두 렌더링하도록 변경
+          });
+
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          textMesh.position.z = boxDepth / 2 + 0.5;
+          group.add(textMesh);
+
+          // 뒷면 텍스트 추가 (180도 회전하여 반대편에도 텍스트 표시)
+          const backTextMesh = textMesh.clone();
+          backTextMesh.position.z = -(boxDepth / 2 + 0.5); // 뒷면 위치로 조정
+          backTextMesh.rotation.y = Math.PI; // 180도 회전하여 뒤집기
+          group.add(backTextMesh);
+
+          // 위치 계산 (나머지 코드는 동일)
+          let x = 0;
+          let y = 0;
+          const spacingY = 100;
+
+          if (parentGroup) {
+            const parentNode = nodes.find((n) => n.key === node.parent);
+            const siblings = nodes.filter((n) => n.parent === parentNode.key);
+            const totalWidth = getSubtreeWidth(parentNode.key, nodes);
+            const leftOffset = -totalWidth / 2;
+            const beforeWidth = siblings
+              .slice(0, index)
+              .reduce((acc, cur) => acc + getSubtreeWidth(cur.key, nodes), 0);
+            const thisWidth = getSubtreeWidth(node.key, nodes);
+
+            x =
+              parentGroup.position.x + leftOffset + beforeWidth + thisWidth / 2;
+            y = parentGroup.position.y - spacingY;
+          }
+
+          group.position.set(x, y, 0);
+
+          // 🧩 직각 연결선 추가
+          if (parentGroup) {
+            const parentPos = parentGroup.position;
+            const midX = parentPos.x;
+            const midY = y;
+
+            const points = [
+              new THREE.Vector3(parentPos.x, parentPos.y, parentPos.z),
+              new THREE.Vector3(midX, midY, parentPos.z),
+              new THREE.Vector3(x, y, 0),
+            ];
+
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(
+              points
+            );
+            const lineMaterial = new THREE.LineBasicMaterial({
+              color: 0x555555,
+              linewidth: 4,
+            });
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            threeRoot.add(line);
+          }
+
+          // 그룹 등록 및 노드 저장
+          threeRoot.add(group);
+          nodeMap.set(node.key, group);
+
+          // 자식 노드 재귀 생성
+          const children = nodes.filter((n) => n.parent === node.key);
+          children.forEach((child, i) =>
+            drawNode(child, group, depth + 1, i, children.length)
+          );
+        };
+
+        // 루트 노드부터 그리기 시작
+        drawNode(root, null);
+        threeRoot.position.set(0, 230, 0);
+
+        console.log(
+          "📐 threeRoot에 추가된 children 수:",
+          threeRoot.children.length
+        );
+      } catch (error) {
+        console.error("[ERROR] ❌ 3D 마인드맵 렌더링 중 에러 발생:", error);
+      }
+    };
+
+    // 5. animateThree 함수 개선
+    const animateThree = () => {
+      if (!threeRenderer || !threeScene || !threeCamera) {
+        console.error("[ERROR] ❌ Three.js 필수 구성 요소가 없음");
+        return;
+      }
+
+      try {
+        animationFrameId = requestAnimationFrame(animateThree);
+
+        // OrbitControls 업데이트 (컨트롤 감쇠효과와 자동회전 기능 위함)
+        if (orbitControls) {
+          orbitControls.update();
+        }
+
+        // 기존 회전 애니메이션 제거 (OrbitControls가 이 기능을 대체함)
+        // threeRoot.rotation.y += 0.003;
+
+        // 실제 렌더링
+        threeRenderer.render(threeScene, threeCamera);
+        // CSS3D 렌더러도 함께 렌더링
+        if (cssRenderer && cssScene) {
+          cssRenderer.render(cssScene, threeCamera);
+        }
+      } catch (error) {
+        console.error("[ERROR] ❌ Three.js 애니메이션 중 에러:", error);
+        stopThreeAnimation();
+      }
+    };
+
+    const stopThreeAnimation = () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+        console.log("[DEBUG] 🛑 Three.js 애니메이션 중지됨");
+      }
+    };
+    const destroyThree = () => {
+      console.log("[DEBUG] ♻️ Three.js 리소스 정리 시작");
+
+      // 애니메이션 중지
+      stopThreeAnimation();
+
+      // 기존 씬 정리
+      if (threeRoot) {
+        if (threeScene) {
+          threeScene.remove(threeRoot);
+        }
+
+        // 모든 자식 요소 제거
+        while (threeRoot.children.length > 0) {
+          const child = threeRoot.children[0];
+
+          // 메모리 누수 방지를 위한 지오메트리/재질 정리
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((material) => material.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+
+          threeRoot.remove(child);
+        }
+      }
+
+      // 렌더러 정리
+      if (threeRenderer) {
+        threeRenderer.dispose();
+        if (threeRenderer.domElement && threeRenderer.domElement.parentNode) {
+          threeRenderer.domElement.parentNode.removeChild(
+            threeRenderer.domElement
+          );
+        }
+        threeRenderer = null;
+        // CSS3D 렌더러 정리
+        if (cssRenderer) {
+          if (cssRenderer.domElement && cssRenderer.domElement.parentNode) {
+            cssRenderer.domElement.parentNode.removeChild(
+              cssRenderer.domElement
+            );
+          }
+          cssRenderer = null;
+        }
+
+        // CSS3D 씬 정리
+        if (cssScene) {
+          // CSS3D 객체들 제거
+          while (cssScene.children.length > 0) {
+            cssScene.remove(cssScene.children[0]);
+          }
+          cssScene = null;
+        }
+      }
+
+      // 캔버스 DOM 요소 정리
+      if (threeCanvasRef.value) {
+        threeCanvasRef.value.innerHTML = "";
+      }
+
+      // 참조 초기화
+      threeScene = null;
+      threeCamera = null;
+      threeRoot = null;
+
+      console.log("[DEBUG] ♻️ Three.js 리소스 정리 완료");
+    };
+
+    const stopThreeRenderLoop = stopThreeAnimation;
+
+    const checkThreeStatus = () => {
+      console.log("📊 Three.js 상태 체크:");
+      console.log("- threeRenderer:", threeRenderer ? "✅" : "❌");
+      console.log("- threeScene:", threeScene ? "✅" : "❌");
+      console.log("- threeCamera:", threeCamera ? "✅" : "❌");
+      console.log("- threeRoot:", threeRoot ? "✅" : "❌");
+      console.log("- threeCanvasRef:", threeCanvasRef.value ? "✅" : "❌");
+
+      if (threeCanvasRef.value) {
+        console.log("- Canvas 크기:", {
+          width: threeCanvasRef.value.clientWidth,
+          height: threeCanvasRef.value.clientHeight,
+        });
+      }
+
+      if (threeScene) {
+        console.log("- Scene 자식 수:", threeScene.children.length);
+      }
+
+      if (threeRoot) {
+        console.log("- Root 자식 수:", threeRoot.children.length);
+      }
+    };
 
     const loadInvitedMembers = async () => {
       try {
@@ -517,6 +1083,141 @@ export default {
       sidebarOpen.value = !sidebarOpen.value;
     };
 
+    // 2D/3D 모드 전환 함수
+    // 2. 뷰 모드 전환 시 안전한 초기화 보장
+    const toggleViewMode = () => {
+      if (is3DMode.value) {
+        // 🔄 3D에서 2D로 전환
+        stopThreeAnimation();
+        destroyThree();
+        is3DMode.value = false;
+
+        if (threeCanvasRef.value) {
+          threeCanvasRef.value.style.display = "none";
+        }
+
+        nextTick(() => {
+          if (diagramDiv.value) {
+            diagramDiv.value.style.display = "block";
+          } else {
+            diagramDiv.value = document.querySelector(".mindmap-content");
+            if (diagramDiv.value) {
+              diagramDiv.value.style.display = "block";
+            }
+          }
+
+          if (myDiagram) {
+            myDiagram.div = null;
+            myDiagram = null;
+          }
+
+          setTimeout(() => {
+            console.log("🔄 2D 다이어그램 완전 재초기화");
+            initDiagram();
+
+            setTimeout(() => {
+              if (myDiagram) {
+                console.log("📊 다이어그램 레이아웃 최종 조정");
+                myDiagram.zoomToFit();
+                myDiagram.layoutDiagram(true);
+
+                const diagramElement =
+                  document.querySelector(".mindmap-content");
+                if (diagramElement) {
+                  diagramElement.style.display = "block";
+                  diagramElement.style.visibility = "visible";
+                  diagramElement.style.opacity = "1";
+                }
+              }
+            }, 100);
+          }, 150);
+        });
+
+        console.log("🔄 2D 모드로 전환됨");
+      } else {
+        // 🔄 2D에서 3D로 전환
+
+        const currentDiagramData = myDiagram ? myDiagram.model.toJson() : null;
+
+        if (diagramDiv.value) {
+          diagramDiv.value.style.display = "none";
+        }
+
+        is3DMode.value = true;
+        console.log("🔄 3D 모드로 전환됨");
+
+        nextTick(() => {
+          if (threeCanvasRef.value) {
+            threeCanvasRef.value.style.display = "block";
+          } else {
+            threeCanvasRef.value = document.querySelector(".three-container");
+            if (threeCanvasRef.value) {
+              threeCanvasRef.value.style.display = "block";
+            }
+          }
+
+          console.log("✅ 3D 모드 DOM 업데이트 완료, 초기화 준비 중");
+
+          if (!threeCanvasRef.value) {
+            console.error("❌ three-container를 찾을 수 없음");
+            is3DMode.value = false;
+            showToast("3D 모드를 초기화할 수 없습니다.", true);
+
+            if (diagramDiv.value) {
+              diagramDiv.value.style.display = "block";
+            }
+            return;
+          }
+
+          const waitForCanvas = (retries = 0, maxRetries = 5) => {
+            if (retries >= maxRetries) {
+              console.error("❌ 최대 재시도 횟수 초과: 3D 모드 초기화 실패");
+              is3DMode.value = false;
+              showToast(
+                "3D 모드를 불러올 수 없습니다. 나중에 다시 시도해주세요.",
+                true
+              );
+
+              if (diagramDiv.value) {
+                diagramDiv.value.style.display = "block";
+              }
+              return;
+            }
+
+            const width =
+              threeCanvasRef.value.clientWidth ||
+              threeCanvasRef.value.offsetWidth;
+            const height =
+              threeCanvasRef.value.clientHeight ||
+              threeCanvasRef.value.offsetHeight;
+
+            console.log("📏 Canvas 크기 확인:", { width, height });
+
+            if (width > 0 && height > 0) {
+              console.log("✅ Canvas 크기 확인됨, Three.js 초기화 시작");
+
+              setTimeout(() => {
+                destroyThree();
+                initThree();
+                checkThreeStatus();
+
+                // 🌟 마인드맵 상태 강제 반영
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent("mindmap-updated"));
+                  console.log("📣 3D 초기화 이후 mindmap-updated 이벤트 발생");
+                }, 100);
+              }, 50);
+            } else {
+              console.log("⏳ Canvas 크기가 아직 준비되지 않음. 재시도 중...");
+              setTimeout(() => waitForCanvas(retries + 1, maxRetries), 100);
+            }
+          };
+
+          waitForCanvas();
+        });
+      }
+    };
+
     // canAddSibling computed 속성 추가
     const canAddSibling = computed(() => {
       // 선택된 노드가 없으면 false
@@ -610,6 +1311,8 @@ export default {
       selectedNode.value = null;
 
       // ✅ 삭제 요청만 보내고, 실제 삭제는 WebSocket 이벤트에서 처리됨 (socketHandlers.js)
+      // 수정: 화면에서 삭제되지만 3D 뷰 업데이트를 위해 이벤트 발생
+      window.dispatchEvent(new CustomEvent("mindmap-updated"));
     };
 
     const animateZoom = (startZoom, targetZoom, startTime, duration) => {
@@ -973,9 +1676,10 @@ export default {
           .filter(Boolean);
 
         for (const suggestedName of individualSuggestions) {
+          const timestamp = Date.now();
           const newNode = {
-            id: `temp-${Date.now()}`,
-            key: `temp-${Date.now()}`,
+            id: `temp-${timestamp}`,
+            key: `temp-${timestamp}`,
             name: suggestedName,
             parent: aiParentNode.value.key, // 🔥 기존 선택된 부모 노드를 사용
             isSelected: false,
@@ -985,6 +1689,9 @@ export default {
 
           await addNodeWithAnimation(newNode);
         }
+
+        // ✅ 모든 노드 추가 후 1회만 업데이트 이벤트 전송
+        window.dispatchEvent(new CustomEvent("mindmap-updated"));
       } else {
         console.error("❌ 추천된 노드를 받아오지 못했습니다.");
       }
@@ -1021,8 +1728,12 @@ export default {
         paramProject_id.value,
         roomId.value
       );
+
       if (success) {
         addedNodes.value = []; // ✅ 저장 성공 시 초기화
+
+        // 마인드맵 업데이트 이벤트 발생
+        window.dispatchEvent(new CustomEvent("mindmap-updated"));
       } else {
         console.warn("⏪ 서버 오류 발생");
       }
@@ -1046,69 +1757,144 @@ export default {
     };
 
     const captureMindmap = async () => {
-      if (!myDiagram) return;
+      if (is3DMode.value) {
+        // ✅ 3D 모드: Three.js의 캔버스와 CSS3D 요소를 모두 캡처
+        try {
+          // 애니메이션 프레임을 한 번 더 실행하여 최신 상태로 렌더링
+          threeRenderer.render(threeScene, threeCamera);
+          if (cssRenderer && cssScene) {
+            cssRenderer.render(cssScene, threeCamera);
+          }
 
-      // 캡처 전 토스트 메시지 표시
-      showToast("마인드맵을 캡처 중입니다...");
+          // html2canvas를 사용하여 전체 Three.js 컨테이너 캡처
+          const threeContainer = threeCanvasRef.value;
+          const canvas = await html2canvas(threeContainer, {
+            backgroundColor: "#fafafa",
+            scale: 1.3,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            foreignObjectRendering: true,
+          });
 
-      try {
-        // 현재 다이어그램 영역 가져오기
+          const today = new Date();
+          const formattedDate = `${today.getFullYear()}.${String(
+            today.getMonth() + 1
+          ).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+          // 루트 노드 이름 가져오기 (2D 모드와 동일한 방식)
+          const rootNode = myDiagram.model.nodeDataArray.find(
+            (node) => node.parent === 0
+          );
+          const rootNodeName = rootNode ? rootNode.name : "마인드맵";
+          const fileName = `${formattedDate}-${rootNodeName}.png`;
+
+          // 이미지 저장
+          const imageUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = imageUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          showToast("3D 마인드맵 캡처가 완료되었습니다.");
+        } catch (error) {
+          console.error("❌ 3D 캡처 실패:", error);
+          showToast("3D 마인드맵 캡처에 실패했습니다.", true);
+
+          // 첫 번째 방법이 실패하면 대체 방법 시도
+          try {
+            console.log("🔄 대체 캡처 방법 시도 중...");
+
+            // 캔버스 생성
+            const canvas = document.createElement("canvas");
+            const threeContainer = threeCanvasRef.value;
+            canvas.width = threeContainer.clientWidth;
+            canvas.height = threeContainer.clientHeight;
+            const ctx = canvas.getContext("2d");
+
+            // 배경색 설정
+            ctx.fillStyle = "#fafafa";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // WebGL 캔버스 내용 먼저 그리기
+            ctx.drawImage(threeRenderer.domElement, 0, 0);
+
+            // 이미지 저장
+            const today = new Date();
+            const formattedDate = `${today.getFullYear()}.${String(
+              today.getMonth() + 1
+            ).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+            // 루트 노드 이름 가져오기 (2D 모드와 동일한 방식)
+            const rootNode = myDiagram.model.nodeDataArray.find(
+              (node) => node.parent === 0
+            );
+            const rootNodeName = rootNode ? rootNode.name : "마인드맵";
+            const fileName = `${formattedDate}-${rootNodeName}.png`;
+
+            const dataURL = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = dataURL;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("3D 마인드맵 캡처가 완료되었습니다.");
+          } catch (fallbackError) {
+            console.error("❌ 대체 캡처 방법도 실패:", fallbackError);
+            showToast(
+              "3D 마인드맵 캡처에 실패했습니다. 다른 뷰 모드를 시도해보세요.",
+              true
+            );
+          }
+        }
+      } else {
+        // ✅ 기존 2D 캡처 로직 유지
         const diagramDiv = document.querySelector(".mindmap-content");
-
-        // 루트 노드 찾기 (parent가 0인 노드)
         const rootNode = myDiagram.model.nodeDataArray.find(
           (node) => node.parent === 0
         );
         const rootNodeName = rootNode ? rootNode.name : "마인드맵";
 
-        // 현재 날짜를 YYYY.MM.DD 형식으로 포맷팅
         const today = new Date();
         const formattedDate = `${today.getFullYear()}.${String(
           today.getMonth() + 1
         ).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+        const fileName = `${formattedDate}-${rootNodeName}.png`;
 
-        // 간단한 모바일/태블릿 감지
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isMobile = /iphone|ipad|ipod|android|mobile|tablet/i.test(
-          userAgent
-        );
+        try {
+          const canvas = await html2canvas(diagramDiv, {
+            backgroundColor: "#fafafa",
+            scale: 1.3,
+            useCORS: true,
+            logging: false,
+          });
 
-        // 파일명 설정
-        let fileName = `${formattedDate}-${rootNodeName}`;
-        if (isMobile) {
-          const timestamp = Date.now().toString();
-          fileName += `-${timestamp}`;
+          const imageUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = imageUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          showToast("2D 마인드맵 캡처가 완료되었습니다.");
+        } catch (error) {
+          console.error("2D 캡처 실패:", error);
+          showToast("2D 마인드맵 캡처에 실패했습니다.", true);
         }
-        fileName += ".png";
-
-        // html2canvas로 캡처
-        const canvas = await html2canvas(diagramDiv, {
-          backgroundColor: "#fafafa", // 배경색 설정
-          scale: 1.3, // 고해상도 캡처를 위한 스케일 설정
-          useCORS: true, // 외부 이미지 로딩을 위한 설정
-          logging: false, // 디버그 로그 비활성화
-        });
-
-        // 캡처된 이미지를 다운로드할 수 있도록 변환
-        const imageUrl = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = imageUrl;
-        link.download = fileName;
-
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // 성공 메시지 표시
-        showToast("마인드맵 캡처가 완료되었습니다.");
-      } catch (error) {
-        console.error("마인드맵 캡처 실패:", error);
-        showToast("마인드맵 캡처에 실패했습니다.", true);
       }
     };
 
     const initDiagram = () => {
+      console.log("📦 initDiagram() 진입");
+
       const $ = go.GraphObject.make;
+      console.log(
+        "🛠️ go.Diagram 생성 준비됨, diagramDiv.value =",
+        diagramDiv.value
+      );
 
       // CommandHandler를 확장하여 키보드 네비게이션을 비활성화
       class CustomCommandHandler extends go.CommandHandler {
@@ -1157,6 +1943,8 @@ export default {
         scale: currentZoom.value,
       });
 
+      console.log("✅ myDiagram 생성 완료:", myDiagram);
+
       myDiagram.toolManager.dragSelectingTool.isEnabled = false;
 
       // ✅ 트리 레이아웃 자동 정렬 추가
@@ -1172,7 +1960,16 @@ export default {
       registerSocketHandlers(myDiagram, roomId, userId);
 
       // ✅ API 호출하여 서버에서 마인드맵 데이터 불러오기
-      loadMindmapFromServer(myDiagram, paramProject_id.value);
+      loadMindmapFromServer(myDiagram, paramProject_id.value)
+        .then(() => {
+          console.log("📡 서버에서 마인드맵 로딩 완료");
+          // 로딩 완료 후 업데이트 이벤트 발생
+          window.dispatchEvent(new CustomEvent("mindmap-updated"));
+        })
+        .catch((err) => {
+          console.error("❌ 마인드맵 로딩 실패:", err);
+        });
+      console.log("📡 서버에서 마인드맵 로딩 요청:", paramProject_id.value);
 
       myDiagram.addDiagramListener("ObjectSingleClicked", async (e) => {
         const part = e.subject.part;
@@ -1429,6 +2226,9 @@ export default {
 
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
+
+                // 마인드맵 업데이트 이벤트 발생
+                window.dispatchEvent(new CustomEvent("mindmap-updated"));
               } else {
                 console.error("❌ 서버에 노드 이름 업데이트 실패");
               }
@@ -1575,13 +2375,92 @@ export default {
       });
     };
 
+    const handleResize = () => {
+      if (
+        is3DMode.value &&
+        threeRenderer &&
+        threeCamera &&
+        threeCanvasRef.value
+      ) {
+        const width = threeCanvasRef.value.clientWidth;
+        const height = threeCanvasRef.value.clientHeight;
+        threeCamera.aspect = width / height;
+        threeCamera.updateProjectionMatrix();
+        threeRenderer.setSize(width, height);
+
+        // CSS 렌더러 크기도 업데이트
+        if (cssRenderer) {
+          cssRenderer.setSize(width, height);
+        }
+      }
+
+      socket.emit("update-mindmap-bounds", getMindmapBounds());
+    };
+
     onMounted(async () => {
-      // ✅ 현재 로그인한 이메일을 세션에서 가져와 저장
+      console.log("✅ onMounted 실행됨");
+      console.log("🧱 diagramDiv ref:", diagramDiv.value);
+
+      // Three.js 컨테이너 참조를 확실히 얻기 위한 처리
+      await nextTick();
+      threeCanvasRef.value = document.querySelector(".three-container");
+      console.log("🔍 마운트 시 three-container 참조:", threeCanvasRef.value);
+
+      // 현재 로그인한 이메일을 세션에서 가져와 저장
       currentUserEmail.value = sessionStorage.getItem("userEmail") || "";
       console.log("🟡 세션에서 가져온 이메일:", currentUserEmail.value);
 
       await checkUserRole();
+      console.log("🔍 사용자 권한 확인 완료:", isViewer.value);
+
       initDiagram();
+      console.log("✅ 다이어그램 초기화 함수 호출 완료");
+
+      // 3D 모드 전환 감시 로직 개선 (기존 watch 대체)
+      watch(
+        is3DMode,
+        async (newVal, oldVal) => {
+          console.log(`🔄 3D 모드 변경됨: ${newVal} (이전: ${oldVal})`);
+
+          // 이전 상태 정리
+          if (oldVal === true && newVal === false) {
+            // 3D에서 2D로 전환
+            stopThreeAnimation();
+            destroyThree();
+
+            // 2D 모드 캔버스 초기화 확인
+            nextTick(() => {
+              if (myDiagram) {
+                myDiagram.requestUpdate();
+              }
+            });
+          } else if (oldVal === false && newVal === true) {
+            // 2D에서 3D로 전환
+            await nextTick();
+
+            // 명시적 참조 확보
+            threeCanvasRef.value = document.querySelector(".three-container");
+            console.log(
+              "🔄 3D 모드 활성화 - 컨테이너 참조:",
+              threeCanvasRef.value
+            );
+
+            if (!threeCanvasRef.value) {
+              console.error("❌ 3D 컨테이너를 찾을 수 없음");
+              is3DMode.value = false; // 모드 다시 비활성화
+              showToast("3D 모드를 초기화할 수 없습니다.", true);
+              return;
+            }
+
+            // 컨테이너가 렌더링될 때까지 잠시 대기
+            setTimeout(() => {
+              destroyThree(); // 이전 인스턴스 정리
+              initThree(); // 새 인스턴스 초기화
+            }, 100);
+          }
+        },
+        { flush: "post" }
+      ); // DOM 업데이트 후 실행
 
       watchEffect(() => {
         if (myDiagram && isViewer.value !== null) {
@@ -1594,6 +2473,35 @@ export default {
       window.addEventListener("node-deleted", (event) => {
         if (event.detail.resetSelection) {
           selectedNode.value = null;
+        }
+      });
+
+      // 창 크기 변경 시 Zdog 캔버스 업데이트
+      window.addEventListener("resize", () => {
+        // 3D 모드일 경우 Three.js 카메라 및 렌더러 리사이즈 처리
+        if (
+          is3DMode.value &&
+          threeRenderer &&
+          threeCamera &&
+          threeCanvasRef.value
+        ) {
+          const width = threeCanvasRef.value.clientWidth;
+          const height = threeCanvasRef.value.clientHeight;
+          threeCamera.aspect = width / height;
+          threeCamera.updateProjectionMatrix();
+          threeRenderer.setSize(width, height);
+        }
+
+        // 여전히 mindmap 영역 정보는 WebRTC mouseTracking 등에서 필요함
+        socket.emit("update-mindmap-bounds", getMindmapBounds());
+      });
+
+      // 노드 업데이트 이벤트 감지 시 3D 뷰도 업데이트
+      // 노드 업데이트 이벤트 감지 시 3D 뷰도 업데이트
+      window.addEventListener("mindmap-updated", () => {
+        if (is3DMode.value && threeRoot) {
+          // zdogIllo 대신 threeRoot 사용
+          renderThreeMindmap();
         }
       });
 
@@ -1651,18 +2559,32 @@ export default {
     });
 
     onBeforeUnmount(() => {
-      unregisterSocketHandlers(); // ✅ WebSocket 이벤트 해제
+      unregisterSocketHandlers();
 
-      // ✅ 전역 keydown 이벤트 리스너 제거
       window.removeEventListener("keydown", handleKeyDown);
-
-      // 🔥 노드 삭제 이벤트 리스너 제거
       window.removeEventListener("node-deleted", () => {});
-
-      // 이벤트 리스너 제거
       window.removeEventListener("role-changed", () => {});
-
       window.removeEventListener("member-removed", () => {});
+      window.removeEventListener("resize", handleResize);
+
+      // handleMindmapUpdated 대신 mindmap-updated 이벤트 제거
+      window.removeEventListener("mindmap-updated", () => {
+        if (is3DMode.value && threeRoot) {
+          renderThreeMindmap();
+        }
+      });
+
+      // 3D 관련 리소스 정리
+      if (is3DMode.value) {
+        stopThreeAnimation();
+        destroyThree();
+      }
+
+      // Three.js 리소스 정리 (옵션)
+      threeRenderer = null;
+      threeScene = null;
+      threeCamera = null;
+      threeRoot = null;
     });
 
     // mindmap 영역을 `mouseTracking.vue`에 전달
@@ -1729,6 +2651,9 @@ export default {
       confirmDeleteMember,
 
       autoJoinRoomId,
+
+      is3DMode,
+      toggleViewMode,
     };
   },
 };
@@ -2276,5 +3201,60 @@ button:disabled {
 .delete-confirm p {
   margin-bottom: 20px;
   line-height: 1.5;
+}
+
+/* 기존 스타일 아래에 추가 */
+.view-mode-controls {
+  position: fixed;
+  right: 140px;
+  bottom: 20px;
+  background: white;
+  padding: 5px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-mode-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #2196f3;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.view-mode-btn:hover {
+  background: #0b7dda;
+}
+
+.zdog-container {
+  width: 100%;
+  height: 100%;
+  background-color: #fafafa;
+  cursor: move;
+}
+
+.three-container {
+  width: 100%;
+  height: 100%;
+  background-color: #fafafa;
+  overflow: hidden;
+}
+
+.three-text-label {
+  pointer-events: none;
+  user-select: none;
+  background-color: transparent;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
 }
 </style>
