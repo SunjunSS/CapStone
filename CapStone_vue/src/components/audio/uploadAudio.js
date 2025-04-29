@@ -10,7 +10,7 @@ export default function uploadAudio(blob, roomId, nickname, type = "meeting") {
 
     if (blob.size === 0) {
       console.error("❌ 빈 파일은 업로드할 수 없습니다.");
-      return;
+      return reject("빈 오디오 파일입니다.");
     }
 
     const formData = new FormData();

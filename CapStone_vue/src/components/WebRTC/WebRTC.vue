@@ -164,6 +164,7 @@ export default {
   data() {
     return {
       socket: null,
+      activeBufferIndex: null,
       currentUserId: null,
       peerConnections: {},
       localStream: null,
@@ -370,25 +371,40 @@ export default {
       if (!this.localStream) return;
 
       this.recordedChunks = [];
-      this.temporaryChunks = [];
+      this.temporaryChunks = [ [], [] ];
+      this.activeBufferIndex = 0;
       this.mediaRecorder = new MediaRecorder(this.localStream);
 
       this.mediaRecorder.ondataavailable = async (event) => {
         console.log("📝 dataavailable 이벤트 발생");
         this.recordedChunks.push(event.data);
-        this.temporaryChunks.push(event.data);
+        this.temporaryChunks[this.activeBufferIndex].push(event.data);
       };
 
       this.uploadInterval = setInterval(async () => {
-        if (this.temporaryChunks.length > 0) {
-          console.log("🔄 20초 단위 실시간 데이터 업로드 시작...");
-          const blob = new Blob(this.temporaryChunks, { type: "audio/mp3" });
+        const currentBuffer = this.temporaryChunks[this.activeBufferIndex];
+        if (currentBuffer.length > 0) {
+          console.log("🔄 실시간 데이터 업로드 시작...");
+          const blob = new Blob(currentBuffer, { type: "audio/webm" });
+
+          console.log("⏱ 업로드 준비된 blob 크기:", blob.size);
+
+          if (blob.size === 0) {
+            console.warn("🚫 빈 오디오 blob입니다. 업로드 중지");
+            return;
+          }
+
+
           await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
-          this.temporaryChunks = []; // 업로드 후 버퍼 초기화
+          
+          this.temporaryChunks[this.activeBufferIndex] = [];
+          this.activeBufferIndex = 1 - this.activeBufferIndex;
+
+          
         } else {
-          console.log("아직 비어있음");
+          console.log("📭 업로드할 데이터 없음");
         }
-      }, 20000); // 20초마다 업로드
+      }, 11000); 
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -410,7 +426,7 @@ export default {
         }
       };
 
-      this.mediaRecorder.start(19000);
+      this.mediaRecorder.start(10000);
       this.isRecording = true;
     },
 
