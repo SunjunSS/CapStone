@@ -1481,12 +1481,12 @@ export default {
 
     const dragMove = (event) => {
       if (!isDragging.value || !myDiagram || isNodeDragging.value) {
-        console.log(
-          "⛔ dragMove 실행 중단! isDragging:",
-          isDragging.value,
-          "isNodeDragging:",
-          isNodeDragging.value
-        );
+        // console.log(
+        //   "⛔ dragMove 실행 중단! isDragging:",
+        //   isDragging.value,
+        //   "isNodeDragging:",
+        //   isNodeDragging.value
+        // );
         return;
       }
 
