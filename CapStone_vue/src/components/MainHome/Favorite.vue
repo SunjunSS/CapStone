@@ -239,7 +239,7 @@ export default {
       return {
         position: "fixed",
         top: `${rect.bottom}px`,
-        left: `${rect.left - 100}px`,
+        left: `${rect.left - 140}px`,
       };
     };
 

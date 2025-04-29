@@ -48,6 +48,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
       myDiagram.model.addNodeData(newNode);
     });
     myDiagram.commitTransaction("add node");
+
+    // 마인드맵 업데이트 이벤트 발생
+    window.dispatchEvent(new CustomEvent("mindmap-updated"));
   });
 
   socket.on("nodeUpdated", (updatedNode) => {
@@ -65,6 +68,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     }
 
     myDiagram.commitTransaction("update node");
+
+    // 마인드맵 업데이트 이벤트 발생
+    window.dispatchEvent(new CustomEvent("mindmap-updated"));
   });
 
   socket.on("nodeDeleted", (deletedNodeKeys) => {
@@ -113,6 +119,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
     }
 
     console.log("✅ 클라이언트에서 삭제 완료:", [...nodesToDelete]);
+
+    // 마인드맵 업데이트 이벤트 발생
+    window.dispatchEvent(new CustomEvent("mindmap-updated"));
   });
 
   // ✅ 노드 이동 이벤트 (부모가 자식으로 이동하는 것을 방지)
@@ -177,6 +186,9 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
       console.log(
         `✅ [Vue] 노드 부모 업데이트 완료: ${nodeId} → ${newParentId}`
       );
+
+      // 마인드맵 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent("mindmap-updated"));
     } else {
       console.warn(`🚨 [Vue] 노드 찾기 실패: ${nodeId}`);
       myDiagram.nodes.each((n) => console.log(n.key));

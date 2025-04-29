@@ -1,4 +1,5 @@
 const { ProjectMembers } = require("../models");
+const { Op } = require("sequelize"); // Op 연산자를 가져옵니다
 
 //✅ 프로젝트에 사용자 추가
 exports.addProjectMember = async (
@@ -11,6 +12,28 @@ exports.addProjectMember = async (
     { user_id, project_id, isAdmin },
     { transaction }
   );
+};
+
+// 여러 프로젝트의 모든 멤버 정보 조회
+exports.getAllProjectsMembers = async (project_ids) => {
+  try {
+    if (!Array.isArray(project_ids) || project_ids.length === 0) {
+      return [];
+    }
+
+    const members = await ProjectMembers.findAll({
+      where: {
+        project_id: {
+          [Op.in]: project_ids,
+        },
+      },
+    });
+
+    return members;
+  } catch (error) {
+    console.error("❌ 여러 프로젝트의 멤버 조회 실패:", error);
+    throw error;
+  }
 };
 
 //✅ 사용자가 속한 프로젝트 ID 및 isAdmin 정보 조회

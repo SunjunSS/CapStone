@@ -7,7 +7,6 @@ router.post("/", projectController.createProject); // 프로젝트 생성 요청
 
 // 프로젝트 조회 관련 라우트
 router.get("/:user_id", projectController.getActiveProjectsByUserId); // 기본 조회는 활성 프로젝트만
-router.get("/:user_id/all", projectController.getProjectsByUserId); // 모든 프로젝트 조회 (deleted 상태 포함)
 router.get("/:user_id/trash", projectController.getTrashProjectsByUserId); // 휴지통에 있는 프로젝트 조회
 
 // 프로젝트 수정 및 상태 변경

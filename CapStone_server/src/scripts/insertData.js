@@ -34,7 +34,7 @@ const insertData = async () => {
     await ProjectMembers.create({
       user_id: user.user_id, // User의 user_id
       project_id: project.project_id,
-      isAdmin: 3,
+      isAdmin: 4,
     });
     console.log(`✅프로젝트 멤버 추가됨: ${user.name} -> ${project.name}`);
 
