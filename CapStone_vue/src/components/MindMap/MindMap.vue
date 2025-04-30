@@ -1,6 +1,7 @@
 --3D모드 성공/디자인 수정 필요/Three.js/2D로 다시 전환 성공/텍스트 삽입
 성공/노드 동적 길이 변경/둥근모서리/직각 간선/노드 겹치기X/3D모드 캡처/3D모드
-요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)--
+요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)/isSelected
+비활성화/간격설정/간선 두께 증가--
 
 <template>
   <div class="app-container">
@@ -529,23 +530,39 @@ export default {
           return shape;
         }
 
+        // 텍스트 길이를 고려한 개선된 getSubtreeWidth 함수
         const getSubtreeWidth = (nodeKey, nodes, baseSpacing = 140) => {
           if (!nodeKey) return baseSpacing;
 
-          const children = nodes.filter((n) => n.parent === nodeKey);
-          if (children.length === 0) return baseSpacing;
+          // 현재 노드 찾기
+          const currentNode = nodes.find((n) => n.key === nodeKey);
 
+          // 텍스트 길이에 따른 추가 간격 계산 (텍스트가 길수록 더 넓은 간격)
+          let textLengthFactor = 0;
+          if (currentNode && currentNode.name) {
+            // 텍스트 길이가 10자를 초과할 때마다 간격 증가
+            textLengthFactor =
+              Math.max(0, (currentNode.name.length - 10) / 2) * 33;
+          }
+
+          const children = nodes.filter((n) => n.parent === nodeKey);
+          if (children.length === 0) {
+            // 자식이 없는 노드는 기본 간격 + 텍스트 길이 기반 추가 간격 적용
+            return baseSpacing + textLengthFactor;
+          }
+
+          // 자식 노드들의 너비 합계 계산
           const widths = children.map((child) => {
             if (!child || !child.key) return baseSpacing;
             return getSubtreeWidth(child.key, nodes, baseSpacing);
           });
 
-          return widths.reduce((sum, w) => sum + w, 0);
+          // 자식 노드들의 너비 합계와 텍스트 길이 기반 추가 간격 중 큰 값 사용
+          const subtreeWidth = widths.reduce((sum, w) => sum + w, 0);
+          return Math.max(subtreeWidth, baseSpacing + textLengthFactor);
         };
 
-        // 기존과 동일한 getSubtreeWidth 함수 그대로 사용
-
-        // drawNode 함수
+        // 개선된 drawNode 함수
         const drawNode = (
           node,
           parentGroup,
@@ -554,40 +571,26 @@ export default {
           total = 1
         ) => {
           nodeCounter++;
-          console.log(
-            `[DEBUG] 🔷 노드 생성 #${nodeCounter} - key: ${node.key}, name: ${node.name}`
-          );
-
           const group = new THREE.Group();
 
-          // 텍스트 측정
+          // 텍스트 측정 및 노드 크기 계산
           const measureCanvas = document.createElement("canvas");
           const measureCtx = measureCanvas.getContext("2d");
           const fontSize = node.parent === 0 ? 40 : 27;
           measureCtx.font = `bold ${fontSize}px Arial`;
           const text = node.name || "새 노드";
           const textWidth = measureCtx.measureText(text).width;
-
           const padding = node.parent === 0 ? 30 : 20;
           const minNodeWidth = node.parent === 0 ? 120 : 80;
-          const textScaleFactor = 0.85;
-          const nodeWidth = Math.max(
-            textWidth * textScaleFactor + padding,
-            minNodeWidth
-          );
+          const nodeWidth = Math.max(textWidth * 0.85 + padding, minNodeWidth);
           const nodeHeight = node.parent === 0 ? 50 : 40;
 
-          // Geometry 생성
-          const boxDepth = 17;
-          const cornerRadius = 17;
-          const shape = createRoundedRectShape(
-            nodeWidth,
-            nodeHeight,
-            cornerRadius
-          );
-          const extrudeSettings = { depth: boxDepth, bevelEnabled: false };
-          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
+          // 노드 Mesh 생성
+          const shape = createRoundedRectShape(nodeWidth, nodeHeight, 17);
+          const geometry = new THREE.ExtrudeGeometry(shape, {
+            depth: 17,
+            bevelEnabled: false,
+          });
           const material = new THREE.MeshBasicMaterial({
             color: node.isSuggested
               ? 0xe040fb
@@ -597,49 +600,44 @@ export default {
             transparent: true,
             opacity: 1.0,
           });
-
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.z = -boxDepth / 2;
+          mesh.position.z = -8.5;
           group.add(mesh);
 
-          // 텍스트 생성 (앞면)
+          // 텍스트 앞면
           const canvas = document.createElement("canvas");
-          const context = canvas.getContext("2d");
+          const ctx = canvas.getContext("2d");
           canvas.width = nodeWidth * 2;
           canvas.height = nodeHeight * 2;
-          context.fillStyle = "rgba(0, 0, 0, 0)";
-          context.fillRect(0, 0, canvas.width, canvas.height);
-          context.font = `bold ${fontSize}px Arial`;
-          context.textAlign = "center";
-          context.textBaseline = "middle";
-          context.fillStyle = "#FFFFFF";
-          context.fillText(text, canvas.width / 2, canvas.height / 2);
+          ctx.fillStyle = "rgba(0, 0, 0, 0)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.font = `bold ${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
           const texture = new THREE.CanvasTexture(canvas);
-          texture.needsUpdate = true;
-
-          const textGeometry = new THREE.PlaneGeometry(nodeWidth, nodeHeight);
           const textMaterial = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
-            side: THREE.DoubleSide, // 양면을 모두 렌더링하도록 변경
+            side: THREE.DoubleSide,
           });
+          const textPlane = new THREE.PlaneGeometry(nodeWidth, nodeHeight);
+          const frontText = new THREE.Mesh(textPlane, textMaterial);
+          frontText.position.z = 8.5 + 0.5;
+          group.add(frontText);
 
-          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-          textMesh.position.z = boxDepth / 2 + 0.5;
-          group.add(textMesh);
+          // 뒷면 텍스트
+          const backText = frontText.clone();
+          backText.position.z = -(8.5 + 0.5);
+          backText.rotation.y = Math.PI;
+          group.add(backText);
 
-          // 뒷면 텍스트 추가 (180도 회전하여 반대편에도 텍스트 표시)
-          const backTextMesh = textMesh.clone();
-          backTextMesh.position.z = -(boxDepth / 2 + 0.5); // 뒷면 위치로 조정
-          backTextMesh.rotation.y = Math.PI; // 180도 회전하여 뒤집기
-          group.add(backTextMesh);
-
-          // 위치 계산 (나머지 코드는 동일)
-          let x = 0;
-          let y = 0;
+          // 노드 위치 계산
+          let x = 0,
+            y = 0;
           const spacingY = 100;
-
           if (parentGroup) {
             const parentNode = nodes.find((n) => n.key === node.parent);
             const siblings = nodes.filter((n) => n.parent === parentNode.key);
@@ -652,39 +650,61 @@ export default {
 
             x =
               parentGroup.position.x + leftOffset + beforeWidth + thisWidth / 2;
-            y = parentGroup.position.y - spacingY;
+            y = parentGroup.position.y - spacingY - depth * 5;
+
+            if (siblings.length > 1 && index > 0) {
+              const minDist = nodeWidth + 20;
+              const prev = siblings[index - 1];
+              const prevGroup = nodeMap.get(prev.key);
+              if (prevGroup && x - prevGroup.position.x < minDist) {
+                x = prevGroup.position.x + minDist;
+              }
+            }
           }
 
           group.position.set(x, y, 0);
 
-          // 🧩 직각 연결선 추가
+          // ✅ 직각 + 입체 연결선 생성
           if (parentGroup) {
+            const edgeRadius = 1.7;
             const parentPos = parentGroup.position;
             const midX = parentPos.x;
             const midY = y;
 
-            const points = [
-              new THREE.Vector3(parentPos.x, parentPos.y, parentPos.z),
-              new THREE.Vector3(midX, midY, parentPos.z),
-              new THREE.Vector3(x, y, 0),
-            ];
+            const createEdge = (start, end) => {
+              const direction = new THREE.Vector3().subVectors(end, start);
+              const length = direction.length();
+              const mid = new THREE.Vector3()
+                .addVectors(start, end)
+                .multiplyScalar(0.5);
+              const edgeGeometry = new THREE.CylinderGeometry(
+                edgeRadius,
+                edgeRadius,
+                length,
+                8
+              );
+              const edgeMaterial = new THREE.MeshBasicMaterial({
+                color: new THREE.Color("#6F6F6F"),
+              });
+              const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
+              edgeMesh.quaternion.setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0),
+                direction.clone().normalize()
+              );
+              edgeMesh.position.copy(mid);
+              threeRoot.add(edgeMesh);
+            };
 
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints(
-              points
-            );
-            const lineMaterial = new THREE.LineBasicMaterial({
-              color: 0x555555,
-              linewidth: 4,
-            });
-            const line = new THREE.Line(lineGeometry, lineMaterial);
-            threeRoot.add(line);
+            createEdge(parentPos, new THREE.Vector3(midX, midY, parentPos.z)); // 수직 간선
+            createEdge(
+              new THREE.Vector3(midX, midY, parentPos.z),
+              new THREE.Vector3(x, y, 0)
+            ); // 수평 간선
           }
 
-          // 그룹 등록 및 노드 저장
+          // 노드 및 자식 렌더링
           threeRoot.add(group);
           nodeMap.set(node.key, group);
-
-          // 자식 노드 재귀 생성
           const children = nodes.filter((n) => n.parent === node.key);
           children.forEach((child, i) =>
             drawNode(child, group, depth + 1, i, children.length)
@@ -1084,7 +1104,6 @@ export default {
     };
 
     // 2D/3D 모드 전환 함수
-    // 2. 뷰 모드 전환 시 안전한 초기화 보장
     const toggleViewMode = () => {
       if (is3DMode.value) {
         // 🔄 3D에서 2D로 전환
@@ -1137,11 +1156,24 @@ export default {
       } else {
         // 🔄 2D에서 3D로 전환
 
+        // ✅ 선택된 노드들 초기화
+        if (myDiagram && myDiagram.model) {
+          myDiagram.startTransaction("clear selection");
+          myDiagram.model.nodeDataArray.forEach((node) => {
+            if (node.isSelected) {
+              myDiagram.model.setDataProperty(node, "isSelected", false);
+            }
+          });
+          myDiagram.commitTransaction("clear selection");
+        }
+
         const currentDiagramData = myDiagram ? myDiagram.model.toJson() : null;
 
         if (diagramDiv.value) {
           diagramDiv.value.style.display = "none";
         }
+
+        selectedNode.value = null;
 
         is3DMode.value = true;
         console.log("🔄 3D 모드로 전환됨");

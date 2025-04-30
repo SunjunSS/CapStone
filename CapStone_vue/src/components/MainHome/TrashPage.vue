@@ -709,34 +709,34 @@ export default {
 }
 
 .map-list table tr:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.map-list table tr:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.map-list table tr:nth-child(3) {
-  animation-delay: 0.3s;
-}
-.map-list table tr:nth-child(4) {
-  animation-delay: 0.4s;
-}
-.map-list table tr:nth-child(5) {
   animation-delay: 0.5s;
 }
-.map-list table tr:nth-child(6) {
+.map-list table tr:nth-child(2) {
   animation-delay: 0.6s;
 }
-.map-list table tr:nth-child(7) {
+.map-list table tr:nth-child(3) {
   animation-delay: 0.7s;
 }
-.map-list table tr:nth-child(8) {
+.map-list table tr:nth-child(4) {
   animation-delay: 0.8s;
 }
-.map-list table tr:nth-child(9) {
+.map-list table tr:nth-child(5) {
   animation-delay: 0.9s;
 }
-.map-list table tr:nth-child(10) {
+.map-list table tr:nth-child(6) {
   animation-delay: 1s;
+}
+.map-list table tr:nth-child(7) {
+  animation-delay: 1.1s;
+}
+.map-list table tr:nth-child(8) {
+  animation-delay: 1.2s;
+}
+.map-list table tr:nth-child(9) {
+  animation-delay: 1.3s;
+}
+.map-list table tr:nth-child(10) {
+  animation-delay: 1.4s;
 }
 
 @keyframes fadeInUp {
