@@ -51,6 +51,15 @@ require("./socket/socketHandler")(io);
 const mailRoutes = require("./routes/mailRoutes");
 app.use("/api/mail", mailRoutes);
 
+
+// ✅ 정적 파일 전송 관리
+app.use(
+  "/static/audio",
+  express.static(path.join(__dirname, "../storage/audio"))
+);
+
+
+
 // ✅ 서버 시작 전에 데이터베이스 동기화 수행
 initDB();
 

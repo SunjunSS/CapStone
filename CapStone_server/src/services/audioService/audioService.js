@@ -78,9 +78,7 @@ exports.mixAndConvertAudio = async (roomId, roomAudioBuffers) => {
   try {
 
     if (roomAudioBuffers.length === 1) {
-      // 저장된 파일이 1개일 경우 바로 변환
-      console.log(`1명입니다~`);
-      // return await exports.convertToMP3(roomAudioBuffers[0]);
+      
       return roomAudioBuffers[0];
     }
 

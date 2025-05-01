@@ -1473,12 +1473,12 @@ export default {
     const startDrag = (event) => {
       if (!myDiagram) return;
 
-      console.log(
-        "📌 startDrag 호출됨! isDragging:",
-        isDragging.value,
-        "isNodeDragging:",
-        isNodeDragging.value
-      );
+      // console.log(
+      //   "📌 startDrag 호출됨! isDragging:",
+      //   isDragging.value,
+      //   "isNodeDragging:",
+      //   isNodeDragging.value
+      // );
 
       // ✅ 클릭한 요소가 노드인지 확인
       const part = myDiagram.findPartAt(
@@ -1522,7 +1522,7 @@ export default {
         return;
       }
 
-      console.log("📌 dragMove 실행됨! 화면 이동 중...");
+      // console.log("📌 dragMove 실행됨! 화면 이동 중...");
 
       const dx = (event.clientX - lastMousePosition.value.x) / myDiagram.scale;
       const dy = (event.clientY - lastMousePosition.value.y) / myDiagram.scale;

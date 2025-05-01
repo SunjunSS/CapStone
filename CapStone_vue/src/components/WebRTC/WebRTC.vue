@@ -157,6 +157,7 @@ import axios from "axios";
 import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 import meetingPDF from "../audio/meetingPDF";
+import { fetchHeaderBlob } from "../audio/fetchHeaderBlob";
 
 export default {
   name: "AudioMeetingApp",
@@ -200,17 +201,32 @@ export default {
       participantNicknames: {}, // 참가자 닉네임 저장용 객체 추가
       rootNode: null,
       audioBlob: null,
+      headerBlob: null,
       pdfBlob: null,
       isProcessingRecording: false, // 녹음 처리 중이면 true
     };
   },
   // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
-  mounted() {
+  async mounted() {
     if (this.autoJoinRoomId) {
       // props로 받은 roomId를 바로 설정
       this.roomId = this.autoJoinRoomId;
       // 자동 참가는 하지 않고, 사용자가 버튼을 클릭할 때만 참가
     }
+
+    // ✅ headerBlob받아오기
+    try {
+      const headerAudio = await fetchHeaderBlob();
+      this.headerBlob = headerAudio; // 받아온 Blob 데이터를 headerBlob에 저장
+      
+      console.log("✅ 헤더오디오 저장완료!");
+
+    
+    } catch (error) {
+      console.error("헤더 오디오 로드 실패:", error);
+    }
+
+
   },
   computed: {
     // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
@@ -378,40 +394,45 @@ export default {
       if (!this.localStream) return;
 
       this.recordedChunks = [];
-      this.temporaryChunks = [ [], [] ];
-      this.activeBufferIndex = 0;
+      
+      
       this.mediaRecorder = new MediaRecorder(this.localStream);
 
       this.mediaRecorder.ondataavailable = async (event) => {
-        console.log("📝 dataavailable 이벤트 발생");
+
+
+
+        const blob = new Blob([this.headerBlob, event.data], {
+          type: "audio/mp3" // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
+        });
+
+        console.log("🔄 ondataavailable:", blob.size);
+
         this.recordedChunks.push(event.data);
-        this.temporaryChunks[this.activeBufferIndex].push(event.data);
+
+
+        if (blob.size > 0) {
+          try {
+            await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
+            console.log("✅ 업로드 성공");
+          } catch (err) {
+            console.error("❌ 업로드 실패:", err.message);
+          }
+        } else {
+          console.warn("🚫 빈 blob");
+        }
+
+        
+
       };
 
       this.uploadInterval = setInterval(async () => {
-        const currentBuffer = this.temporaryChunks[this.activeBufferIndex];
-        if (currentBuffer.length > 0) {
-          console.log("🔄 실시간 데이터 업로드 시작...");
-          const blob = new Blob(currentBuffer, { type: "audio/webm" });
-
-          console.log("⏱ 업로드 준비된 blob 크기:", blob.size);
-
-          if (blob.size === 0) {
-            console.warn("🚫 빈 오디오 blob입니다. 업로드 중지");
-            return;
-          }
-
-
-          await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
-          
-          this.temporaryChunks[this.activeBufferIndex] = [];
-          this.activeBufferIndex = 1 - this.activeBufferIndex;
-
-          
-        } else {
-          console.log("📭 업로드할 데이터 없음");
+        if (this.mediaRecorder.state === "recording") {
+          this.mediaRecorder.requestData(); // => 이때 ondataavailable 이벤트 발생
         }
-      }, 11000); 
+      }, 20000);
+
+      
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -433,7 +454,7 @@ export default {
         }
       };
 
-      this.mediaRecorder.start(10000);
+      this.mediaRecorder.start();
       this.isRecording = true;
     },
 
