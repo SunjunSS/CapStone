@@ -28,13 +28,10 @@ export default function uploadAudio(blob, roomId, nickname, type = "meeting") {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ✅ 환경변수 사용
       const response = await axios.post(
         `${API_BASE_URL}/api/audio/${type}`, // ✅ API URL 수정
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+        formData, 
+          {headers: {
+          "Content-Type": "multipart/form-data", // multer가 처리할 수 있도록 설정
+          }} );
 
       console.log(`✅ ${type}요청 : 업로드 성공!`);
       resolve(response);
