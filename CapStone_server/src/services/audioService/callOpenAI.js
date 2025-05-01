@@ -8,7 +8,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // .env 파일에 API 키 저장 필요
 });
 
-async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = false) {
+async function askOpenAI(
+  speakerSpeech,
+  speakerNames,
+  nodeData,
+  isRealTime = false
+) {
   try {
     if (!speakerSpeech || !speakerNames) return;
 
@@ -21,8 +26,7 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
             if (lines.length < 3) return ""; // SRT 형식이 아닐 경우 무시
 
             let time = lines[1]; // "00:00:21,000 --> 00:00:28,840"
-            let speech
-             = lines.slice(2).join(" "); // 발언 내용만 추출
+            let speech = lines.slice(2).join(" "); // 발언 내용만 추출
 
             return `${time}\n${nickname}: ${speech}`;
           })
@@ -31,12 +35,8 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
       })
       .join("\n\n");
 
-
-      const roots = nodeData.filter((item) => item.parent === 0);
-      console.log("테스트:   " + JSON.stringify(roots[0].name));
-      
-    
-      
+    const roots = nodeData.filter((item) => item.parent === 0);
+    console.log("테스트:   " + JSON.stringify(roots[0].name));
 
     let finalPrompt = `
     이 음성 텍스트는 회의 중 기록된 대화입니다. 한국어로 응답해주세요.
@@ -93,31 +93,35 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
     ${nodeData}`;
 
     if (isRealTime) {
-      
       finalPrompt = `
-      이 대화 내용은 실시간 회의 중 일부입니다. 한국어로 응답해주세요.
-      
-      대화에서 중요한 키워드를 추출하고, 아래 JSON 형식으로 응답하세요.
+        이 대화 내용은 실시간 회의 중 일부입니다. 한국어로 응답해주세요.
+        
+        대화에서 중요한 키워드를 추출하고, 아래 JSON 형식으로 응답하세요.
 
-      {
-        "keywords": ["키워드1", "키워드2"]
-      }
+        {
+          "keywords": [
+            { "name": "키워드1", "parent_key": 123 },
+            { "name": "키워드2", "parent_key": 456 }
+          ]
+        }
 
-      📌 **작업 내용**:
-      - 대화 내용을 분석하여 가장 중요한 **2개의 키워드**를 추출하세요.
-      - 키워드는 반드시 **현재 노드 데이터**와 연관성이 있어야 합니다.
-      - 단순히 빈번하게 언급된 단어가 아니라, **회의에서 핵심적으로 논의된 개념을 포함**해야 합니다.
+        📌 **작업 내용**:
+        - 대화 내용을 분석하여 가장 중요한 **2개의 키워드**를 추출하세요.
+        - 각 키워드는 반드시 **현재 노드 데이터**와 연관성이 있어야 합니다.
+        - 단순 빈도수가 아니라, 회의에서 **핵심적으로 논의된 개념**이어야 합니다.
+        - 각 키워드에 대해 **현재 노드 데이터 중 가장 적합한 부모 노드(parent_key)를 추천**해주세요.
+        - 새 키워드는 해당 부모 노드 아래에 추가할 수 있는 주제여야 합니다.
+        - **추가 설명이나 이유는 작성하지 말고**, 위 JSON 배열만 정확히 반환하세요.
 
-      ### 🔍 **입력 데이터**
-      #### **대화 내용**
-      ${formattedSpeech} 
+        ### 🔍 **입력 데이터**
+        #### **대화 내용**
+        ${formattedSpeech} 
 
-      #### **현재 노드 데이터**
-      ${nodeData}
+        #### **현재 노드 데이터**
+        ${JSON.stringify(nodeData)}
       `;
     }
 
-    
     // OpenAI API 호출
     const response = await openai.chat.completions.create({
       model: "gpt-4-turbo",
@@ -140,7 +144,6 @@ async function askOpenAI(speakerSpeech, speakerNames, nodeData, isRealTime = fal
 
     // JSON 객체 반환
     return jsonResponse;
-    
   } catch (error) {
     console.error("오류 발생:", error);
   }

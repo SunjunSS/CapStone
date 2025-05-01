@@ -43,6 +43,43 @@ exports.addNodes = async (addedNodes, project_id) => {
   }
 };
 
+exports.addKeywordsAsNodes = async (projectId, keywordList) => {
+  try {
+    if (!keywordList || keywordList.length === 0) {
+      throw new Error("추가할 키워드 목록이 비어 있습니다.");
+    }
+
+    const createdNodes = [];
+
+    for (const keywordObj of keywordList) {
+      const { name, parent_key } = keywordObj;
+
+      const newNode = await nodeRepository.createNode(
+        name, // content
+        parent_key, // parent_key
+        projectId, // project_id
+        false // isSelected (기본값 false)
+      );
+
+      createdNodes.push({
+        id: newNode.id,
+        key: newNode.id,
+        name: newNode.content,
+        parent: newNode.parent_key ?? 0,
+        project_id: newNode.project_id,
+        isSelected: newNode.isSelected,
+      });
+    }
+
+    console.log(`✅ ${keywordList.length}개의 키워드 노드를 추가했습니다.`);
+
+    return { success: true, nodes: createdNodes };
+  } catch (error) {
+    console.error("❌ 키워드 노드 추가 실패:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 // 🟢 루트 노드 생성
 exports.createRootNode = async (project_id, project_name, transaction) => {
   try {
