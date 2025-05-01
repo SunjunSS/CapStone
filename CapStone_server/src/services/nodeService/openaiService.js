@@ -39,7 +39,8 @@ async function getMindmapSuggestions(
     const response = await axios.post(
       OPENAI_URL,
       {
-        model: "gpt-4",
+        model:
+          "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BPpAltWj",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 150,
         temperature: 0.7,
@@ -73,7 +74,7 @@ async function getBestMindmapIdea(nodeList, rootNode) {
   }
 
   // 🔥 루트 노드 제외하고 AI에 전달할 리스트 생성
-  const filteredNodes = nodeList.filter(node => node !== rootNode);
+  const filteredNodes = nodeList.filter((node) => node !== rootNode);
 
   if (filteredNodes.length === 0) {
     throw new Error("루트 노드를 제외한 노드가 없습니다.");
@@ -116,7 +117,9 @@ async function getBestMindmapIdea(nodeList, rootNode) {
     const resultText = response.data.choices[0].message.content;
     const [bestNode, improvedIdea] = resultText
       .split("\n")
-      .map((line) => line.replace(/^(Best Idea:|Improved Idea:)\s*/, "").trim());
+      .map((line) =>
+        line.replace(/^(Best Idea:|Improved Idea:)\s*/, "").trim()
+      );
 
     return { bestNode, improvedIdea };
   } catch (error) {
@@ -125,5 +128,4 @@ async function getBestMindmapIdea(nodeList, rootNode) {
   }
 }
 
-
-module.exports = { getMindmapSuggestions,getBestMindmapIdea };
+module.exports = { getMindmapSuggestions, getBestMindmapIdea };

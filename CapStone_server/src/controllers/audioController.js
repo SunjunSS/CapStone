@@ -13,9 +13,7 @@ const meetingEvents = {}; // 방별 이벤트 관리
 const realTimeAudioBuffers = {}; // 각 방의 오디오 파일 저장
 const realTimeEvents = {}; // 방별 이벤트 관리
 
-
 const userSpeech = {};
-
 
 module.exports = (io) => {
   return {
@@ -31,7 +29,6 @@ module.exports = (io) => {
         const nickname = req.body.nickname;
         const inputPath = req.file.path;
 
-        
         console.log(`🎤 파일 저장 완료: ${inputPath}`);
 
         if (!fs.existsSync(inputPath)) {
@@ -56,7 +53,9 @@ module.exports = (io) => {
         meetingAudioBuffers[roomId].push({ nickname, inputPath });
         const roomSize = meetingAudioBuffers[roomId].length;
 
-        console.log(`📌 현재 방(${roomId}) 회의록 오디오 파일 개수: ${roomSize}`);
+        console.log(
+          `📌 현재 방(${roomId}) 회의록 오디오 파일 개수: ${roomSize}`
+        );
 
         // ✅ 모든 참여자의 파일이 도착할 때까지 기다리는 Promise 생성
         if (!meetingEvents[roomId]) {
@@ -89,8 +88,7 @@ module.exports = (io) => {
         }
         console.log("🔹 OpenAI 응답 타입:", typeof openAIResponse);
 
-        
-        const mp3Buffer =  fs.readFileSync(mixedAudioPath);
+        const mp3Buffer = fs.readFileSync(mixedAudioPath);
 
         io.to(roomId).emit("return-recording", {
           recordingData: openAIResponse,
@@ -122,7 +120,6 @@ module.exports = (io) => {
         const nickname = req.body.nickname;
         const inputPath = req.file.path;
 
-
         console.log(`🎤 파일 저장 완료: ${inputPath}`);
 
         if (!fs.existsSync(inputPath)) {
@@ -147,7 +144,9 @@ module.exports = (io) => {
         realTimeAudioBuffers[roomId].push({ nickname, inputPath });
         const roomSize = realTimeAudioBuffers[roomId].length;
 
-        console.log(`📌 현재 방(${roomId}) 실시간 오디오 파일 개수: ${roomSize}`);
+        console.log(
+          `📌 현재 방(${roomId}) 실시간 오디오 파일 개수: ${roomSize}`
+        );
 
         // ✅ 모든 참여자의 파일이 도착할 때까지 기다리는 Promise 생성
         if (!realTimeEvents[roomId]) {
@@ -169,20 +168,28 @@ module.exports = (io) => {
         // 🎶 모든 참여자의 파일이 도착했으므로 믹싱 및 MP3 변환 실행
         console.log(`🎶 ${expectedUsers}명 모두 업로드 완료`);
 
-        const { openAIResponse, mixedAudioPath } = await processIndividualFile(
-          realTimeAudioBuffers[roomId],
-          roomId,
-          true
-        );
+        const { openAIResponse, mixedAudioPath, addedNodes } =
+          await processIndividualFile(
+            realTimeAudioBuffers[roomId],
+            roomId,
+            true
+          );
 
         if (openAIResponse == null) {
           console.log("audioController: ai응답이 비었습니다.");
         }
         console.log("🔹 OpenAI 응답 타입:", typeof openAIResponse);
 
+        // 노드 추가 소켓 전송은 여기서 그대로 유지
+        if (addedNodes && addedNodes.nodes && addedNodes.nodes.length > 0) {
+          const projectId = roomId.split("-").pop();
+          const projectRoomId = `project-${projectId}`;
+
+          io.to(projectRoomId).emit("nodeAdded", addedNodes.nodes);
+        }
 
         io.to(roomId).emit("return-keyword", {
-          recordingData: openAIResponse
+          recordingData: openAIResponse,
         });
 
         // 처리 후 해당 방의 업로드 리스트 초기화
@@ -197,6 +204,5 @@ module.exports = (io) => {
         res.status(500).send({ message: "Error processing file." });
       }
     },
-
   };
 };
