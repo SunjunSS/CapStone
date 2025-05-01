@@ -400,15 +400,16 @@ export default {
 
       this.mediaRecorder.ondataavailable = async (event) => {
 
-        console.log("🔄 ondataavailable:", blob.size);
 
-        this.recordedChunks.push(event.data);
 
         const blob = new Blob([this.headerBlob, event.data], {
           type: "audio/mp3" // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
         });
 
-        
+        console.log("🔄 ondataavailable:", blob.size);
+
+        this.recordedChunks.push(event.data);
+
 
         if (blob.size > 0) {
           try {
