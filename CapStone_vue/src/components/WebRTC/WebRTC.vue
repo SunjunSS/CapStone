@@ -116,6 +116,7 @@
             @click="toggleRecording"
             class="recording-button"
             :class="{ 'recording-active': isRecording }"
+            :disabled="isProcessingRecording"
           >
             <v-icon v-if="isRecording" icon="mdi-microphone-off"></v-icon>
             <v-icon v-else icon="mdi-microphone"></v-icon>
@@ -202,6 +203,7 @@ export default {
       audioBlob: null,
       headerBlob: null,
       pdfBlob: null,
+      isProcessingRecording: false, // 녹음 처리 중이면 true
     };
   },
   // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
@@ -458,6 +460,7 @@ export default {
     // 녹음 중지 메서드
     stopRecording() {
       if (this.mediaRecorder) {
+        this.isProcessingRecording = true; // 🔹 처리 중 표시
         this.mediaRecorder.stop();
       }
       this.isRecording = false;
@@ -551,6 +554,8 @@ export default {
 
           console.log("🟢 반환된 추천 노드: ", nodes);
           this.meetingContent = report;
+
+          this.isProcessingRecording = false; // 🔹 완료 시 녹음 버튼 다시 활성화
         });
 
         this.socket.on("return-keyword", (data) => {
@@ -1493,5 +1498,13 @@ export default {
   justify-content: center; /* 중앙 정렬 */
   gap: 10px;
   margin-top: 20px;
+}
+
+.recording-button:disabled {
+  background: #bdc3c7; /* 회색 배경 */
+  color: white; /* 텍스트 색 유지 */
+  cursor: not-allowed; /* 금지 표시 커서 */
+  opacity: 0.7; /* 시각적으로 흐리게 */
+  animation: none !important; /* pulse 애니메이션 비활성화 */
 }
 </style>

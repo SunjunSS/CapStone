@@ -112,10 +112,17 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- 처리 중 UI 오버레이 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>처리 중...</p>
+    </div>
   </v-container>
 </template>
 
 <script>
+// Register.vue의 script 부분
 import axios from "axios";
 import { useRouter } from "vue-router";
 
@@ -133,6 +140,12 @@ export default {
       // 인증 코드 관련
       showVerificationField: false, // 인증 입력창 표시 여부
       verificationCode: "", // 사용자가 입력할 인증 코드
+      isLoading: false, // 로딩 표시 여부
+
+      // 누락된 상태 변수들 추가
+      emailVerified: false, // 이메일 인증 완료 여부
+      verifyingCode: false, // 인증 코드 검증 중 여부
+      registering: false, // 회원가입 처리 중 여부
     };
   },
   methods: {
@@ -165,6 +178,7 @@ export default {
         return;
       }
 
+      this.isLoading = true; // 회원가입 시작할 때 로딩 UI 표시
       this.registering = true;
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -192,6 +206,7 @@ export default {
         this.snackbar = true;
       } finally {
         this.registering = false;
+        this.isLoading = false; // 회원가입 완료 후 로딩 UI 숨김
       }
     },
 
@@ -201,7 +216,6 @@ export default {
 
     // 인증 코드 발송 API 호출
     async sendVerificationCode() {
-      // 이메일 유효성 확인
       if (!this.email || !/.+@(gmail\.com|naver\.com)$/.test(this.email)) {
         this.snackbarColor = "error";
         this.snackbarText = "올바른 이메일을 먼저 입력해주세요.";
@@ -209,7 +223,7 @@ export default {
         return;
       }
 
-      this.sendingCode = true;
+      this.isLoading = true; // 로딩 시작
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
         const response = await axios.post(
@@ -219,7 +233,6 @@ export default {
           }
         );
 
-        // 인증 입력창 표시
         this.showVerificationField = true;
         this.snackbarColor = "info";
         this.snackbarText =
@@ -233,7 +246,7 @@ export default {
           "인증 코드 전송 중 오류가 발생했습니다.";
         this.snackbar = true;
       } finally {
-        this.sendingCode = false;
+        this.isLoading = false; // 로딩 종료
       }
     },
 
@@ -246,6 +259,7 @@ export default {
         return;
       }
 
+      this.isLoading = true; // 인증 코드 확인 시작할 때 로딩 UI 표시
       this.verifyingCode = true;
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -270,6 +284,7 @@ export default {
         this.snackbar = true;
       } finally {
         this.verifyingCode = false;
+        this.isLoading = false; // 인증 코드 확인 완료 후 로딩 UI 숨김
       }
     },
   },
@@ -319,5 +334,38 @@ export default {
   min-height: 40px;
   font-size: 14px;
   margin-bottom: 20px; /* 버튼 하단 약간 보정 */
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #42a5f5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
