@@ -22,8 +22,8 @@ exports.processIndividualFile = async (
   try {
     if (roomAudioBuffers == null) return;
 
-    // 처음 한 번만 tempFolder 설정
-    const userTempFolder = path.dirname(roomAudioBuffers[0].inputPath);
+    // // 처음 한 번만 tempFolder 설정
+    // const userTempFolder = path.dirname(roomAudioBuffers[0].inputPath);
 
     // 각 멤버의 음성텍스트를 저장
     for (const userObject of roomAudioBuffers) {
@@ -67,7 +67,15 @@ exports.processIndividualFile = async (
 
     const audioType = isRealTime ? "realTime" : "meeting";
 
+
+    const userTempFolder = path.join(tempAudioFolder, audioType, roomId);
     const userAudioFolder = path.join(audioFolder, audioType, roomId);
+
+
+    console.log("🧪 userAudioFolder:", userAudioFolder);
+    console.log("🧪 userTempFolder:", userTempFolder);
+
+
 
     if (!fs.existsSync(userAudioFolder)) {
       fs.mkdirSync(userAudioFolder, { recursive: true });

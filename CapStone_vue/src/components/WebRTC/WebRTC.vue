@@ -368,11 +368,11 @@ export default {
       if (this.isRecording) {
         this.socket.emit("start-recording", this.roomId);
 
-        console.log("녹음 시작");
+        console.log("🎙️ 녹음 시작");
       } else {
         this.socket.emit("stop-recording", this.roomId);
 
-        console.log("녹음 중지");
+        console.log("🎙️ 녹음 중지");
       }
     },
 
@@ -380,11 +380,11 @@ export default {
       // 클라이언트에서 녹음 시작/중지 처리
       if (this.isRecording) {
         // 녹음 시작 함수
-        console.log(`녹음시작 - WebRTC.vue:270`);
+        console.log(`🎙️ 녹음시작 - WebRTC.vue:270`);
         this.startRecording(); // 녹음 시작
       } else {
         // 녹음 중지 함수
-        console.log(`녹음중지 - WebRTC.vue:275`);
+        console.log(`🎙️ 녹음중지 - WebRTC.vue:275`);
         this.stopRecording();
       }
     },
