@@ -194,7 +194,7 @@ export default {
           console.log(`프로젝트 개수: ${this.mapItems.length}`);
         });
       }
-      console.log("흠");
+
     },
 
     loadCurrentUser() {
