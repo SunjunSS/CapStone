@@ -214,8 +214,11 @@ export default {
       // 자동 참가는 하지 않고, 사용자가 버튼을 클릭할 때만 참가
     }
 
+    window.addEventListener('popstate', this.handlePopState);
+
     // ✅ headerBlob받아오기
     try {
+
       const headerAudio = await fetchHeaderBlob();
       this.headerBlob = headerAudio; // 받아온 Blob 데이터를 headerBlob에 저장
       
@@ -223,11 +226,23 @@ export default {
 
     
     } catch (error) {
-      console.error("헤더 오디오 로드 실패:", error);
-    }
 
+      console.error("헤더 오디오 로드 실패:", error);
+
+    }
+    
+    // // 윈도우, 브라우저 닫힘도 처리해줌
+    // window.addEventListener("beforeunload", leaveRoom());
 
   },
+
+  beforeUnmount() {
+    window.removeEventListener('popstate', this.handlePopState);
+    this.leaveRoom(); // 컴포넌트가 파괴될 때도 방 떠나기
+  },
+
+  
+
   computed: {
     // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
     userNickname() {
@@ -252,6 +267,12 @@ export default {
     },
   },
   methods: {
+
+    handlePopState() {
+      console.log('뒤로가기 감지');
+      this.leaveRoom();
+    },
+
     // 사용자의 닉네임을 가져오는 함수
     getUserDisplayName(userId) {
       // 현재 사용자인 경우 세션 스토리지에서 닉네임 가져오기
