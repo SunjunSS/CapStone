@@ -18,21 +18,12 @@ async function getMindmapSuggestions(
   relatedNodes
 ) {
   const prompt = `
-    The user is creating a mind map.
-    The main topic of this project (root node) is: "${rootTopic}".
-    The selected node is: "${selectedNode}".
-    This node is under the parent node: "${parentNode}".
-    The mind map currently contains the following existing nodes: ${relatedNodes.join(
+    "${selectedNode}"의 하위 주제로 적절한 키워드 5개 추천해주세요.
+
+    조건:
+    - 다음 노드들은 이미 존재하므로 추천에서 제외해주세요: ${relatedNodes.join(
       ", "
     )}.
-
-    Please suggest three subtopics that logically fit under "${selectedNode}" while considering the existing nodes.
-    The suggested subtopics should:
-    - Be directly related to both "${selectedNode}" and its parent node "${parentNode}".
-    - Represent meaningful categories, themes, or important concepts related to "${selectedNode}".
-    - Be concise and provided as keywords only (avoid long sentences or explanations).
-  
-    Respond in Korean, listing only the keywords as the final output.
   `;
 
   try {
@@ -40,7 +31,7 @@ async function getMindmapSuggestions(
       OPENAI_URL,
       {
         model:
-          "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BPpAltWj",
+          "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 150,
         temperature: 0.7,
