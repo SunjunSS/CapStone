@@ -307,6 +307,9 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
     const relatedNodes = nodeData.map((node) => node.content);
     console.log("📝 프로젝트의 모든 노드 이름:", relatedNodes);
 
+    const project = await projectRepository.getProjectById(project_id);
+    const category = project?.category || "default";
+
     // OpenAI API 호출 전 로그 추가
     console.log("🚀 OpenAI API 호출 준비중...");
 
@@ -314,7 +317,8 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
       rootNode.content,
       selectedNode.content,
       parentName,
-      relatedNodes
+      relatedNodes,
+      category
     );
 
     if (!aiSuggestions || aiSuggestions.length === 0) {

@@ -258,3 +258,28 @@ exports.updateMemberRole = async (req, res) => {
     res.status(500).json({ message: "서버 오류", error: error.message });
   }
 };
+
+// 프로젝트 카테고리 수정
+exports.updateProjectCategory = async (req, res) => {
+  try {
+    const { project_id } = req.params;
+    const { category } = req.body;
+
+    if (!project_id || category === undefined) {
+      return res
+        .status(400)
+        .json({ message: "프로젝트 ID와 카테고리가 필요합니다." });
+    }
+
+    await projectService.updateProjectCategory(project_id, category);
+
+    res
+      .status(200)
+      .json({ message: "프로젝트 카테고리가 성공적으로 변경되었습니다." });
+  } catch (error) {
+    console.error("❌ 프로젝트 카테고리 수정 오류:", error);
+    res
+      .status(500)
+      .json({ message: "카테고리 수정 중 오류 발생", error: error.message });
+  }
+};

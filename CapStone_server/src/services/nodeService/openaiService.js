@@ -4,6 +4,8 @@ require("dotenv").config();
 const API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
+const { getModelByCategory } = require("../../utils/openaiModelMap");
+
 /**
  * 특정 부모 노드(주제)와 클릭한 노드를 기반으로 하위 노드 추천
  * @param {string} rootTopic - 프로젝트의 주제 (루트 노드의 내용)
@@ -15,7 +17,8 @@ async function getMindmapSuggestions(
   rootTopic,
   selectedNode,
   parentNode,
-  relatedNodes
+  relatedNodes,
+  category = "default" // 프론트에서 전달된 카테고리
 ) {
   const prompt = `
     "${selectedNode}"의 하위 주제로 적절한 키워드 5개 추천해주세요.
@@ -26,12 +29,15 @@ async function getMindmapSuggestions(
     )}.
   `;
 
+  const model = getModelByCategory(category);
+
+  console.log("적용된 open ai 모델은 : ", model);
+
   try {
     const response = await axios.post(
       OPENAI_URL,
       {
-        model:
-          "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
+        model,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 150,
         temperature: 0.7,

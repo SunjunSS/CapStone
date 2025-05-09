@@ -18,10 +18,12 @@ router.patch("/:project_id", projectController.updateProjectAndRootNodeName); //
 router.patch("/:project_id/delete", projectController.softDeleteProject); // 🗑️ 프로젝트 휴지통으로 보내기 (soft delete)
 router.patch("/:project_id/restore", projectController.restoreProject); // ♻️ 프로젝트 복원 (휴지통에서 되돌리기)
 router.delete("/:project_id", projectController.permanentlyDeleteProject); // 🚮 프로젝트 완전 삭제 (휴지통에서 제거)
+router.patch("/:project_id/category", projectController.updateProjectCategory); // 프로젝트 카테고리 수정
 router.patch(
   "/:project_id/bookmark/:user_id",
   projectController.toggleProjectBookmark
 );
+
 
 // 프로젝트에 유저 역할 수정
 router.patch(
