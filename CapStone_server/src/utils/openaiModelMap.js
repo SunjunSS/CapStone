@@ -1,11 +1,11 @@
 // utils/openaiModelMap.js
 const modelMap = {
-  코드: "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
-  문학: "gpt-3.5-turbo",
-  요약: "gpt-3.5-turbo-16k",
-  기술분석: "gpt-4-turbo",
-  회의록: "ft:gpt-4o-2024-08-06:personal:meeting-summary:abc123",
-  default: "gpt-4-turbo",
+  컴퓨터공학: "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
+  문학: "",
+  요약: "",
+  기술분석: "",
+  회의록: "",
+  default: "gpt-4o",
 };
 
 function getModelByCategory(category) {

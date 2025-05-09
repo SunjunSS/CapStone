@@ -31,6 +31,7 @@ const Project = sequelize.define(
     category: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "기본",
     },
   },
   {

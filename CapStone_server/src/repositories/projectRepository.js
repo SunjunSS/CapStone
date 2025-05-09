@@ -60,3 +60,14 @@ exports.updateProjectDeletedFlag = async (project_id, deleted, transaction) => {
     }
   );
 };
+
+// 카테고리 속성 수정
+exports.updateProjectCategory = async (project_id, category, transaction) => {
+  return await Project.update(
+    { category },
+    {
+      where: { project_id },
+      transaction,
+    }
+  );
+};

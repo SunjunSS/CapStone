@@ -31,6 +31,8 @@ async function getMindmapSuggestions(
 
   const model = getModelByCategory(category);
 
+  console.log("적용된 open ai 모델은 : ", model);
+
   try {
     const response = await axios.post(
       OPENAI_URL,

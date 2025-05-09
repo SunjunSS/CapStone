@@ -482,3 +482,28 @@ exports.updateMemberRole = async (project_id, user_id, role) => {
     throw error;
   }
 };
+
+// 프로젝트 카테고리 수정
+exports.updateProjectCategory = async (project_id, category) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await projectRepository.getProjectById(project_id);
+    if (!project) {
+      throw new Error("프로젝트가 존재하지 않습니다.");
+    }
+
+    await projectRepository.updateProjectCategory(
+      project_id,
+      category,
+      transaction
+    );
+
+    await transaction.commit();
+    console.log(`✅ 프로젝트(${project_id}) 카테고리 수정 완료: ${category}`);
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ 카테고리 업데이트 실패:", error.message);
+    throw error;
+  }
+};
