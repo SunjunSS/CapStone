@@ -28,6 +28,10 @@ const Project = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    category: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     tableName: "projects",
