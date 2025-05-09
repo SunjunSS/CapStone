@@ -24,6 +24,7 @@ export const createProject = async (userId) => {
   }
 };
 
+// 활성화된 프로젝트 조회
 export const getUserProjects = async (userId) => {
   try {
     const response = await axios.get(`${getProjectUrl()}/${userId}`); // ✅ params 방식 사용
@@ -38,6 +39,32 @@ export const getUserProjects = async (userId) => {
     return response.data.projects; // ✅ projects 배열만 반환
   } catch (error) {
     console.error("❌ 프로젝트 조회 오류:", error);
+    throw error;
+  }
+};
+
+// 프로젝트 즐겨찾기 설정/해제
+export const updateProjectBookmark = async (userId, projectId, bookmark) => {
+  try {
+    const response = await axios.patch(
+      `${getProjectUrl()}/${projectId}/bookmark/${userId}`,
+      { bookmark }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("❌ 즐겨찾기 업데이트 오류:", error);
+    throw error;
+  }
+};
+
+// ✅ 즐겨찾기 프로젝트 조회 API (GET /api/project/:user_id/bookmarked)
+export const getBookmarkedProjects = async (userId) => {
+  try {
+    const response = await axios.get(`${getProjectUrl()}/${userId}/bookmarked`);
+    console.log("🟢 즐겨찾기 프로젝트 응답:", response.data);
+    return response.data.projects;
+  } catch (error) {
+    console.error("❌ 즐겨찾기 프로젝트 조회 오류:", error);
     throw error;
   }
 };

@@ -125,6 +125,7 @@ import {
   createProject,
   getUserProjects,
   softDeleteProject,
+  updateProjectBookmark,
 } from "../../api/projectApi";
 import { useRouter } from "vue-router";
 
@@ -194,7 +195,6 @@ export default {
           console.log(`프로젝트 개수: ${this.mapItems.length}`);
         });
       }
-
     },
 
     loadCurrentUser() {
@@ -244,9 +244,23 @@ export default {
       this.closeAllMenus();
     },
     moveToFavorite(index) {
-      // 즐겨찾기 추가 기능 구현
-      alert(`${this.mapItems[index].name}을(를) 즐겨찾기에 추가`);
-      this.closeAllMenus();
+      const item = this.mapItems[index];
+      const userId = sessionStorage.getItem("userId");
+
+      if (!userId) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      updateProjectBookmark(userId, item.project_id, 1)
+        .then(() => {
+          alert(`📌 ${item.name}을(를) 즐겨찾기에 추가했습니다.`);
+          this.closeAllMenus();
+        })
+        .catch((error) => {
+          console.error("❌ 즐겨찾기 추가 실패:", error);
+          alert("즐겨찾기 추가 중 오류가 발생했습니다.");
+        });
     },
     moveToTrash(projectId, index) {
       // 휴지통으로 이동 기능 구현

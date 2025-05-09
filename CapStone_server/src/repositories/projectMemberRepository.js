@@ -91,3 +91,11 @@ exports.updateProjectMemberRole = async (
     { where: { user_id, project_id }, transaction }
   );
 };
+
+// 즐겨찾기 설정/해제
+exports.updateBookmark = async (user_id, project_id, bookmark, transaction) => {
+  return await ProjectMembers.update(
+    { bookmark },
+    { where: { user_id, project_id }, transaction }
+  );
+};
