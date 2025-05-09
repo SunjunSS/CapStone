@@ -71,6 +71,7 @@ exports.updateProjectCategory = async (project_id, category, transaction) => {
       transaction,
     }
   );
+};
 
 exports.getBookmarkedProjectsByUserId = async (user_id) => {
   try {
