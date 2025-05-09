@@ -34,6 +34,46 @@ exports.getActiveProjectsByUserId = async (req, res) => {
   }
 };
 
+// 즐겨찾기 프로젝트 조회
+exports.getBookmarkedProjectsByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id가 필요합니다." });
+    }
+
+    console.log("🔍 즐겨찾기 프로젝트 조회 요청 user_id:", user_id);
+
+    const projects = await projectService.getBookmarkedProjectsByUserId(
+      user_id
+    );
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error("❌ 즐겨찾기 프로젝트 컨트롤러 오류:", error);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
+// 즐겨찾기 설정/해제
+exports.toggleProjectBookmark = async (req, res) => {
+  try {
+    const { user_id, project_id } = req.params;
+    const { bookmark } = req.body;
+
+    if (![0, 1].includes(bookmark)) {
+      return res
+        .status(400)
+        .json({ message: "bookmark 값은 0 또는 1이어야 합니다." });
+    }
+
+    await projectService.updateProjectBookmark(user_id, project_id, bookmark);
+    res.status(200).json({ message: "즐겨찾기 상태가 변경되었습니다." });
+  } catch (error) {
+    console.error("❌ 즐겨찾기 토글 실패:", error.message);
+    res.status(500).json({ message: "서버 오류", error: error.message });
+  }
+};
+
 // 휴지통 프로젝트만 조회 (deleted=1)
 exports.getTrashProjectsByUserId = async (req, res) => {
   try {
@@ -68,6 +108,7 @@ exports.restoreProject = async (req, res) => {
   }
 };
 
+// 프로젝트 및 루트 노드 이름 변경경
 exports.updateProjectAndRootNodeName = async (req, res) => {
   try {
     const { project_id } = req.params;

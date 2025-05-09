@@ -23,11 +23,6 @@ const Project = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    bookmark: {
-      type: DataTypes.TINYINT(1),
-      allowNull: false,
-      defaultValue: 0,
-    },
     category: {
       type: DataTypes.STRING,
       allowNull: false,

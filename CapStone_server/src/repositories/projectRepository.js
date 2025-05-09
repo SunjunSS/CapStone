@@ -1,5 +1,6 @@
 const { Project } = require("../models");
 const { Sequelize } = require("sequelize");
+const sequelize = require("../config/localDB"); // ✅ 이 줄 추가
 
 exports.createProject = async (name, transaction) => {
   return await Project.create({ name }, { transaction });
@@ -70,4 +71,27 @@ exports.updateProjectCategory = async (project_id, category, transaction) => {
       transaction,
     }
   );
+
+exports.getBookmarkedProjectsByUserId = async (user_id) => {
+  try {
+    const [results] = await sequelize.query(
+      `
+      SELECT p.project_id, p.name, p.updatedAt, pm.isAdmin
+      FROM projects p
+      JOIN project_members pm ON p.project_id = pm.project_id
+      WHERE pm.user_id = :user_id
+        AND pm.bookmark = 1
+        AND p.deleted = 0
+      ORDER BY p.updatedAt DESC
+      `,
+      {
+        replacements: { user_id },
+      }
+    );
+
+    return results;
+  } catch (error) {
+    console.error("❌ 유저의 즐겨찾기 프로젝트 조회 실패:", error);
+    throw error;
+  }
 };

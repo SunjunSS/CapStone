@@ -20,6 +20,11 @@ const ProjectMembers = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    bookmark: {
+      type: DataTypes.TINYINT(1),
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "project_members",

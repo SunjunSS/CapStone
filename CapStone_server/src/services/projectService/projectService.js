@@ -139,6 +139,52 @@ exports.getActiveProjectsByUserId = async (user_id) => {
   }
 };
 
+// 즐겨찾기한 프로젝트 조회
+exports.getBookmarkedProjectsByUserId = async (user_id) => {
+  try {
+    console.log("🔍 즐겨찾기 프로젝트 조회 요청 user_id:", user_id);
+    const projects = await projectRepository.getBookmarkedProjectsByUserId(
+      user_id
+    );
+
+    // console.log(
+    //   "🔎 조회된 즐겨찾기 프로젝트 원본:",
+    //   JSON.stringify(projects, null, 2)
+    // );
+
+    const result = projects.map((project) => ({
+      project_id: project.project_id,
+      name: project.name,
+      isAdmin: project.isAdmin,
+      date: formatDateToYMDHM(project.updatedAt),
+    }));
+
+    // console.log("✅ 포맷팅된 즐겨찾기 프로젝트 결과:", result);
+
+    return result;
+  } catch (error) {
+    console.error("❌ 즐겨찾기 프로젝트 서비스 오류:", error);
+    throw error;
+  }
+};
+
+// 즐겨찾기 설정/해제
+exports.updateProjectBookmark = async (user_id, project_id, bookmark) => {
+  const transaction = await sequelize.transaction();
+  try {
+    await projectMemberRepository.updateBookmark(
+      user_id,
+      project_id,
+      bookmark,
+      transaction
+    );
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
 // 유저ID로 휴지통 프로젝트 찾기 (deleted=1인 프로젝트만, 생성자 이름 포함)
 exports.getTrashProjectsByUserId = async (user_id) => {
   try {
