@@ -5,7 +5,7 @@ const modelMap = {
   요약: "",
   기술분석: "",
   회의록: "",
-  default: "gpt-4o",
+  default: "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
 };
 
 function getModelByCategory(category) {
