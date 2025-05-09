@@ -114,6 +114,10 @@
 import { onMounted, onBeforeUnmount } from "vue";
 import MainHomeSideBar from "./MainHomeSideBar.vue";
 import { useRouter } from "vue-router";
+import {
+  getBookmarkedProjects,
+  updateProjectBookmark,
+} from "../../api/projectApi";
 
 export default {
   name: "MyMap",
@@ -122,22 +126,7 @@ export default {
   },
   data() {
     return {
-      mapItems: [
-        {
-          name: "나의 새 마인드맵",
-          creator: "kim",
-          date: "Jan 22, 2025",
-          selected: false,
-          showMenu: false,
-        },
-        {
-          name: "캡스톤 마인드맵 탐색",
-          creator: "kim",
-          date: "Feb 10, 2025",
-          selected: false,
-          showMenu: false,
-        },
-      ],
+      mapItems: [],
     };
   },
   computed: {
@@ -174,15 +163,18 @@ export default {
       });
     },
     removeFromFavorite(index) {
-      // 즐겨찾기 취소 기능 구현
-      if (
-        confirm(
-          `${this.mapItems[index].name}을(를) 즐겨찾기에서 제거하시겠습니까?`
-        )
-      ) {
-        this.mapItems.splice(index, 1);
+      const item = this.mapItems[index];
+      if (confirm(`${item.name}을(를) 즐겨찾기에서 제거하시겠습니까?`)) {
+        const userId = sessionStorage.getItem("userId");
+        updateProjectBookmark(userId, item.project_id, 0)
+          .then(() => {
+            this.mapItems.splice(index, 1);
+            this.closeAllMenus();
+          })
+          .catch((err) => {
+            alert("❌ 즐겨찾기 해제 실패: " + err.message);
+          });
       }
-      this.closeAllMenus();
     },
   },
   setup() {
@@ -256,7 +248,22 @@ export default {
 
     return { getDropdownPosition };
   },
-  mounted() {
+  async mounted() {
+    try {
+      const userId = sessionStorage.getItem("userId");
+      console.log("유저 아이디는 ", userId);
+      const bookmarkedProjects = await getBookmarkedProjects(userId);
+      this.mapItems = bookmarkedProjects.map((project) => ({
+        name: project.name,
+        creator: "나", // 실제로는 project.creator가 있으면 바꾸세요
+        date: project.date,
+        selected: false,
+        showMenu: false,
+        project_id: project.project_id,
+      }));
+    } catch (error) {
+      console.error("❌ 즐겨찾기 프로젝트 불러오기 실패:", error);
+    }
     // 메뉴 외부 클릭 시 메뉴 닫기
     document.addEventListener("click", this.closeAllMenus);
   },
