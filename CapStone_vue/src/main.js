@@ -193,3 +193,17 @@ window.addEventListener("popstate", () => {
   userExitedFullscreen = false;
   hideAddressBar();
 });
+
+
+
+
+// 아이패드 디버깅 용
+// main.js 또는 App.vue
+console.log = (function (oldLog) {
+  return function (message) {
+    oldLog(message);
+    const logElement = document.createElement("p");
+    logElement.textContent = `[Log] ${message}`;
+    document.body.appendChild(logElement);
+  };
+})(console.log);
