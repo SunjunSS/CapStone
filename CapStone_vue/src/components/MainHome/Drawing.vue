@@ -13,6 +13,15 @@
       >
         이미지 업로드
       </button>
+
+      <button
+        @click="downloadCanvas"
+        :disabled="showColorPicker"
+        :class="{ active: mode === 'download', 'download-button': true }"
+      >
+        캔버스 다운로드
+      </button>
+
       <input
         type="file"
         ref="imageInput"
@@ -617,6 +626,31 @@ export default {
       }
     },
 
+    downloadCanvas() {
+      if (!this.canvas) return;
+
+      this.mode = "download"; // 🔹 모드 변경으로 active 효과 유도
+
+      const dataURL = this.canvas.toDataURL({
+        format: "png",
+        multiplier: 1,
+        enableRetinaScaling: false,
+        quality: 1,
+        backgroundColor: "#ffffff",
+      });
+
+      const link = document.createElement("a");
+      const now = new Date();
+      const formatted = `${now.getFullYear()}.${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}-canvas`;
+      link.href = dataURL;
+      link.download = `${formatted}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
     onMouseDown(o) {
       if (this.mode === "pencil" || !this.canvas || this.showColorPicker)
         return;
@@ -927,7 +961,6 @@ export default {
       this.$refs.imageInput.click();
     },
 
-    // 파일 선택 시 이미지 업로드 처리
     handleImageUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -936,16 +969,31 @@ export default {
       reader.onload = (event) => {
         const imgObj = new Image();
         imgObj.src = event.target.result;
+
         imgObj.onload = () => {
-          this.setMode("select"); // 🔹 자동으로 선택 모드 변경
+          this.setMode("select"); // 선택 모드로 전환
+
+          const margin = 30; // px 단위 여백
+          const maxWidth = this.canvas.getWidth();
+          const maxHeight = this.canvas.getHeight();
+
+          const availableWidth = maxWidth - 2 * margin;
+          const availableHeight = maxHeight - 2 * margin;
+
+          const imgWidth = imgObj.width;
+          const imgHeight = imgObj.height;
+
+          const scaleX = availableWidth / imgWidth;
+          const scaleY = availableHeight / imgHeight;
+          const scale = Math.min(scaleX, scaleY, 1); // 무조건 축소. 확대는 방지
 
           const image = new fabric.Image(imgObj, {
-            left: 50,
-            top: 50,
-            scaleX: 0.5,
-            scaleY: 0.5,
-            selectable: true, // 🔹 클릭으로 선택 가능
-            evented: true, // 🔹 클릭 이벤트 활성화
+            left: (maxWidth - imgWidth * scale) / 2,
+            top: (maxHeight - imgHeight * scale) / 2,
+            scaleX: scale,
+            scaleY: scale,
+            selectable: true,
+            evented: true,
             hasBorders: true,
             hasControls: true,
             lockScalingX: false,
@@ -954,35 +1002,34 @@ export default {
           });
 
           this.canvas.add(image);
-          this.canvas.setActiveObject(image); // 🔹 이미지 자동 선택
-          this.currentObject = image; // 현재 객체 저장
+          this.canvas.setActiveObject(image);
+          this.currentObject = image;
           this.canvas.requestRenderAll();
 
-          // 🔹 시간 간격 없이 즉시 마우스 이벤트 발생
+          // 마우스 이벤트 시뮬레이션
           const canvasEl = this.canvas.upperCanvasEl;
+          const clientX = image.left + 10;
+          const clientY = image.top + 10;
 
-          // 🔹 마우스 다운 이벤트 즉시 발생
           canvasEl.dispatchEvent(
             new MouseEvent("mousedown", {
               bubbles: true,
               cancelable: true,
-              clientX: image.left + 10,
-              clientY: image.top + 10,
+              clientX,
+              clientY,
             })
           );
-
-          // 🔹 마우스 업 이벤트 즉시 발생 (시간 간격 없음)
           canvasEl.dispatchEvent(
             new MouseEvent("mouseup", {
               bubbles: true,
               cancelable: true,
-              clientX: image.left + 10,
-              clientY: image.top + 10,
+              clientX,
+              clientY,
             })
           );
 
           console.log(
-            "Image added, selected, and click fully simulated (no delay):",
+            "Image added with scale and margin-centered position, click simulated:",
             image
           );
         };
@@ -1131,6 +1178,7 @@ h1 {
   margin: 0 5px;
   padding: 8px 12px;
   cursor: pointer;
+  border-radius: 13px;
 }
 
 .toolbar button.active {
@@ -1340,5 +1388,21 @@ canvas {
 
 button:focus {
   outline: none; /* 포커스 테두리 제거 */
+}
+
+.toolbar button.active.download-button {
+  background-color: #ba68c8;
+  color: white;
+}
+
+select {
+  border: none; /* 테두리 제거 */
+  padding: 6px 12px; /* 위아래 6px, 좌우 12px */
+  border-radius: 6px; /* 선택창 자체도 부드럽게 */
+  appearance: none; /* 기본 브라우저 스타일 제거 */
+}
+
+select:focus {
+  outline: none; /* 포커스 시 테두리 제거 */
 }
 </style>
