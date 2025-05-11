@@ -193,3 +193,8 @@ window.addEventListener("popstate", () => {
   userExitedFullscreen = false;
   hideAddressBar();
 });
+
+
+
+
+

@@ -18,15 +18,18 @@ export default async function createPDF(data) {
 
   const { speakerNames, srt, minutes } = data;
 
-  doc.text(`날짜: ${dateStr}`, 10, 10);
-  doc.text(`시간: ${timeStr}`, 10, 18);
-  doc.text(`참여자: ${speakerNames.join(", ")}`, 10, 26);
+  doc.setFontSize(18);
+  doc.text("회의록", 10, 15);
+  doc.setFontSize(12);
+  doc.text(`1. 날짜: ${dateStr}`, 10, 25);
+  doc.text(`2. 시간: ${timeStr}`, 10, 33);
+  doc.text(`3. 참여자: ${speakerNames.join(", ")}`, 10, 41);
 
   doc.text(" ", 10, 34); // 첫 번째 줄
   doc.text(" ", 10, 42); // 두 번째 줄
 
   doc.setFontSize(15);
-  doc.text("● 회의록", 10, 50);
+  doc.text("4. 회의록", 10, 50);
 
   autoTable(doc, {
     startY: 58,
@@ -52,7 +55,7 @@ export default async function createPDF(data) {
   });
 
   // 🔑 키워드
-  doc.text("● 주요 키워드", 10, doc.lastAutoTable.finalY + 10);
+  doc.text("5. 주요 키워드", 10, doc.lastAutoTable.finalY + 10);
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 16,
     body: minutes.keywords.map((k) => [k]),
@@ -63,7 +66,7 @@ export default async function createPDF(data) {
   // 📝 SRT 대화
   doc.addPage();
 
-  doc.text("● 대화내용 (SRT)", 10, 10);
+  doc.text("6. 대화내용 (SRT)", 10, 15);
 
   const srtTable = srt.map((item) => [
     item.time,

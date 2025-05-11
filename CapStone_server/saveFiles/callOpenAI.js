@@ -68,15 +68,16 @@ async function askOpenAI(
       - **주요 주제**
       - **다음 할 일**
       - **요약**
-      - **키워드: 음성 텍스트 내용에서 중요한 키워드를 추출하세요. 서로 중복되지 않는 고유한 키워드만 포함해주세요.**
+      - **키워드: 음성 텍스트 내용에서 중요한 키워드를 추출하세요.**
     4. **추천 노드 제안(recommendNodes)**: 
      - **기존 노드 데이터를 기반으로 가장 적절한 노드를 선택하여 추천하세요.**
      - **새로운 내용을 창작하지 말고, 기존 노드에서 확장할 수 있는 주제를 선택하세요.**
      - **추천 노드는 반드시 기존 노드의 주제와 관련된 내용을 포함해야 합니다.**
      - **각 노드는 기존 노드 중 관련성이 높은 parent_key를 가져야 합니다.**
      - **project_id는 주어진 노드와 동일하게 설정하세요.**
-     - **추천 노드는 서로 중복되지 않는 고유한 주제여야 합니다.**
    
+
+
 
     ### 📝 **목표**
     - **음성 텍스트를 분석하여 회의의 목적을 파악**하세요.
@@ -110,8 +111,6 @@ async function askOpenAI(
         - 단순 빈도수가 아니라, 회의에서 **핵심적으로 논의된 개념**이어야 합니다.
         - 각 키워드에 대해 **현재 노드 데이터 중 가장 적합한 부모 노드(parent_key)를 추천**해주세요.
         - 새 키워드는 해당 부모 노드 아래에 추가할 수 있는 주제여야 합니다.
-        - **두 키워드는 서로 중복되지 않아야 하며, 서로 다른 고유한 개념이어야 합니다.**
-        - **기존에 이미 노드에 있는 키워드와 동일한 키워드를 추출하지 마세요.**
         - **추가 설명이나 이유는 작성하지 말고**, 위 JSON 배열만 정확히 반환하세요.
 
         ### 🔍 **입력 데이터**
@@ -139,37 +138,6 @@ async function askOpenAI(
     try {
       jsonResponse = JSON.parse(response.choices[0].message.content);
       console.log("🔹 OpenAI 응답 JSON:", jsonResponse);
-
-      // 후처리: 중복 키워드 제거 (백엔드에서 한번 더 확인)
-      if (
-        jsonResponse.minutes &&
-        Array.isArray(jsonResponse.minutes.keywords)
-      ) {
-        // 키워드 중복 제거
-        jsonResponse.minutes.keywords = [
-          ...new Set(jsonResponse.minutes.keywords),
-        ];
-      }
-
-      // 실시간 모드에서 키워드 중복 제거
-      if (
-        isRealTime &&
-        jsonResponse.keywords &&
-        Array.isArray(jsonResponse.keywords)
-      ) {
-        // 이름이 같은 키워드 제거
-        const uniqueKeywords = [];
-        const keywordNames = new Set();
-
-        for (const keyword of jsonResponse.keywords) {
-          if (!keywordNames.has(keyword.name)) {
-            keywordNames.add(keyword.name);
-            uniqueKeywords.push(keyword);
-          }
-        }
-
-        jsonResponse.keywords = uniqueKeywords;
-      }
     } catch (error) {
       console.error("응답 JSON 파싱 오류:", error);
     }
