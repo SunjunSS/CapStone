@@ -1194,13 +1194,13 @@ export default {
       sidebarOpen.value = !sidebarOpen.value;
     };
 
-    // 2D/3D 모드 전환 함수
     const toggleViewMode = () => {
       if (is3DMode.value) {
-        // 🔄 3D에서 2D로 전환
+        // 🔄 3D → 2D 전환
         stopThreeAnimation();
         destroyThree();
         is3DMode.value = false;
+        currentZoom.value = 1;
 
         if (threeCanvasRef.value) {
           threeCanvasRef.value.style.display = "none";
@@ -1221,15 +1221,51 @@ export default {
             myDiagram = null;
           }
 
+          // 다이어그램 초기화 후 루트 중심 정렬
           setTimeout(() => {
             console.log("🔄 2D 다이어그램 완전 재초기화");
             initDiagram();
 
+            if (myDiagram) {
+              myDiagram.addDiagramListener("InitialLayoutCompleted", (e) => {
+                const rootNode = myDiagram.model.nodeDataArray.find(
+                  (n) => n.parent === 0
+                );
+                if (rootNode) {
+                  const rootPart = myDiagram.findNodeForKey(rootNode.key);
+                  if (rootPart) {
+                    myDiagram.centerRect(rootPart.actualBounds);
+                    console.log("✅ 루트 노드 중심 정렬 완료");
+                  }
+                }
+              });
+            }
+
             setTimeout(() => {
               if (myDiagram) {
                 console.log("📊 다이어그램 레이아웃 최종 조정");
-                myDiagram.zoomToFit();
+
+                const rootNode = myDiagram.model.nodeDataArray.find(
+                  (node) => node.parent === 0
+                );
+
+                myDiagram.startTransaction("layout adjustment");
+
+                // 줌 레벨 초기화 및 레이아웃 적용
+                myDiagram.scale = 1;
+                currentZoom.value = 1;
                 myDiagram.layoutDiagram(true);
+
+                if (rootNode) {
+                  const rootPart = myDiagram.findNodeForKey(rootNode.key);
+                  if (rootPart) {
+                    myDiagram.centerRect(rootPart.actualBounds);
+                  }
+                } else {
+                  myDiagram.zoomToFit();
+                }
+
+                myDiagram.commitTransaction("layout adjustment");
 
                 const diagramElement =
                   document.querySelector(".mindmap-content");
@@ -1239,15 +1275,13 @@ export default {
                   diagramElement.style.opacity = "1";
                 }
               }
-            }, 100);
-          }, 150);
+            }, 200);
+          }, 200);
         });
 
         console.log("🔄 2D 모드로 전환됨");
       } else {
-        // 🔄 2D에서 3D로 전환
-
-        // ✅ 선택된 노드들 초기화
+        // 🔄 2D → 3D 전환
         if (myDiagram && myDiagram.model) {
           myDiagram.startTransaction("clear selection");
           myDiagram.model.nodeDataArray.forEach((node) => {
@@ -1258,14 +1292,11 @@ export default {
           myDiagram.commitTransaction("clear selection");
         }
 
-        const currentDiagramData = myDiagram ? myDiagram.model.toJson() : null;
-
         if (diagramDiv.value) {
           diagramDiv.value.style.display = "none";
         }
 
         selectedNode.value = null;
-
         is3DMode.value = true;
         console.log("🔄 3D 모드로 전환됨");
 
@@ -1285,10 +1316,7 @@ export default {
             console.error("❌ three-container를 찾을 수 없음");
             is3DMode.value = false;
             showToast("3D 모드를 초기화할 수 없습니다.", true);
-
-            if (diagramDiv.value) {
-              diagramDiv.value.style.display = "block";
-            }
+            if (diagramDiv.value) diagramDiv.value.style.display = "block";
             return;
           }
 
@@ -1300,10 +1328,7 @@ export default {
                 "3D 모드를 불러올 수 없습니다. 나중에 다시 시도해주세요.",
                 true
               );
-
-              if (diagramDiv.value) {
-                diagramDiv.value.style.display = "block";
-              }
+              if (diagramDiv.value) diagramDiv.value.style.display = "block";
               return;
             }
 
@@ -1324,7 +1349,6 @@ export default {
                 initThree();
                 checkThreeStatus();
 
-                // 🌟 마인드맵 상태 강제 반영
                 setTimeout(() => {
                   window.dispatchEvent(new CustomEvent("mindmap-updated"));
                   console.log("📣 3D 초기화 이후 mindmap-updated 이벤트 발생");
@@ -2064,6 +2088,19 @@ export default {
         "animationManager.isEnabled": true,
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value,
+      });
+
+      myDiagram.addDiagramListener("InitialLayoutCompleted", (e) => {
+        const rootNode = myDiagram.model.nodeDataArray.find(
+          (n) => n.parent === 0
+        );
+        if (rootNode) {
+          const rootPart = myDiagram.findNodeForKey(rootNode.key);
+          if (rootPart) {
+            myDiagram.centerRect(rootPart.actualBounds);
+            console.log("✅ 루트 노드 중심 정렬 완료 (프로젝트 초기 진입)");
+          }
+        }
       });
 
       console.log("✅ myDiagram 생성 완료:", myDiagram);
