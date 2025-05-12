@@ -3,10 +3,11 @@ import API_BASE_URL from "../config/apiConfig"; // ✅ API URL 설정 파일 가
 
 const getProjectUrl = () => `${API_BASE_URL}/api/project`;
 
-export const createProject = async (userId) => {
+export const createProject = async (userId, category = null) => {
   try {
     const response = await axios.post(`${getProjectUrl()}`, {
       user_id: userId,
+      category: category, // 카테고리 정보 추가
     });
 
     console.log("🟢 서버 응답:", response.data);
