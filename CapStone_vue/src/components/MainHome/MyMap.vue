@@ -967,6 +967,42 @@
           </g>
         </svg>
       </div>
+
+      <!-- 주제 선택 모달 -->
+      <div
+        v-if="showTopicModal"
+        class="modal-overlay"
+        @click.self="handleCancel"
+      >
+        <div class="modal-content">
+          <h3 class="modal-title">주제를 선택하세요</h3>
+
+          <form @submit.prevent="handleTopicSubmit">
+            <div class="radio-group">
+              <label
+                v-for="topic in topicOptions"
+                :key="topic"
+                class="radio-label"
+              >
+                <input
+                  type="radio"
+                  name="selectedTopic"
+                  :value="topic"
+                  v-model="selectedTopic"
+                />
+                {{ topic }}
+              </label>
+            </div>
+
+            <div class="modal-buttons">
+              <button type="submit" class="confirm-btn">확인</button>
+              <button type="button" class="cancel-btn" @click="handleCancel">
+                취소
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -991,14 +1027,30 @@ export default {
     // 세션에서 userId 가져오기
     const userId = sessionStorage.getItem("userId");
 
-    const createAndOpenMap = async () => {
+    // ✅ 주제 선택 관련 상태
+    const showTopicModal = ref(false);
+    const selectedTopic = ref("");
+    const topicOptions = [
+      "컴퓨터 공학",
+      "기계전자 공학",
+      "디자인 및 예술",
+      "인문사회 및 경영",
+      "융합 및 교양 교육",
+    ];
+
+    const handleTopicSubmit = async () => {
+      if (!selectedTopic.value) {
+        alert("주제를 선택해주세요.");
+        return;
+      }
+
       try {
         if (!userId) {
           console.error("❌ 사용자 ID가 없습니다.");
           return;
         }
 
-        const newProject = await createProject(userId);
+        const newProject = await createProject(userId, selectedTopic.value);
 
         if (newProject && newProject.project_id) {
           console.log("🟢 새 프로젝트 생성 완료:", newProject.project_id);
@@ -1006,7 +1058,18 @@ export default {
         }
       } catch (error) {
         console.error("❌ 프로젝트 생성 중 오류 발생:", error);
+      } finally {
+        showTopicModal.value = false;
       }
+    };
+
+    const handleCancel = () => {
+      selectedTopic.value = "";
+      showTopicModal.value = false;
+    };
+
+    const createAndOpenMap = () => {
+      showTopicModal.value = true;
     };
 
     // SVG를 사이드바를 제외한 전체 영역에 맞추기 위한 함수
@@ -1087,6 +1150,11 @@ export default {
       createAndOpenMap,
       svgContainerRef,
       svgRef,
+      showTopicModal,
+      selectedTopic,
+      topicOptions,
+      handleTopicSubmit,
+      handleCancel,
     };
   },
   mounted() {
@@ -1179,5 +1247,104 @@ export default {
     margin: 0;
     width: 100%;
   }
+}
+.modal-overlay {
+  position: absolute; /* fixed → absolute */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(10, 14, 31, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #1a2044;
+  border-radius: 12px;
+  padding: 24px 32px;
+  box-shadow: 0 0 20px rgba(78, 125, 247, 0.4);
+  color: white;
+  min-width: 320px;
+  text-align: left;
+}
+
+.modal-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 16px; /* 제목과 라디오 사이 줄바꿈 */
+  color: #3d7bff;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-left: 1rem; /* 라디오 버튼 여백 */
+}
+
+.radio-label {
+  font-size: 14px;
+}
+
+.radio-label input[type="radio"] {
+  margin-right: 5px;
+  transform: translateY(1.5px);
+  accent-color: #ff9d2a;
+}
+
+.radio-label input[type="radio"]:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.confirm-btn,
+.cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(78, 125, 247, 0.3);
+}
+
+/* 확인 버튼 - 네온 느낌 */
+.confirm-btn {
+  background: linear-gradient(135deg, #4e7df7, #6c9dff);
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #6c9dff, #4e7df7);
+  box-shadow: 0 0 15px rgba(78, 125, 247, 0.7);
+}
+
+/* 취소 버튼 - 진한 회색 + 약간의 블루톤 */
+.cancel-btn {
+  background-color: #2e2e2e;
+  color: #ccc;
+}
+
+.cancel-btn:hover {
+  background-color: #444;
+  color: #fff;
 }
 </style>

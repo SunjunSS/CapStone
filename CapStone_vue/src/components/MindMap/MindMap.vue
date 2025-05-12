@@ -1,7 +1,7 @@
 --3D모드 성공/디자인 수정 필요/Three.js/2D로 다시 전환 성공/텍스트 삽입
 성공/노드 동적 길이 변경/둥근모서리/직각 간선/노드 겹치기X/3D모드 캡처/3D모드
 요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)/isSelected
-비활성화/간격설정/간선 두께 증가--
+비활성화/간격설정/간선 두께 증가/ 줄바꿈을 통한 노드길이 증가--
 
 <template>
   <div class="app-container">
@@ -562,7 +562,6 @@ export default {
           return Math.max(subtreeWidth, baseSpacing + textLengthFactor);
         };
 
-        // 개선된 drawNode 함수
         const drawNode = (
           node,
           parentGroup,
@@ -573,38 +572,51 @@ export default {
           nodeCounter++;
           const group = new THREE.Group();
 
-          // 텍스트 측정 및 노드 크기 계산
+          // 텍스트 및 줄바꿈 처리
           const measureCanvas = document.createElement("canvas");
           const measureCtx = measureCanvas.getContext("2d");
           const fontSize = node.parent === 0 ? 40 : 27;
           measureCtx.font = `bold ${fontSize}px Arial`;
-          const text = node.name || "새 노드";
-          const textWidth = measureCtx.measureText(text).width;
-          const padding = node.parent === 0 ? 30 : 20;
-          const minNodeWidth = node.parent === 0 ? 120 : 80;
-          const nodeWidth = Math.max(textWidth * 0.85 + padding, minNodeWidth);
-          const nodeHeight = node.parent === 0 ? 50 : 40;
 
-          // 노드 Mesh 생성
+          const text = node.name || "새 노드";
+          const isRootNode = node.parent === 0;
+          const isDefaultText = text === "새 노드";
+          const lines = isRootNode || isDefaultText ? [text] : text.split(" ");
+
+          const maxLineWidth = Math.max(
+            ...lines.map((line) => measureCtx.measureText(line).width)
+          );
+          const padding = isRootNode ? 30 : 20;
+          const minNodeWidth = isRootNode ? 120 : 80;
+          const nodeWidth = Math.max(
+            maxLineWidth * 0.85 + padding,
+            minNodeWidth
+          );
+          const lineHeight = fontSize + 5;
+          const nodeHeight =
+            (isRootNode ? 50 : 40) + (lines.length - 1) * lineHeight;
+
           const shape = createRoundedRectShape(nodeWidth, nodeHeight, 17);
           const geometry = new THREE.ExtrudeGeometry(shape, {
             depth: 17,
             bevelEnabled: false,
           });
+
           const material = new THREE.MeshBasicMaterial({
             color: node.isSuggested
               ? 0xe040fb
-              : node.parent === 0
+              : isRootNode
               ? 0xffa500
               : 0x1e90ff,
             transparent: true,
             opacity: 1.0,
           });
+
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.z = -8.5;
+          mesh.position.set(0, -nodeHeight / 2, -8.5); // ✅ 상단 기준으로 정렬
           group.add(mesh);
 
-          // 텍스트 앞면
+          // 텍스트 캔버스 렌더링
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
           canvas.width = nodeWidth * 2;
@@ -615,7 +627,18 @@ export default {
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = "#ffffff";
-          ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+          const totalTextHeight = lines.length * lineHeight;
+          lines.forEach((line, i) => {
+            ctx.fillText(
+              line,
+              canvas.width / 2,
+              canvas.height / 2 -
+                totalTextHeight / 2 +
+                i * lineHeight +
+                lineHeight / 2
+            );
+          });
 
           const texture = new THREE.CanvasTexture(canvas);
           const textMaterial = new THREE.MeshBasicMaterial({
@@ -623,22 +646,42 @@ export default {
             transparent: true,
             side: THREE.DoubleSide,
           });
+
           const textPlane = new THREE.PlaneGeometry(nodeWidth, nodeHeight);
           const frontText = new THREE.Mesh(textPlane, textMaterial);
-          frontText.position.z = 8.5 + 0.5;
+          frontText.position.set(0, -nodeHeight / 2, 8.5 + 0.5); // ✅ 상단 기준
           group.add(frontText);
 
-          // 뒷면 텍스트
           const backText = frontText.clone();
-          backText.position.z = -(8.5 + 0.5);
+          backText.position.set(0, -nodeHeight / 2, -(8.5 + 0.5));
           backText.rotation.y = Math.PI;
           group.add(backText);
 
           // 노드 위치 계산
           let x = 0,
             y = 0;
-          const spacingY = 100;
+
           if (parentGroup) {
+            // 부모 노드에 따른 동적 간격 계산 로직 추가
+            let spacingY = 100; // 기본 간격
+            const parentNodeData = nodes.find((n) => n.key === node.parent);
+
+            if (parentNodeData) {
+              const parentText = parentNodeData.name || "새 노드";
+              const parentIsRoot = parentNodeData.parent === 0;
+              const parentIsDefaultText = parentText === "새 노드";
+              const parentLines =
+                parentIsRoot || parentIsDefaultText
+                  ? [parentText]
+                  : parentText.split(" ");
+
+              // 줄 수에 따른 추가 간격
+              if (parentLines.length > 1) {
+                // 줄 수에 비례해 간격 증가 (각 추가 줄마다 20px 추가)
+                spacingY = 100 + (parentLines.length - 1) * 20;
+              }
+            }
+
             const parentNode = nodes.find((n) => n.key === node.parent);
             const siblings = nodes.filter((n) => n.parent === parentNode.key);
             const totalWidth = getSubtreeWidth(parentNode.key, nodes);
@@ -664,13 +707,42 @@ export default {
 
           group.position.set(x, y, 0);
 
-          // ✅ 직각 + 입체 연결선 생성
+          // 직각 간선 생성 - 노드 높이 고려하여 아래로 연결
           if (parentGroup) {
             const edgeRadius = 1.7;
-            const parentPos = parentGroup.position;
-            const midX = parentPos.x;
-            const midY = y;
+            const parentPos = parentGroup.position.clone();
 
+            // 부모 노드의 높이 정보 가져오기
+            const parentNodeData = nodes.find((n) => n.key === node.parent);
+            const parentIsRoot =
+              parentNodeData &&
+              (parentNodeData.parent === 0 || !parentNodeData.parent);
+            const parentFontSize = parentIsRoot ? 40 : 27;
+            const parentLineHeight = parentFontSize + 5;
+
+            // 부모 노드의 텍스트 줄 수 계산
+            const parentText = parentNodeData
+              ? parentNodeData.name || "새 노드"
+              : "새 노드";
+            const parentIsDefaultText = parentText === "새 노드";
+            const parentLines =
+              parentIsRoot || parentIsDefaultText
+                ? [parentText]
+                : parentText.split(" ");
+
+            // 부모 노드의 높이 계산
+            const parentNodeHeight =
+              (parentIsRoot ? 50 : 40) +
+              (parentLines.length - 1) * parentLineHeight;
+
+            // 부모 노드의 하단 좌표 계산 - 수정된 부분
+            // 노드가 상단 기준으로 정렬되므로 전체 높이를 고려해야 함
+            const parentNodeBottom = parentPos.y - parentNodeHeight;
+
+            // 현재 노드의 상단 좌표 계산
+            const currentNodeTop = y;
+
+            // 간선을 생성하는 함수
             const createEdge = (start, end) => {
               const direction = new THREE.Vector3().subVectors(end, start);
               const length = direction.length();
@@ -695,16 +767,35 @@ export default {
               threeRoot.add(edgeMesh);
             };
 
-            createEdge(parentPos, new THREE.Vector3(midX, midY, parentPos.z)); // 수직 간선
+            // 첫 번째 간선: 부모 노드 하단에서 수직으로 내려옴
+            const midY =
+              parentNodeBottom - (parentNodeBottom - currentNodeTop) / 2;
+            const verticalStart = new THREE.Vector3(
+              parentPos.x,
+              parentNodeBottom,
+              parentPos.z
+            );
+            const verticalMid = new THREE.Vector3(
+              parentPos.x,
+              midY,
+              parentPos.z
+            );
+            createEdge(verticalStart, verticalMid);
+
+            // 두 번째 간선: 수평 간선 (왼쪽에서 오른쪽 또는 오른쪽에서 왼쪽)
+            const horizontalEnd = new THREE.Vector3(x, midY, parentPos.z);
+            createEdge(verticalMid, horizontalEnd);
+
+            // 세 번째 간선: 수평 위치에서 현재 노드 상단으로 (아래로 향하는 수직선)
             createEdge(
-              new THREE.Vector3(midX, midY, parentPos.z),
-              new THREE.Vector3(x, y, 0)
-            ); // 수평 간선
+              horizontalEnd,
+              new THREE.Vector3(x, currentNodeTop, parentPos.z)
+            );
           }
 
-          // 노드 및 자식 렌더링
           threeRoot.add(group);
           nodeMap.set(node.key, group);
+
           const children = nodes.filter((n) => n.parent === node.key);
           children.forEach((child, i) =>
             drawNode(child, group, depth + 1, i, children.length)
