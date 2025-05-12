@@ -5,12 +5,22 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
+const https = require("https"); // HTTP 대신 HTTPS 사용
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { initDB } = require("./models");
 
 const app = express();
-const server = http.createServer(app);
+// HTTPS 인증서 설정
+const options = {
+  key: fs.readFileSync(path.join(__dirname, "../cert/192.168.0.93+3-key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "../cert/192.168.0.93+3.pem")),
+};
+// HTTPS 서버 생성
+const server = https.createServer(options, app);
+
+// const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -51,14 +61,11 @@ require("./socket/socketHandler")(io);
 const mailRoutes = require("./routes/mailRoutes");
 app.use("/api/mail", mailRoutes);
 
-
 // ✅ 정적 파일 전송 관리
 app.use(
   "/static/audio",
   express.static(path.join(__dirname, "../storage/audio"))
 );
-
-
 
 // ✅ 서버 시작 전에 데이터베이스 동기화 수행
 initDB();

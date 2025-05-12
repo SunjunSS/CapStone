@@ -28,3 +28,10 @@ dist-ssr
 *.sw?
 
 .env
+
+# SSL/TLS 인증서
+*.pem
+*.key
+*.crt
+*.cer
+cert/
