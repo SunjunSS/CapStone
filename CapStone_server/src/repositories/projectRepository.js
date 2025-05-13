@@ -2,8 +2,15 @@ const { Project } = require("../models");
 const { Sequelize } = require("sequelize");
 const sequelize = require("../config/localDB"); // ✅ 이 줄 추가
 
-exports.createProject = async (name, transaction) => {
-  return await Project.create({ name }, { transaction });
+exports.createProject = async (name, transaction, category = null) => {
+  return await Project.create(
+    {
+      name: name,
+      category: category, // 카테고리 추가
+      deleted: 0,
+    },
+    { transaction }
+  );
 };
 
 exports.updateProjectName = async (project_id, newName, transaction) => {

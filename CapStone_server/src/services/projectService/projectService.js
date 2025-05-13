@@ -7,14 +7,15 @@ const { ROLE_LABELS } = require("../../constants/roles");
 const { formatDateToYMDHM } = require("../../utils/dateFormatter");
 
 // 프로젝트 생성, 프로젝트 유저 매핑, 루트 노드 생성
-exports.createProjectWithUser = async (user_id) => {
+exports.createProjectWithUser = async (user_id, category = null) => {
   const transaction = await sequelize.transaction();
 
   try {
     // 1️⃣ 프로젝트 생성 (기본 이름 사용)
     const project = await projectRepository.createProject(
       "나의 새 마인드맵",
-      transaction
+      transaction,
+      category
     );
 
     // 2️⃣ 사용자 추가 (ProjectMembers 테이블 관리) - isAdmin 값을 4로 설정
