@@ -737,15 +737,17 @@ export default {
 
       if (isInitiator) {
         try {
-          const offer = await peerConnection.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: false,
-          });
-          await peerConnection.setLocalDescription(offer);
-          this.socket.emit("signal", {
-            targetId: userId,
-            signal: offer,
-          });
+          if (peerConnection.signalingState === "stable") {
+              const offer = await peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: false,
+              });
+            await peerConnection.setLocalDescription(offer);
+            this.socket.emit("signal", {
+              targetId: userId,
+              signal: offer,
+            });
+          }
         } catch (error) {
           console.error("Error creating offer:", error);
           this.handlePeerConnectionFailure(userId);
