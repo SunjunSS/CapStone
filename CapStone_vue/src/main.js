@@ -3,6 +3,8 @@ import { registerPlugins } from "./plugins/index.js";
 import App from "./App.vue";
 import router from "./router.js";
 
+import "@fortawesome/fontawesome-free/css/all.css";
+
 const app = createApp(App);
 app.use(router);
 registerPlugins(app);
