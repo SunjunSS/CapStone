@@ -147,19 +147,53 @@ exports.getBookmarkedProjectsByUserId = async (user_id) => {
       user_id
     );
 
-    // console.log(
-    //   "🔎 조회된 즐겨찾기 프로젝트 원본:",
-    //   JSON.stringify(projects, null, 2)
-    // );
+    // 프로젝트가 없으면 빈 배열 반환
+    if (!projects || projects.length === 0) {
+      return [];
+    }
 
-    const result = projects.map((project) => ({
-      project_id: project.project_id,
-      name: project.name,
-      isAdmin: project.isAdmin,
-      date: formatDateToYMDHM(project.updatedAt),
-    }));
+    // 프로젝트 ID 목록을 추출
+    const projectIds = projects.map((project) => project.project_id);
 
-    // console.log("✅ 포맷팅된 즐겨찾기 프로젝트 결과:", result);
+    // 각 프로젝트의 모든 멤버 정보를 가져옴
+    const allProjectMembers =
+      await projectMemberRepository.getAllProjectsMembers(projectIds);
+
+    // 각 프로젝트별 생성자(isAdmin=4) 찾기
+    const projectCreators = {};
+    allProjectMembers.forEach((member) => {
+      if (member.isAdmin === 4) {
+        projectCreators[member.project_id] = member.user_id;
+      }
+    });
+
+    // 생성자 ID 목록 추출
+    const creatorIds = Object.values(projectCreators);
+
+    // 생성자들의 사용자 정보 일괄 조회
+    const creators = await userRepository.getUsersByIds(creatorIds);
+
+    // 생성자 ID와 이름을 매핑한 객체 생성
+    const creatorNameMap = {};
+    creators.forEach((creator) => {
+      creatorNameMap[creator.user_id] = creator.name;
+    });
+
+    // isAdmin 정보와 생성자 이름을 추가하여 반환
+    const result = projects.map((project) => {
+      const creatorId = projectCreators[project.project_id];
+      const creatorName = creatorNameMap[creatorId] || "알 수 없음";
+
+      return {
+        project_id: project.project_id,
+        name: project.name,
+        creator: creatorName, // 생성자 이름 추가
+        isAdmin: project.isAdmin || 0,
+        date: formatDateToYMDHM(project.updatedAt),
+      };
+    });
+
+    console.log("✅ 포맷팅된 즐겨찾기 프로젝트 결과:", result);
 
     return result;
   } catch (error) {
