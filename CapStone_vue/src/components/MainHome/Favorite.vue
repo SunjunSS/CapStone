@@ -255,7 +255,7 @@ export default {
       const bookmarkedProjects = await getBookmarkedProjects(userId);
       this.mapItems = bookmarkedProjects.map((project) => ({
         name: project.name,
-        creator: "나", // 실제로는 project.creator가 있으면 바꾸세요
+        creator: project.creator, // 실제로는 project.creator가 있으면 바꾸세요
         date: project.date,
         selected: false,
         showMenu: false,
