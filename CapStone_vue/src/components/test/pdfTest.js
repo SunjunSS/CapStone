@@ -1,4 +1,4 @@
-import createPDF from "../audio/createPDF.js";
+import meetingPDF2 from "./meetingPDF2.js";
 import fs from "fs";
 
 
@@ -74,7 +74,7 @@ const json = {
 
 async function downloadPDF() {
   try {
-    const doc = await createPDF(json);
+    const doc = await meetingPDF2(json);
     const pdfBuffer = doc.output("arraybuffer");
 
     fs.writeFileSync("회의록2.pdf", Buffer.from(pdfBuffer));
