@@ -1,7 +1,7 @@
 --3D모드 성공/디자인 수정 필요/Three.js/2D로 다시 전환 성공/텍스트 삽입
 성공/노드 동적 길이 변경/둥근모서리/직각 간선/노드 겹치기X/3D모드 캡처/3D모드
 요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)/isSelected
-비활성화/간격설정/간선 두께 증가/ 줄바꿈을 통한 노드길이 증가--
+비활성화/간격설정/간선 두께 증가/줄바꿈을 통한 노드길이 증가/버튼 디자인 수정--
 
 <template>
   <div class="app-container">
@@ -60,66 +60,84 @@
           <button @click="increaseZoom" class="zoom-btn">+</button>
         </div>
 
-        <div class="view-mode-controls">
-          <button @click="toggleViewMode" class="view-mode-btn">
-            {{ is3DMode ? "3D 모드" : "2D 모드" }}
-          </button>
-        </div>
-
-        <div class="delete-control">
+        <div class="fab-toolbar" @keydown="handleKeyDown">
+          <!-- 하위 노드 추가 -->
           <button
-            @click="deleteSelectedNode"
-            class="delete-btn"
-            :class="{
-              'delete-btn-enabled': selectedNode && selectedNode.parent !== 0,
-            }"
-            :disabled="!selectedNode || selectedNode.parent === 0 || isViewer"
-          >
-            Delete Node
-          </button>
-        </div>
-
-        <div class="add-controls" @keydown="handleKeyDown">
-          <button
+            class="fab"
             @click="addNode(false)"
-            class="add-btn"
-            :class="{ 'add-btn-enabled': selectedNode }"
             :disabled="!selectedNode || isViewer"
+            data-tooltip="하위레벨 추가"
           >
-            하위레벨 추가
+            <i class="fa-solid fa-down-long"></i>
           </button>
+
+          <!-- 동일 레벨 노드 추가 -->
           <button
+            class="fab"
             @click="addNode(true)"
-            class="add-btn"
-            :class="{ 'add-btn-enabled': canAddSibling }"
-            :disabled="!selectedNode || isViewer"
+            :disabled="!canAddSibling || isViewer"
+            data-tooltip="동일레벨 추가"
           >
-            동일레벨 추가
+            <i class="fa-solid fa-right-long"></i>
           </button>
+
+          <!-- 마인드맵 캡처 -->
           <button
+            class="fab"
             @click="captureMindmap"
-            class="capture-btn"
             :disabled="isViewer"
+            data-tooltip="마인드맵 캡처"
           >
-            마인드맵 캡처
+            <i class="fas fa-camera"></i>
           </button>
-          <button @click="goToDrawing" class="drawing-btn" :disabled="isViewer">
-            그림판
-          </button>
+
+          <!-- 그림판 이동 -->
           <button
+            class="fab"
+            @click="goToDrawing"
+            :disabled="isViewer"
+            data-tooltip="그림판"
+          >
+            <i class="fas fa-paint-brush"></i>
+          </button>
+
+          <!-- AI 추천 노드 추가 -->
+          <button
+            class="fab"
             @click="suggestNodes"
-            class="ai-suggest-btn"
-            :class="{ 'ai-suggest-btn-enabled': selectedNode }"
             :disabled="!selectedNode || isViewer"
+            data-tooltip="AI 추천"
           >
-            AI 추천
+            <i class="fa-solid fa-robot"></i>
           </button>
+
+          <!-- 팀원 초대 -->
           <button
+            class="fab"
             @click="openInviteModal"
-            class="invite-btn"
             :disabled="isViewer"
+            data-tooltip="팀원 초대"
           >
-            팀원 초대
+            <i class="fas fa-user-plus"></i>
+          </button>
+
+          <!-- 🔁 2D/3D 전환 -->
+          <button
+            class="fab"
+            @click="toggleViewMode"
+            :data-tooltip="is3DMode ? '2D 모드' : '3D 모드'"
+          >
+            <i :class="is3DMode ? 'fa-solid fa-sitemap' : 'fas fa-random'"></i>
+          </button>
+
+          <!-- 🗑️ 노드 삭제 -->
+          <button
+            class="fab"
+            @click="deleteSelectedNode"
+            :disabled="!selectedNode || selectedNode.parent === 0 || isViewer"
+            data-tooltip="노드 삭제"
+          >
+            <i class="fas fa-trash-alt"></i>
           </button>
         </div>
       </div>
@@ -2957,145 +2975,6 @@ export default {
   font-weight: 500;
 }
 
-.delete-control {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  background: white;
-  padding: 5px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 9999;
-  transition: all 0.3s ease;
-}
-
-.delete-btn {
-  width: 90px;
-  height: 32px;
-  border: none;
-  background: #d3d3d3;
-  border-radius: 4px;
-  cursor: not-allowed;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-  transition: all 0.3s ease;
-}
-
-.delete-btn-enabled {
-  background: #ff4444;
-  color: white;
-  cursor: pointer;
-}
-
-.delete-btn-enabled:hover {
-  background: #ff0000;
-}
-
-.add-controls {
-  position: fixed;
-  right: 20px;
-  top: 20px;
-  background: white;
-  padding: 5px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 9999;
-}
-
-.add-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #d3d3d3;
-  color: #666;
-  border-radius: 4px;
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.add-btn-enabled {
-  background: #9c6cfe;
-  color: white;
-  cursor: pointer;
-}
-
-.add-btn-enabled:hover {
-  background: #8a5bea;
-}
-
-.capture-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #4caf50;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.capture-btn:hover {
-  background: #45a049;
-}
-
-.drawing-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #8d6e63;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.drawing-btn:hover {
-  background: #0b7dda;
-}
-
-.ai-suggest-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #d3d3d3;
-  color: #666;
-  border-radius: 4px;
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.ai-suggest-btn-enabled {
-  background: #e040fb;
-  color: white;
-  cursor: pointer;
-}
-
-.ai-suggest-btn-enabled:hover {
-  background: #d500f9;
-}
-
-.invite-btn {
-  padding: 8px 16px;
-  border: none;
-  background: #0898ff;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.invite-btn:hover {
-  background: #0079d3;
-}
-
 .toast-message {
   position: fixed;
   top: 20px;
@@ -3416,5 +3295,70 @@ button:disabled {
   white-space: nowrap;
   text-overflow: ellipsis;
   text-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+}
+
+.fab-toolbar {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+}
+
+.fab {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #444;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.fab:hover {
+  background-color: #f0f0f0;
+  color: #111;
+}
+
+.fab:disabled {
+  background-color: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.fab[data-tooltip] {
+  position: relative;
+}
+
+.fab[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 110%;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(50, 50, 50, 0.95);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.fab[data-tooltip]:hover::after {
+  opacity: 1;
 }
 </style>
