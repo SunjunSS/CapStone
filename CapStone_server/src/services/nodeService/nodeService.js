@@ -308,7 +308,9 @@ exports.getSuggestedChildNodes = async (project_id, key) => {
     console.log("📝 프로젝트의 모든 노드 이름:", relatedNodes);
 
     const project = await projectRepository.getProjectById(project_id);
-    const category = project?.category || "default";
+    const rawCategory = project?.category || "default";
+    // 띄어쓰기 제거 예시 (공백 제거)
+    const category = rawCategory.replace(/\s+/g, "");
 
     // OpenAI API 호출 전 로그 추가
     console.log("🚀 OpenAI API 호출 준비중...");
