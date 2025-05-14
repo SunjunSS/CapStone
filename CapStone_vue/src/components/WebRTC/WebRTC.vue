@@ -175,6 +175,7 @@ export default {
       currentUserId: null,
       peerConnections: {},
       localStream: null,
+      isCreatingOffer: false,
       remoteStreams: {},
       audioElements: {},
       roomId: "",
@@ -216,23 +217,6 @@ export default {
 
     window.addEventListener('popstate', this.handlePopState);
 
-    // ✅ headerBlob받아오기
-    try {
-
-      const headerAudio = await fetchHeaderBlob();
-      this.headerBlob = headerAudio; // 받아온 Blob 데이터를 headerBlob에 저장
-      
-      console.log("✅ 헤더오디오 저장완료!");
-
-    
-    } catch (error) {
-
-      console.error("헤더 오디오 로드 실패:", error);
-
-    }
-    
-    // // 윈도우, 브라우저 닫힘도 처리해줌
-    // window.addEventListener("beforeunload", leaveRoom());
 
   },
 
@@ -415,9 +399,27 @@ export default {
       if (!this.localStream) return;
 
       this.recordedChunks = [];
+
+      try {
+        // 헤더 블롭을 한 번만 설정
+
+        if(this.headerBlob == null) {
+          const headerAudio = await fetchHeaderBlob();
+          
+          this.headerBlob = headerAudio; 
+          console.log("✅ 헤더오디오 저장완료!");
+
+          this.recordedChunks.push(this.headerBlob);
+        }
+        
+      } catch (error) {
+        console.error("헤더 오디오 로드실패:", error);
+      }
       
       
-      this.mediaRecorder = new MediaRecorder(this.localStream);
+      this.mediaRecorder = new MediaRecorder(this.localStream, {
+        mimeType: "audio/webm; codecs=opus" // 더 효율적인 코덱 사용
+      });
 
       this.mediaRecorder.ondataavailable = async (event) => {
 
@@ -443,8 +445,6 @@ export default {
           console.warn("🚫 빈 blob");
         }
 
-        
-
       };
 
       this.uploadInterval = setInterval(async () => {
@@ -463,7 +463,7 @@ export default {
 
         clearInterval(this.uploadInterval);
 
-        const blob = new Blob(this.recordedChunks, { type: "audio/mp3" });
+        const blob = new Blob(this.recordedChunks, { type: "audio/webm" });
         console.log("🎤 녹음 데이터 준비 완료, 업로드 시작...");
 
         // 서버로 audio파일을 업로드함
@@ -475,7 +475,7 @@ export default {
         }
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(1000);
       this.isRecording = true;
     },
 
@@ -667,6 +667,9 @@ export default {
         peerConnection.addTrack(track, this.localStream);
       });
 
+      //Offer 생성 상태 플래그 추가
+      this.isCreatingOffer = false;
+
       peerConnection.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           const remoteStream = event.streams[0];
@@ -693,7 +696,10 @@ export default {
 
       peerConnection.onnegotiationneeded = async () => {
         try {
-          if (isInitiator) {
+          if (peerConnection.signalingState === "stable" && isInitiator && !this.isCreatingOffer) {
+
+            this.isCreatingOffer = true;
+
             const offer = await peerConnection.createOffer({
               offerToReceiveAudio: true,
               offerToReceiveVideo: false,
@@ -703,9 +709,15 @@ export default {
               targetId: userId,
               signal: offer,
             });
+
+            
           }
         } catch (error) {
+
           console.error("Negotiation failed:", error);
+          
+        } finally {
+            this.isCreatingOffer = false;
         }
       };
 

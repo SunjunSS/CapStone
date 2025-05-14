@@ -123,7 +123,7 @@ export default async function meetingPDF2(data) {
     startY: doc.lastAutoTable.finalY + 16,
     head: [[{ content: "주요 키워드", styles: { halign: "center" } }]],
     body: minutes.keywords.map((k) => [k]),
-    headStyles: { font: "NotoSansKR", style: "bold",fillColor: "#1abd9c" },
+    headStyles: { font: "NotoSansKR", fontStyle: "bold",fillColor: "#1abd9c" },
     theme: "striped",
     styles: { font: "NotoSansKR", fontStyle: "normal", halign: "left" },
   });
