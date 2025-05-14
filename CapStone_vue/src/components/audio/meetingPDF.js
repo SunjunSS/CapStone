@@ -1,13 +1,19 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import notoKR from "./font/NotoSansKR-Regular";  
-
+import notoKR_Regular from "./font/fontJS/NotoSansKR-Regular";  
+import notoKR_Bold from "./font/fontJS/NotoSansKR-Bold";
+ 
 export default async function meetingPDF2(data) {
   // ✅ PDF 생성
   const doc = new jsPDF();
 
-  doc.addFileToVFS("NotoSansKR-Regular.ttf", notoKR);
+  doc.addFileToVFS("NotoSansKR-Regular.ttf", notoKR_Regular);
   doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
+
+
+  doc.addFileToVFS("NotoSansKR-Bold.ttf", notoKR_Bold);
+  doc.addFont("NotoSansKR-Bold.ttf", "NotoSansKR", "bold");
+  
   doc.setFont("NotoSansKR", "normal");
 
   const now = new Date();
@@ -40,13 +46,13 @@ export default async function meetingPDF2(data) {
     head: [["", "", "", ""]],
     body: tableData,
     headStyles: { fillColor: "#1abd9c" },
-    styles: { font: "NotoSansKR", fontSize: 12 },
+    styles: { font: "NotoSansKR", fontSize: 12, overflow: "linebreak" },
     theme: "grid",
     columnStyles: {
-      0: { cellWidth: 30 },
-      1: { cellWidth: 60 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 60 },
+      0: { cellWidth: "wrap" },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: "wrap" },
+      3: { cellWidth: "auto" },
     },
   });
 
@@ -62,7 +68,12 @@ export default async function meetingPDF2(data) {
       ["Time", "Content"],
     ],
     body: srtTable,
-    headStyles: { lineWidth: 0.5, lineColor: [255, 255, 255] },
+    headStyles: {
+      font: "NotoSansKR",
+      fontStyle: "bold",
+      lineWidth: 0.5,
+      lineColor: [255, 255, 255],
+    },
     styles: { font: "NotoSansKR", fontStyle: "normal", overflow: "linebreak" },
     columnStyles: {
       0: { cellWidth: 40 },
@@ -86,6 +97,7 @@ export default async function meetingPDF2(data) {
     ],
     headStyles: {
       font: "NotoSansKR",
+      fontStyle:"bold",
       fontSize: 12,
       lineWidth: 0.5,
       lineColor: [255, 255, 255],
@@ -111,7 +123,7 @@ export default async function meetingPDF2(data) {
     startY: doc.lastAutoTable.finalY + 16,
     head: [[{ content: "주요 키워드", styles: { halign: "center" } }]],
     body: minutes.keywords.map((k) => [k]),
-    headStyles: { fillColor: "#1abd9c" },
+    headStyles: { font: "NotoSansKR", fontStyle: "bold",fillColor: "#1abd9c" },
     theme: "striped",
     styles: { font: "NotoSansKR", fontStyle: "normal", halign: "left" },
   });

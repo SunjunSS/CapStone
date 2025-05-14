@@ -1,7 +1,8 @@
 --3D모드 성공/디자인 수정 필요/Three.js/2D로 다시 전환 성공/텍스트 삽입
 성공/노드 동적 길이 변경/둥근모서리/직각 간선/노드 겹치기X/3D모드 캡처/3D모드
 요소 클릭 회전/3D모드 실시간 반영(추가/삭제/편집/이동)/isSelected
-비활성화/간격설정/간선 두께 증가/줄바꿈을 통한 노드길이 증가/버튼 디자인 수정--
+비활성화/간격설정/간선 두께 증가/줄바꿈을 통한 노드길이 증가/버튼 디자인 수정
+/로그 오류 수정/검정 테두리 오류 수정--
 
 <template>
   <div class="app-container">
@@ -127,7 +128,7 @@
             @click="toggleViewMode"
             :data-tooltip="is3DMode ? '2D 모드' : '3D 모드'"
           >
-            <i :class="is3DMode ? 'fa-solid fa-sitemap' : 'fas fa-random'"></i>
+            <i :class="is3DMode ? 'fas fa-random' : 'fa-solid fa-sitemap'"></i>
           </button>
 
           <!-- 🗑️ 노드 삭제 -->
@@ -1412,7 +1413,7 @@ export default {
 
         if (event.key === "Enter") {
           event.preventDefault();
-          completeEditing();
+          activeInputField.value.blur();
           return;
         }
 
@@ -2593,6 +2594,16 @@ export default {
 
       initDiagram();
       console.log("✅ 다이어그램 초기화 함수 호출 완료");
+
+      // ✅ 다이어그램 포커스 시 테두리 제거 처리
+      document.addEventListener("focusin", (e) => {
+        const tag = e.target.tagName.toLowerCase();
+        const isTextInput = ["input", "textarea", "select"].includes(tag);
+
+        if (!isTextInput && e.target.closest(".mindmap-content")) {
+          e.target.blur(); // 자동으로 포커스 제거
+        }
+      });
 
       // 3D 모드 전환 감시 로직 개선 (기존 watch 대체)
       watch(
