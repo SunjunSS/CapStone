@@ -1,6 +1,10 @@
 const loginHandler = require("./LoginHandler.js");
 const nodeService = require("../services/nodeService/nodeService"); // ✅ nodeService 추가
 
+const deleteFiles = require("./services/audioService/deleteFiles");
+const audioFolder = path.join(__dirname, "../../storage/audio");
+const tempAudioFolder = path.join(__dirname, "../../storage/temp_audio");
+
 const rooms = {};
 const roomAudioBuffers = {};
 const recordingStatus = {};
@@ -87,6 +91,12 @@ module.exports = (io) => {
     // 녹음 시작 상태 수신
     socket.on("start-recording", (roomId) => {
       console.log(`started recording in room ${roomId}`);
+
+
+      // 폴더에 남은 mp3 삭제
+      deleteFiles(tempAudioFolder);
+      deleteFiles(audioFolder);
+
       recordingStatus[roomId] = true;
       io.to(roomId).emit("sync-recording", true);
       console.log(`📡 sync-recording 이벤트 전송 - Room ID: ${roomId}`);
