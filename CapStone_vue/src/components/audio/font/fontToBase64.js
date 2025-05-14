@@ -1,8 +1,9 @@
-// font-to-base64.js
-const fs = require("fs");
+// // font-to-base64.js
+// const fs = require("fs");
+import fs from "fs"
 
-const fontPath = "./NotoSansKR-Regular.ttf"; // TTF 경로
-const outputPath = "./NotoSansKR-Regular.js"; // 출력 파일
+const fontPath = "./NotoSansKR-Bold.ttf"; // TTF 경로
+const outputPath = "./NotoSansKR-Bold.js"; // 출력 파일
 
 const fontData = fs.readFileSync(fontPath);
 const base64 = fontData.toString("base64");
