@@ -9,7 +9,7 @@
         class="content-header slide-up-animation"
         style="animation-delay: 0.1s"
       >
-        <h2>최근 맵</h2>
+        <h2>내 지도</h2>
       </header>
 
       <section
