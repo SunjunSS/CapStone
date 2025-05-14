@@ -475,7 +475,7 @@ export default {
         }
       };
 
-      this.mediaRecorder.start(1000);
+      this.mediaRecorder.start();
       this.isRecording = true;
     },
 
@@ -715,7 +715,7 @@ export default {
         } catch (error) {
 
           console.error("Negotiation failed:", error);
-          
+
         } finally {
             this.isCreatingOffer = false;
         }
