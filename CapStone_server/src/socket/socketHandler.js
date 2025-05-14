@@ -1,9 +1,19 @@
 const loginHandler = require("./LoginHandler.js");
 const nodeService = require("../services/nodeService/nodeService"); // ✅ nodeService 추가
 
-const deleteFiles = require("./services/audioService/deleteFiles");
-const audioFolder = path.join(__dirname, "../../storage/audio");
-const tempAudioFolder = path.join(__dirname, "../../storage/temp_audio");
+const { deleteFiles } = require("../services/audioService/deleteFiles.js");
+
+const path = require("path");
+
+
+const audioFolderMeeting = (roomId) =>
+  path.join(__dirname, "../../storage/audio/meeting", roomId);
+const tempAudioFolderMeeting = (roomId) =>
+  path.join(__dirname, "../../storage/temp_audio/meeting", roomId);
+const audioFolderRealTime = (roomId) =>
+  path.join(__dirname, "../../storage/audio/realTime", roomId);
+const tempAudioFolderRealTime = (roomId) =>
+  path.join(__dirname, "../../storage/temp_audio/realTime", roomId);
 
 const rooms = {};
 const roomAudioBuffers = {};
@@ -94,8 +104,10 @@ module.exports = (io) => {
 
 
       // 폴더에 남은 mp3 삭제
-      deleteFiles(tempAudioFolder);
-      deleteFiles(audioFolder);
+      deleteFiles(tempAudioFolderMeeting(roomId));
+      deleteFiles(audioFolderMeeting(roomId));
+      deleteFiles(tempAudioFolderRealTime(roomId));
+      deleteFiles(audioFolderRealTime(roomId));
 
       recordingStatus[roomId] = true;
       io.to(roomId).emit("sync-recording", true);

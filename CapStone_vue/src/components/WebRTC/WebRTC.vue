@@ -995,6 +995,7 @@ export default {
   beforeDestroy() {
     if (this.socket) {
       this.socket.disconnect();
+      this.leaveRoom();
     }
 
     if (this.localStream) {
