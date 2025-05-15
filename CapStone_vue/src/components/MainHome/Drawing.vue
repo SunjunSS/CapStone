@@ -28,6 +28,7 @@
         accept="image/*"
         style="display: none"
         @change="handleImageUpload"
+        :disabled="isUploadingImage"
       />
       <button
         @click="setMode('select')"
@@ -64,9 +65,19 @@
       >
         원
       </button>
-      <button @click="clearCanvas" :disabled="showColorPicker">
+      <button
+        @click="deleteSelectedObjects"
+        :disabled="showColorPicker || !isObjectSelected"
+      >
+        지우기
+      </button>
+      <button
+        @click="clearCanvas"
+        :disabled="showColorPicker || !hasObjectsOnCanvas"
+      >
         모두 지우기
       </button>
+
       <select v-model="brushSize" :disabled="showColorPicker">
         <option value="1">1px</option>
         <option value="3">3px</option>
@@ -194,7 +205,7 @@ export default {
   data() {
     return {
       canvas: null,
-      mode: "pencil",
+      mode: "select",
       color: "#990000", // 초기 색상을 붉은색으로 설정
       tempColor: "#990000", // 컬러 피커에서 임시로 선택한 색상
       hexColor: "#990000", // HEX 입력용
@@ -205,6 +216,10 @@ export default {
       currentObject: null,
       showColorPicker: false,
       lastSelectedObject: null,
+      isUploadingImage: false,
+      isObjectSelected: false,
+      hasObjectsOnCanvas: false,
+
       // 기본 색상들 (이미지와 유사하게 조정)
       basicColors: [
         "#000000", // 검정
@@ -239,20 +254,41 @@ export default {
 
     // 여기에 클립보드 붙여넣기 이벤트 리스너 추가
     document.addEventListener("paste", this.handlePaste);
+
+    // ✅ 선택 상태 변경 감지
+    this.$nextTick(() => {
+      this.canvas.on("selection:created", this.updateSelectionState);
+      this.canvas.on("selection:updated", this.updateSelectionState);
+      this.canvas.on("selection:cleared", this.updateSelectionState);
+
+      // ✅ 캔버스 오브젝트 변경 감지
+      this.canvas.on("object:added", this.updateCanvasObjectState);
+      this.canvas.on("object:removed", this.updateCanvasObjectState);
+    });
   },
   beforeDestroy() {
-    // 컴포넌트 제거 시 이벤트 리스너 정리
+    // 🔹 전역 이벤트 제거
     window.removeEventListener("resize", this.resizeCanvas);
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
-
-    // 여기에 클립보드 이벤트 리스너 제거 코드 추가
     document.removeEventListener("paste", this.handlePaste);
 
     if (this.canvas) {
+      // 🔹 마우스 이벤트 제거
       this.canvas.off("mouse:down", this.onMouseDown);
       this.canvas.off("mouse:move", this.onMouseMove);
       this.canvas.off("mouse:up", this.onMouseUp);
+
+      // 🔹 선택 이벤트 제거
+      this.canvas.off("selection:created", this.updateSelectionState);
+      this.canvas.off("selection:updated", this.updateSelectionState);
+      this.canvas.off("selection:cleared", this.updateSelectionState);
+
+      // 🔹 오브젝트 상태 변화 이벤트 제거
+      this.canvas.off("object:added", this.updateCanvasObjectState);
+      this.canvas.off("object:removed", this.updateCanvasObjectState);
+
+      // 🔹 캔버스 해제
       this.canvas.dispose();
     }
   },
@@ -274,7 +310,7 @@ export default {
         const containerHeight = window.innerHeight - totalHeaderHeight;
 
         this.canvas = new fabric.Canvas(this.$refs.canvas, {
-          isDrawingMode: true,
+          isDrawingMode: false, // true에서 false로 변경 (선택 모드 활성화)
           backgroundColor: "#ffffff",
           width: containerWidth,
           height: containerHeight,
@@ -302,6 +338,9 @@ export default {
         this.canvas.on("mouse:down", this.onMouseDown);
         this.canvas.on("mouse:move", this.onMouseMove);
         this.canvas.on("mouse:up", this.onMouseUp);
+
+        // 선택 모드 초기화 설정 추가
+        this.setMode("select");
 
         console.log("Canvas initialization complete");
       } catch (error) {
@@ -623,32 +662,156 @@ export default {
         this.canvas.clear();
         this.canvas.backgroundColor = "#ffffff";
         this.canvas.renderAll();
+        this.updateCanvasObjectState(); // ✅ 수동으로 상태 갱신
       }
+    },
+
+    deleteSelectedObjects() {
+      if (!this.canvas || this.showColorPicker) return;
+
+      const activeObjects = this.canvas.getActiveObjects();
+      if (!activeObjects || activeObjects.length === 0) return;
+
+      // Delete 키 처리와 동일한 로직 사용
+      // 삭제 전 객체 정보 저장
+      const objectsToDelete = activeObjects.map((obj) => ({
+        type: obj.type,
+        isImage: obj.type === "image" || obj.isImage,
+        isCurrentObject: obj === this.currentObject,
+        isLastSelected: obj === this.lastSelectedObject,
+      }));
+
+      // 이미지 객체가 포함되어 있는지 확인
+      const containsImage = objectsToDelete.some((obj) => obj.isImage);
+
+      // 삭제 전 남은 객체 배열 저장
+      const allObjects = [...this.canvas.getObjects()];
+
+      // 현재 선택된 객체들의 인덱스 찾기
+      const selectedObjectIndices = activeObjects.map((activeObj) =>
+        allObjects.findIndex((obj) => obj === activeObj)
+      );
+
+      // 최소 인덱스 찾기 (여러 객체 중 가장 먼저 추가된 객체의 위치)
+      const minSelectedIndex = Math.min(...selectedObjectIndices);
+
+      // 선택된 각 객체 제거
+      activeObjects.forEach((obj) => {
+        this.canvas.remove(obj);
+      });
+
+      // 선택 그룹 초기화
+      this.canvas.discardActiveObject();
+      this.canvas.renderAll();
+
+      // 객체가 삭제된 후 남은 객체들 확인
+      const remainingObjects = this.canvas.getObjects();
+
+      // 객체가 남아있고 이미지 객체가 포함되어 있었다면 추가 삭제 시도
+      if (remainingObjects.length > 0 && containsImage) {
+        // 다음 객체 선택 (가능하면 같은 위치의 객체, 없으면 마지막 객체)
+        let nextObjectIndex = minSelectedIndex;
+
+        // 같은 인덱스에 객체가 없으면 인덱스 조정
+        if (nextObjectIndex >= remainingObjects.length) {
+          nextObjectIndex = remainingObjects.length - 1;
+        }
+
+        // 다음 삭제할 객체
+        const nextObjects = [];
+
+        // 다중 선택 삭제 후 동일한 수의 객체를 삭제하려고 시도
+        // 단, 남은 객체 수를 초과하지 않도록 함
+        const objectsToSelectCount = Math.min(
+          objectsToDelete.length,
+          remainingObjects.length
+        );
+
+        for (let i = 0; i < objectsToSelectCount; i++) {
+          let indexToSelect = nextObjectIndex + i;
+
+          // 인덱스가 범위를 벗어나면 처음부터 다시 시작
+          if (indexToSelect >= remainingObjects.length) {
+            indexToSelect = indexToSelect - remainingObjects.length;
+          }
+
+          nextObjects.push(remainingObjects[indexToSelect]);
+        }
+
+        if (nextObjects.length > 0) {
+          // 단일 객체 선택
+          if (nextObjects.length === 1) {
+            this.canvas.setActiveObject(nextObjects[0]);
+          } else {
+            // 다중 객체 선택
+            const activeSelection = new fabric.ActiveSelection(nextObjects, {
+              canvas: this.canvas,
+            });
+            this.canvas.setActiveObject(activeSelection);
+          }
+
+          this.canvas.renderAll();
+
+          // 선택된 객체들 즉시 삭제
+          nextObjects.forEach((obj) => {
+            this.canvas.remove(obj);
+          });
+
+          this.canvas.discardActiveObject();
+          this.canvas.renderAll();
+        }
+      }
+
+      this.isObjectSelected = false;
+      this.updateCanvasObjectState();
+    },
+
+    updateCanvasObjectState() {
+      this.hasObjectsOnCanvas =
+        this.canvas && this.canvas.getObjects().length > 0;
+    },
+
+    updateSelectionState() {
+      const active = this.canvas.getActiveObjects();
+      this.isObjectSelected = active && active.length > 0;
     },
 
     downloadCanvas() {
       if (!this.canvas) return;
 
-      this.mode = "download"; // 🔹 모드 변경으로 active 효과 유도
+      // 🔹 1. 먼저 다운로드 모드로 설정하여 버튼에 active 클래스 적용
+      this.setMode("download");
 
-      const dataURL = this.canvas.toDataURL({
-        format: "png",
-        multiplier: 1,
-        enableRetinaScaling: false,
-        quality: 1,
-        backgroundColor: "#ffffff",
+      // 🔹 2. 브라우저가 버튼 스타일 렌더링할 수 있도록 타이밍 확보
+      requestAnimationFrame(() => {
+        // 🔹 3. 다시 한 번 requestAnimationFrame으로 다음 프레임까지 기다림
+        requestAnimationFrame(() => {
+          const dataURL = this.canvas.toDataURL({
+            format: "png",
+            multiplier: 1,
+            enableRetinaScaling: false,
+            quality: 1,
+            backgroundColor: "#ffffff",
+          });
+
+          const link = document.createElement("a");
+          const now = new Date();
+          const formatted = `${now.getFullYear()}.${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}-canvas`;
+
+          link.href = dataURL;
+          link.download = `${formatted}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // 🔹 4. 다운로드가 끝났다고 가정하고 약간의 지연 후 select 모드로 복귀
+          setTimeout(() => {
+            this.setMode("select");
+          }, 200); // 100~200ms 사이로 적절히 조정 가능
+        });
       });
-
-      const link = document.createElement("a");
-      const now = new Date();
-      const formatted = `${now.getFullYear()}.${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}-canvas`;
-      link.href = dataURL;
-      link.download = `${formatted}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     },
 
     onMouseDown(o) {
@@ -963,7 +1126,9 @@ export default {
 
     handleImageUpload(e) {
       const file = e.target.files[0];
-      if (!file) return;
+      if (!file || this.isUploadingImage) return; // 🔒 업로드 중이면 무시
+
+      this.isUploadingImage = true; // 🔒 업로드 중 상태로 설정
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -971,71 +1136,76 @@ export default {
         imgObj.src = event.target.result;
 
         imgObj.onload = () => {
-          this.setMode("select"); // 선택 모드로 전환
+          // 렌더링 안정화를 위해 약간의 딜레이를 줌
+          setTimeout(() => {
+            this.setMode("select"); // 선택 모드로 전환
 
-          const margin = 30; // px 단위 여백
-          const maxWidth = this.canvas.getWidth();
-          const maxHeight = this.canvas.getHeight();
+            const margin = 30;
+            const maxWidth = this.canvas.getWidth();
+            const maxHeight = this.canvas.getHeight();
+            const availableWidth = maxWidth - 2 * margin;
+            const availableHeight = maxHeight - 2 * margin;
 
-          const availableWidth = maxWidth - 2 * margin;
-          const availableHeight = maxHeight - 2 * margin;
+            const imgWidth = imgObj.width;
+            const imgHeight = imgObj.height;
 
-          const imgWidth = imgObj.width;
-          const imgHeight = imgObj.height;
+            const scaleX = availableWidth / imgWidth;
+            const scaleY = availableHeight / imgHeight;
+            const scale = Math.min(scaleX, scaleY, 1); // 확대 방지
 
-          const scaleX = availableWidth / imgWidth;
-          const scaleY = availableHeight / imgHeight;
-          const scale = Math.min(scaleX, scaleY, 1); // 무조건 축소. 확대는 방지
+            const image = new fabric.Image(imgObj, {
+              left: (maxWidth - imgWidth * scale) / 2,
+              top: (maxHeight - imgHeight * scale) / 2,
+              scaleX: scale,
+              scaleY: scale,
+              selectable: true,
+              evented: true,
+              hasBorders: true,
+              hasControls: true,
+              lockScalingX: false,
+              lockScalingY: false,
+              lockRotation: false,
+            });
 
-          const image = new fabric.Image(imgObj, {
-            left: (maxWidth - imgWidth * scale) / 2,
-            top: (maxHeight - imgHeight * scale) / 2,
-            scaleX: scale,
-            scaleY: scale,
-            selectable: true,
-            evented: true,
-            hasBorders: true,
-            hasControls: true,
-            lockScalingX: false,
-            lockScalingY: false,
-            lockRotation: false,
-          });
+            this.canvas.add(image);
+            this.canvas.setActiveObject(image);
+            this.currentObject = image;
+            this.canvas.requestRenderAll();
 
-          this.canvas.add(image);
-          this.canvas.setActiveObject(image);
-          this.currentObject = image;
-          this.canvas.requestRenderAll();
+            // 마우스 클릭 이벤트 시뮬레이션
+            const canvasEl = this.canvas.upperCanvasEl;
+            const clientX = image.left + 10;
+            const clientY = image.top + 10;
 
-          // 마우스 이벤트 시뮬레이션
-          const canvasEl = this.canvas.upperCanvasEl;
-          const clientX = image.left + 10;
-          const clientY = image.top + 10;
+            canvasEl.dispatchEvent(
+              new MouseEvent("mousedown", {
+                bubbles: true,
+                cancelable: true,
+                clientX,
+                clientY,
+              })
+            );
+            canvasEl.dispatchEvent(
+              new MouseEvent("mouseup", {
+                bubbles: true,
+                cancelable: true,
+                clientX,
+                clientY,
+              })
+            );
 
-          canvasEl.dispatchEvent(
-            new MouseEvent("mousedown", {
-              bubbles: true,
-              cancelable: true,
-              clientX,
-              clientY,
-            })
-          );
-          canvasEl.dispatchEvent(
-            new MouseEvent("mouseup", {
-              bubbles: true,
-              cancelable: true,
-              clientX,
-              clientY,
-            })
-          );
+            console.log(
+              "Image added with scale and margin-centered position, click simulated:",
+              image
+            );
 
-          console.log(
-            "Image added with scale and margin-centered position, click simulated:",
-            image
-          );
+            this.isUploadingImage = false; // 🔓 업로드 완료 후 입력 허용
+          }, 500); // 💡 렌더링 안정화를 위한 100ms 지연
         };
       };
+
       reader.readAsDataURL(file);
-      e.target.value = ""; // 파일 선택 초기화
+      e.target.value = ""; // input 초기화 (같은 파일 다시 선택 가능)
     },
 
     handlePaste(e) {
