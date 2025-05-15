@@ -21,6 +21,7 @@
       <mouseTracking
         :roomId="roomId"
         :userId="userId"
+        :is3DMode="is3DMode"
         class="mouse-tracking-layer"
       />
 
@@ -2748,7 +2749,7 @@ export default {
     });
 
     onBeforeUnmount(() => {
-      unregisterSocketHandlers();
+      unregisterSocketHandlers(roomId, userId);
 
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("node-deleted", () => {});
