@@ -21,6 +21,7 @@
       <mouseTracking
         :roomId="roomId"
         :userId="userId"
+        :is3DMode="is3DMode"
         class="mouse-tracking-layer"
       />
 

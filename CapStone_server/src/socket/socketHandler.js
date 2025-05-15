@@ -7,6 +7,7 @@ const recordingStatus = {};
 const socketSessions = require("./socketSessions");
 const roomNodes = {}; // 노드 저장 객체 추가 (누락되어 있었음)
 const roomNicknames = {}; // 방별 닉네임 정보 저장 객체 추가
+const userModes = {};
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -265,6 +266,15 @@ module.exports = (io) => {
           // 닉네임 정보 업데이트 브로드캐스트
           io.to(roomId).emit("sync-nicknames", roomNicknames[roomId]);
 
+          // 사용자의 모드 정보 정리
+          if (userModes[roomId] && userModes[roomId][userId]) {
+            delete userModes[roomId][userId];
+
+            // 방이 비었으면 모드 정보도 정리
+            if (Object.keys(userModes[roomId]).length === 0) {
+              delete userModes[roomId];
+            }
+          }
           // 방이 비었으면 삭제
           if (Object.keys(rooms[roomId]).length === 0) {
             delete rooms[roomId];
@@ -274,6 +284,44 @@ module.exports = (io) => {
           }
         }
       }
+    });
+    // 3D 모드 변경 이벤트 처리
+    socket.on("mode-change", ({ roomId, userId, is3DMode }) => {
+      console.log(
+        `🔄 모드 변경: ${userId}의 3D 모드가 ${
+          is3DMode ? "활성화" : "비활성화"
+        }됨`
+      );
+
+      // 사용자의 모드 상태 저장
+      if (!userModes[roomId]) userModes[roomId] = {};
+      userModes[roomId][userId] = is3DMode;
+
+      // 다른 사용자들에게 모드 변경 알림
+      socket.to(roomId).emit("user-mode-changed", { userId, is3DMode });
+
+      // 3D 모드로 전환 시 커서 자동 숨김 (이중 처리를 위해)
+      if (is3DMode) {
+        socket.to(roomId).emit("hide-user-cursor", userId);
+      }
+    });
+
+    // 커서 숨김 이벤트 처리
+    socket.on("hide-cursor", ({ roomId, userId }) => {
+      console.log(`👆 커서 숨김: ${userId}의 커서가 숨겨짐`);
+
+      // 해당 방의 다른 사용자들에게 이 사용자의 커서를 숨기라고 알림
+      socket.to(roomId).emit("hide-user-cursor", userId);
+    });
+
+    // 마우스 트래킹 나가기 이벤트 처리
+    socket.on("leave-mouse-tracking", ({ roomId, userId }) => {
+      console.log(
+        `🖱️ 마우스 트래킹 나가기: ${userId}가 ${roomId} 방의 마우스 트래킹을 나감`
+      );
+
+      // 같은 방의 다른 사용자들에게 커서 숨김 알림
+      socket.to(roomId).emit("hide-user-cursor", userId);
     });
   });
 };
