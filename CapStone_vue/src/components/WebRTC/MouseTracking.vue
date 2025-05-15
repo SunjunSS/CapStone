@@ -49,29 +49,58 @@ export default {
         y: mindmapBounds.top + relativeY * mindmapBounds.height,
       };
     },
+
+    handleMouseMove(event) {
+      const relativePosition = this.getRelativePosition(event);
+      if (!this.roomId) return;
+
+      socket.emit("mouse-move", {
+        roomId: this.roomId,
+        userId: this.userId,
+        x: relativePosition.x,
+        y: relativePosition.y,
+      });
+    },
+  },
+  beforeUnmount() {
+    // Clean up all event listeners
+    socket.off("update-mindmap-bounds");
+    socket.off("update-mouse");
+    socket.off("user-disconnected");
+
+    // Remove the mousemove event listener
+    window.removeEventListener("mousemove", this.handleMouseMove);
+
+    this.cursors = {}; // 다른 사용자들의 마우스 위치 저장
+    this.mindmapBounds = { left: 0, top: 0, width: 1, height: 1 };
+  },
+  created() {
+    // Define handleMouseMove as a method property so we can remove it later
+    this.handleMouseMove = (event) => {
+      const relativePosition = this.getRelativePosition(event);
+      if (!this.roomId) return;
+
+      socket.emit("mouse-move", {
+        roomId: this.roomId,
+        userId: this.userId,
+        x: relativePosition.x,
+        y: relativePosition.y,
+      });
+    };
   },
   mounted() {
     socket.on("update-mindmap-bounds", (bounds) => {
       this.mindmapBounds = bounds;
     });
 
-    // ✅ 마우스 이동 이벤트 감지 후 서버로 전송
-    window.addEventListener("mousemove", (event) => {
-      const relativePosition = this.getRelativePosition(event);
-      if (!this.roomId) return; // ✅ roomId가 없을 경우 방어 코드 추가
-
-      socket.emit("mouse-move", {
-        roomId: this.roomId, // ✅ 같은 방 ID 사용
-        userId: this.userId, // ✅ 같은 userId 유지
-        x: relativePosition.x,
-        y: relativePosition.y,
-      });
-    });
+    // 메서드 참조로 이벤트 리스너 등록
+    window.addEventListener("mousemove", this.handleMouseMove);
 
     // ✅ 다른 사용자들의 마우스 위치 업데이트
     socket.on("update-mouse", ({ userId, x, y }) => {
       const absolutePosition = this.getAbsolutePosition(x, y);
       this.cursors[userId] = { x: absolutePosition.x, y: absolutePosition.y };
+      console.log("11111111111111111111");
     });
 
     // ✅ 사용자 퇴장 시 마우스 표시 제거

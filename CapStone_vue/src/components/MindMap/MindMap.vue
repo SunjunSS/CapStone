@@ -2748,7 +2748,7 @@ export default {
     });
 
     onBeforeUnmount(() => {
-      unregisterSocketHandlers();
+      unregisterSocketHandlers(roomId, userId);
 
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("node-deleted", () => {});
