@@ -100,7 +100,6 @@ export default {
     socket.on("update-mouse", ({ userId, x, y }) => {
       const absolutePosition = this.getAbsolutePosition(x, y);
       this.cursors[userId] = { x: absolutePosition.x, y: absolutePosition.y };
-      console.log("11111111111111111111");
     });
 
     // ✅ 사용자 퇴장 시 마우스 표시 제거
