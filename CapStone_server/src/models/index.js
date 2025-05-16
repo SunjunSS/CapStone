@@ -42,28 +42,27 @@ const Project = require("./projects");
 const Node = require("./nodes");
 const ProjectMembers = require("./projectMembers");
 const ProjectMeeting = require("./projectMeeting");
+const BestIdea = require("./bestidea")
 
 // ✅ User와 projectmembers 관계 (1:N)
 User.hasMany(ProjectMembers, { foreignKey: "user_id", onDelete: "CASCADE" });
 ProjectMembers.belongsTo(User, { foreignKey: "user_id" });
 
 // ✅ Project와 projectmembers 관계 (1:N)
-Project.hasMany(ProjectMembers, {
-  foreignKey: "project_id",
-  onDelete: "CASCADE",
-});
+Project.hasMany(ProjectMembers, { foreignKey: "project_id", onDelete: "CASCADE" });
 ProjectMembers.belongsTo(Project, { foreignKey: "project_id" });
 
 // ✅ Project와 Node 관계
 Project.hasMany(Node, { foreignKey: "project_id", onDelete: "CASCADE" });
 Node.belongsTo(Project, { foreignKey: "project_id" });
 
-//Project와 project_Meeting 관계
-Project.hasMany(ProjectMeeting, {
-  foreignKey: "project_id",
-  onDelete: "CASCADE",
-});
+//✅Project와 project_Meeting 관계
+Project.hasMany(ProjectMeeting, { foreignKey: "project_id",onDelete: "CASCADE" });
 ProjectMeeting.belongsTo(Project, { foreignKey: "project_id" });
+
+// ✅ Project와 BestIdea 관계 (1:N)
+Project.hasMany(BestIdea, { foreignKey: "project_id", onDelete: "CASCADE" });
+BestIdea.belongsTo(Project,{ foreignKey: "project_id" })
 
 // ✅ 데이터베이스 동기화 함수
 const initDB = async () => {
@@ -90,5 +89,6 @@ module.exports = {
   Node,
   ProjectMembers,
   ProjectMeeting,
+  BestIdea,
   initDB,
 };

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Sequelize } = require("sequelize");
 const sequelize = require('../config/localDB');
 
 const ProjectMeeting = sequelize.define(
