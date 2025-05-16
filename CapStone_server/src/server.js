@@ -41,6 +41,10 @@ app.use("/api/audio", audioRoutes); // ✅ io를 전달한 라우터 사용
 // ✅ WebSocket 연결 관리
 require("./socket/socketHandler")(io);
 
+// ✅ bestIdea 라우터 설정
+const bestIdeaRoutes = require("./routes/bestIdeaRoutes");
+app.use("/api/best-ideas", bestIdeaRoutes);
+
 // // 초대 라우트 등록
 // const inviteRoutes = require("./routes/inviteRoutes");
 // app.use("/api/invite", inviteRoutes);
@@ -51,14 +55,11 @@ require("./socket/socketHandler")(io);
 const mailRoutes = require("./routes/mailRoutes");
 app.use("/api/mail", mailRoutes);
 
-
 // ✅ 정적 파일 전송 관리
 app.use(
   "/static/audio",
   express.static(path.join(__dirname, "../storage/audio"))
 );
-
-
 
 // ✅ 서버 시작 전에 데이터베이스 동기화 수행
 initDB();
