@@ -66,6 +66,39 @@ export default function meetingContent(content) {
 
         <h4>요약</h4>
         <p>${minutes.summary || "요약 없음"}</p><br>
+        <br>
+
+        <h4>키워드</h4>
+        <ul>
+          ${
+            Array.isArray(minutes.keywords)
+              ? minutes.keywords
+                  .map(
+                    (keyword) =>
+                      `<li style="margin-left: 20px;">${keyword}</li>`
+                  )
+                  .join("")
+              : "<li>키워드 없음</li>"
+          }
+        </ul>
+        <br>
+
+        <h4>추천노드</h4>
+        <ul>
+          ${
+            Array.isArray(minutes.recommendNodes)
+              ? minutes.recommendNodes
+                  .map(
+                    (node) =>
+                      `<li style="margin-left: 20px;">"추천 노드: "${node.content} </li>`
+                      
+                  )
+                  .join("")
+              : "<li>추천 노드 없음</li>"
+          }
+        </ul>
+        <br>
+
 
       `;
     } else {

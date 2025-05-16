@@ -54,7 +54,7 @@ async function askOpenAI(
         "next_steps": ["다음 할 일1", "다음 할 일2"],
         "summary": "요약 내용",
         "keywords": ["키워드 1", "키워드 2"],
-        "recommendNodes": [{project_id: ,parent_key: , content: "키워드 1"}
+        "recommendNodes": [{project_id: ,parent_key: , content: "키워드 1"}]
       }
     }
 
@@ -113,6 +113,8 @@ async function askOpenAI(
         - **두 키워드는 서로 중복되지 않아야 하며, 서로 다른 고유한 개념이어야 합니다.**
         - **기존에 이미 노드에 있는 키워드와 동일한 키워드를 추출하지 마세요.**
         - **추가 설명이나 이유는 작성하지 말고**, 위 JSON 배열만 정확히 반환하세요.
+        - 요약은 간결하게 100단어 이내로 작성해주세요.
+        
 
         ### 🔍 **입력 데이터**
         #### **대화 내용**
