@@ -53,7 +53,7 @@ module.exports = (io) => {
       if (nickname) {
         roomNicknames[roomId][userId] = nickname;
         console.log(`📝 닉네임 등록: ${userId} => ${nickname}`);
-      }
+      } 
 
       // 방에 있는 참가자들의 오디오 데이터 저장
       if (!roomAudioBuffers[roomId]) {

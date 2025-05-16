@@ -10,7 +10,17 @@ const cors = require("cors");
 const { initDB } = require("./models");
 
 const app = express();
-const server = http.createServer(app);
+// const server = http.createServer(app);
+const server = require("http").createServer(
+  {
+    maxConnections: 1000,
+    headersTimeout: 60000,
+    keepAliveTimeout: 60000,
+  },
+  app
+);
+
+
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -20,7 +30,8 @@ const io = new Server(server, {
 
 // ✅ 미들웨어 설정
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // ✅  Register 라우트 설정
 const userRoutes = require("./routes/userRoutes");

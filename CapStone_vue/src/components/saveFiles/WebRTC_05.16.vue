@@ -176,7 +176,7 @@ export default {
       peerConnections: {},
       localStream: null,
       isPoliteMap: [],
-      isCreatingOfferMap: {},
+      isCreatingOffer: false,
       remoteStreams: {},
       audioElements: {},
       roomId: "",
@@ -410,7 +410,7 @@ export default {
           this.headerBlob = headerAudio; 
           console.log("✅ 헤더오디오 저장완료!");
 
-          // this.recordedChunks.push(this.headerBlob);
+          this.recordedChunks.push(this.headerBlob);
         }
         
       } catch (error) {
@@ -419,24 +419,23 @@ export default {
       
       
       this.mediaRecorder = new MediaRecorder(this.localStream, {
-        mimeType: "audio/webm; codecs=opus;",
-        bitrateMode: "variable",
-        audioBitsPerSecond: 64000
+        mimeType: "audio/webm; codecs=opus" // 더 효율적인 코덱 사용
       });
 
       this.mediaRecorder.ondataavailable = async (event) => {
 
 
+
         const blob = new Blob([this.headerBlob, event.data], {
-          type: "audio/webm" // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
+          type: "audio/mp3" // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
         });
 
-        console.log(`🔄 ondataavailable: ${blob.size}bytes`);
+        console.log("🔄 ondataavailable:", blob.size);
 
         this.recordedChunks.push(event.data);
 
 
-        if (blob.size > 0 && this.mediaRecorder.state === "recording") {
+        if (blob.size > 0) {
           try {
             await uploadAudio(blob, this.roomId, this.userNickname, "realTime");
             console.log("✅ 업로드 성공");
@@ -455,7 +454,6 @@ export default {
         }
       }, 20000);
 
-
       
 
       this.mediaRecorder.onstop = async () => {
@@ -471,7 +469,6 @@ export default {
 
         // 서버로 audio파일을 업로드함
         try {
-          console.log(`🔄 ondataavailable: ${blob.size}bytes`);
           await uploadAudio(blob, this.roomId, this.userNickname, "meeting");
           console.log("✅ 업로드 성공!");
         } catch (error) {
@@ -606,8 +603,6 @@ export default {
               this.participantNicknames = nicknames;
             }
 
-            this.isPoliteMap[this.currentUserId] = false;
-
             for (const userId of participants) {
               if (userId !== this.currentUserId) {
                 console.log(`협상요청 ${this.participantNicknames[userId]}님에게 진행`)
@@ -629,10 +624,10 @@ export default {
             }
 
             // 새 참가자에게는 협상요청을 안함, 새 참가자가 기존 참가자들에게 해야함.
-            if (participantId !== this.currentUserId) {
-              this.isPoliteMap[participantId] = true;
-              //await this.createPeerConnection(participantId, false);
-            }
+            // if (participantId !== this.currentUserId) {
+
+            //   await this.createPeerConnection(participantId, false);
+            // }
           }
         );
 
@@ -652,9 +647,9 @@ export default {
         await this.handlePeerConnectionFailure(userId);
       }
 
-      // 새로운 유저라면 isInitiator = true이다. 
-      // 새 유저가 아니면 imPolite로 설정(false)
-      this.isPoliteMap[userId] = isInitiator;
+      // 공손한 유저인지 설정해줌(새로운 유저라면 impolite 유저) 
+      const isNewUser = !this.peerConnections[userId];
+      this.isPoliteMap[userId] = !isNewUser;
 
 
       const configuration = {
@@ -683,10 +678,8 @@ export default {
         peerConnection.addTrack(track, this.localStream);
       });
 
-      // creatingOfferMap 객체를 통해서 각 peerConnction에 대한 상태 관리
-      if (!this.isCreatingOfferMap) this.isCreatingOfferMap = {};
-      this.isCreatingOfferMap[userId] = false;
-
+      //Offer 생성 상태 플래그 추가
+      this.isCreatingOffer = false;
 
       peerConnection.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
@@ -714,16 +707,19 @@ export default {
 
       peerConnection.onnegotiationneeded = async () => {
         try {
-          if (this.isPoliteMap[userId] && peerConnection.signalingState === "stable" && !this.isCreatingOfferMap[userId]) {
+          if (this.isPoliteMap[userId] || peerConnection.signalingState !== "stable" || this.isCreatingOffer) {
+            console.warn("🚫 Negotiation skipped: Not in stable state or already creating an offer.");
+            return;
+          }
 
-            console.log(`🌟 ${this.participantNicknames[userId]} is polite: Creating an offer.`);
-            this.isCreatingOfferMap[userId] = true;
+            console.log(`🌟 ${this.participantNicknames[userId]} is Impolite: Creating an offer.`);
+            this.isCreatingOffer = true;
 
             const offer = await peerConnection.createOffer({
               offerToReceiveAudio: true,
               offerToReceiveVideo: false,
             });
-
+            
             await peerConnection.setLocalDescription(offer);
 
             this.socket.emit("signal", {
@@ -732,14 +728,14 @@ export default {
             });
 
             console.log("✅ Offer created and sent successfully.");
-            } else {
-              console.warn("🚫 Negotiation skipped: Not in stable state or polite.");
-            }
-          } catch (error) {
-            console.error("Negotiation failed:", error);
-          } finally {
-            this.isCreatingOfferMap[userId] = false;
-          }
+          
+        } catch (error) {
+
+          console.error("Negotiation failed:", error);
+
+        } finally {
+            this.isCreatingOffer = false;
+        }
       };
 
       peerConnection.onconnectionstatechange = () => {
@@ -768,24 +764,24 @@ export default {
         }
       };
 
-      // if (isInitiator) {
-      //   try {
-      //     if (peerConnection.signalingState === "stable") {
-      //         const offer = await peerConnection.createOffer({
-      //           offerToReceiveAudio: true,
-      //           offerToReceiveVideo: false,
-      //         });
-      //       await peerConnection.setLocalDescription(offer);
-      //       this.socket.emit("signal", {
-      //         targetId: userId,
-      //         signal: offer,
-      //       });
-      //     }
-      //   } catch (error) {
-      //     console.error("Error creating offer:", error);
-      //     this.handlePeerConnectionFailure(userId);
-      //   }
-      // }
+      if (isInitiator) {
+        try {
+          if (peerConnection.signalingState === "stable") {
+              const offer = await peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: false,
+              });
+            await peerConnection.setLocalDescription(offer);
+            this.socket.emit("signal", {
+              targetId: userId,
+              signal: offer,
+            });
+          }
+        } catch (error) {
+          console.error("Error creating offer:", error);
+          this.handlePeerConnectionFailure(userId);
+        }
+      }
 
       return peerConnection;
     },
@@ -837,9 +833,6 @@ export default {
     },
 
     handlePeerConnectionFailure(userId) {
-
-      console.warn(`🚫 Cleaning up failed connection with ${userId}`);
-
       if (this.peerConnections[userId]) {
         this.peerConnections[userId].close();
         delete this.peerConnections[userId];
@@ -853,9 +846,6 @@ export default {
         this.audioElements[userId].srcObject = null;
         delete this.audioElements[userId];
       }
-
-    
-      console.log(`🔄 Connection with ${userId} has been cleaned up.`);
     },
 
     handleUserDisconnected(userId) {
