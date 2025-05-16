@@ -113,6 +113,16 @@
             <i class="fa-solid fa-robot"></i>
           </button>
 
+          <!-- 주제 추천 버튼 추가 -->
+          <button
+            class="fab"
+            @click="openTopicSuggestionModal"
+            :disabled="isViewer"
+            data-tooltip="주제 추천"
+          >
+            <i class="fa-solid fa-lightbulb"></i>
+          </button>
+
           <!-- 팀원 초대 -->
           <button
             class="fab"
@@ -129,7 +139,11 @@
             @click="toggleViewMode"
             :data-tooltip="is3DMode ? '2D 모드' : '3D 모드'"
           >
-            <i :class="is3DMode ? 'fas fa-random' : 'fa-solid fa-sitemap'"></i>
+            <i
+              :class="
+                is3DMode ? 'fa-solid fa-diagram-project' : 'fa-solid fa-sitemap'
+              "
+            ></i>
           </button>
 
           <!-- 🗑️ 노드 삭제 -->
@@ -210,6 +224,30 @@
         <div class="modal-buttons">
           <button @click="sendInvite" class="confirm-btn">초대</button>
           <button @click="closeInviteModal" class="cancel-btn">취소</button>
+        </div>
+      </div>
+    </div>
+  </teleport>
+
+  <teleport to="body">
+    <div
+      v-if="isTopicSuggestionModalOpen"
+      class="modal-overlay"
+      @click="closeTopicSuggestionModal"
+    >
+      <div class="modal-content topic-suggestion-modal" @click.stop>
+        <h2>AI 주제 추천</h2>
+        <div class="topic-suggestion-list">
+          <ol>
+            <li v-for="(topic, index) in suggestedTopics" :key="index">
+              <span class="topic-text">{{ topic }}</span>
+            </li>
+          </ol>
+        </div>
+        <div class="modal-buttons">
+          <button @click="closeTopicSuggestionModal" class="cancel-btn">
+            닫기
+          </button>
         </div>
       </div>
     </div>
@@ -333,6 +371,41 @@ export default {
     const inviteEmail = ref("");
     const selectedRole = ref("viewer");
     const rootNodeName = ref("마인드맵"); // 루트 노드 이름 저장
+
+    // 주제 추천 모달 관련 상태 변수
+    const isTopicSuggestionModalOpen = ref(false);
+    const suggestedTopics = ref([
+      "디지털 트랜스포메이션과 기업의 미래",
+      "인공지능이 바꿀 미래 산업 구조",
+      "지속가능한 비즈니스 모델 구축 전략",
+      "메타버스 플랫폼의 진화와 비즈니스 기회",
+      "데이터 기반 의사결정 프로세스 개선 방안",
+      "원격 근무 환경에서의 팀 협업 강화 전략",
+      "고객 경험(CX) 혁신을 위한 디지털 전략",
+      "블록체인 기술의 산업별 적용 사례 연구",
+      "디지털 마케팅 트렌드와 효과적인 채널 전략",
+      "사이버 보안 위협과 기업의 대응 전략",
+      "클라우드 컴퓨팅 도입을 통한 IT 인프라 최적화",
+      "빅데이터 분석을 통한 비즈니스 인사이트 도출",
+      "자동화와 로봇 공학이 제조업에 미치는 영향",
+      "사물인터넷(IoT)의 산업 적용 사례와 가치 창출",
+      "스마트 시티 개발과 도시 문제 해결 방안",
+      "디지털 헬스케어 트렌드와 의료 산업 혁신",
+      "가상현실(VR)과 증강현실(AR)의 교육적 활용",
+      "친환경 에너지 기술 개발과 미래 전망",
+      "AI 윤리와 책임 있는 기술 개발 원칙",
+      "디지털 시대의 리더십과 조직 문화 변화",
+    ]);
+
+    // 주제 추천 모달 열기
+    const openTopicSuggestionModal = () => {
+      isTopicSuggestionModalOpen.value = true;
+    };
+
+    // 주제 추천 모달 닫기
+    const closeTopicSuggestionModal = () => {
+      isTopicSuggestionModalOpen.value = false;
+    };
 
     // 1. Three.js 디버그 로깅 강화
     const initThree = () => {
@@ -2844,6 +2917,11 @@ export default {
 
       is3DMode,
       toggleViewMode,
+
+      isTopicSuggestionModalOpen,
+      suggestedTopics,
+      openTopicSuggestionModal,
+      closeTopicSuggestionModal,
     };
   },
 };
@@ -3372,5 +3450,157 @@ button:disabled {
 
 .fab[data-tooltip]:hover::after {
   opacity: 1;
+}
+
+/* 주제 추천 모달 스타일 업데이트 */
+.topic-suggestion-modal {
+  width: 550px;
+  max-width: 90vw;
+  border-radius: 16px;
+  padding: 32px;
+  background: linear-gradient(to bottom, #ffffff, #f8f9ff);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: modalFadeIn 0.4s ease-out;
+}
+
+.topic-suggestion-modal h2 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 24px;
+  font-weight: 700;
+  text-align: center;
+  position: relative;
+}
+
+.topic-suggestion-modal h2:after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 3px;
+}
+
+.topic-suggestion-list {
+  max-height: 430px;
+  overflow-y: auto;
+  margin: 28px 0;
+  background-color: #ffffff;
+  padding: 20px 20px 20px 25px;
+  border-radius: 12px;
+  text-align: left;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+  scrollbar-width: thin;
+  scrollbar-color: #c4c9d4 #f1f2f6;
+}
+
+.topic-suggestion-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.topic-suggestion-list::-webkit-scrollbar-track {
+  background: #f1f2f6;
+  border-radius: 4px;
+}
+
+.topic-suggestion-list::-webkit-scrollbar-thumb {
+  background-color: #c4c9d4;
+  border-radius: 4px;
+  border: 2px solid #f1f2f6;
+}
+
+/* 주제 추천 모달 스타일 - 번호 중복 해결 */
+.topic-suggestion-list ol {
+  padding-left: 0;
+  margin: 0;
+  counter-reset: topic-counter;
+  list-style-type: none; /* 기본 번호 매기기 제거 */
+}
+
+.topic-suggestion-list li {
+  margin-bottom: 16px;
+  line-height: 1.6;
+  color: #444;
+  font-size: 16px;
+  position: relative;
+  padding-left: 40px;
+  counter-increment: topic-counter;
+  list-style-type: none; /* 명시적으로 list-style-type 없애기 */
+  /* 호버 효과는 텍스트에만 적용하기 위해 li에서 제거 */
+}
+
+/* 새로 추가: 텍스트 부분에 대한 스타일 */
+.topic-suggestion-list .topic-text {
+  display: inline-block;
+}
+
+/* 호버 효과를 텍스트에만 적용 */
+.topic-suggestion-list li:hover .topic-text {
+  transform: scale(1.03); /* 텍스트만 3% 확대 */
+  color: #2d3d8a; /* 색상 변경은 유지 */
+}
+
+/* 번호 스타일은 그대로 유지 */
+.topic-suggestion-list li::before {
+  content: counter(topic-counter);
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 50%;
+  /* 번호에는 transform 효과를 적용하지 않음 */
+}
+
+.topic-suggestion-list li:last-child {
+  margin-bottom: 0;
+}
+
+.modal-buttons {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.topic-suggestion-modal .cancel-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.topic-suggestion-modal .cancel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 15px rgba(102, 126, 234, 0.6);
+}
+
+.topic-suggestion-modal .cancel-btn:active {
+  transform: translateY(1px);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
