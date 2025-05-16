@@ -94,6 +94,7 @@ export default async function meetingPDF2(data) {
       ["주요 주제", minutes.topics.join(",")],
       ["다음 할 일", minutes.next_steps.join(",")],
       ["요약", minutes.summary],
+      ["추천 노드", minutes.recommendNodes[0].content],
     ],
     headStyles: {
       font: "NotoSansKR",

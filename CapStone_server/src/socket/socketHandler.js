@@ -1,6 +1,20 @@
 const loginHandler = require("./LoginHandler.js");
 const nodeService = require("../services/nodeService/nodeService"); // ✅ nodeService 추가
 
+const { deleteFiles } = require("../services/audioService/deleteFiles.js");
+
+const path = require("path");
+
+
+const audioFolderMeeting = (roomId) =>
+  path.join(__dirname, "../../storage/audio/meeting", roomId);
+const tempAudioFolderMeeting = (roomId) =>
+  path.join(__dirname, "../../storage/temp_audio/meeting", roomId);
+const audioFolderRealTime = (roomId) =>
+  path.join(__dirname, "../../storage/audio/realTime", roomId);
+const tempAudioFolderRealTime = (roomId) =>
+  path.join(__dirname, "../../storage/temp_audio/realTime", roomId);
+
 const rooms = {};
 const roomAudioBuffers = {};
 const recordingStatus = {};
@@ -40,7 +54,7 @@ module.exports = (io) => {
       if (nickname) {
         roomNicknames[roomId][userId] = nickname;
         console.log(`📝 닉네임 등록: ${userId} => ${nickname}`);
-      }
+      } 
 
       // 방에 있는 참가자들의 오디오 데이터 저장
       if (!roomAudioBuffers[roomId]) {
@@ -88,6 +102,14 @@ module.exports = (io) => {
     // 녹음 시작 상태 수신
     socket.on("start-recording", (roomId) => {
       console.log(`started recording in room ${roomId}`);
+
+
+      // 폴더에 남은 mp3 삭제
+      deleteFiles(tempAudioFolderMeeting(roomId));
+      deleteFiles(audioFolderMeeting(roomId));
+      deleteFiles(tempAudioFolderRealTime(roomId));
+      deleteFiles(audioFolderRealTime(roomId));
+
       recordingStatus[roomId] = true;
       io.to(roomId).emit("sync-recording", true);
       console.log(`📡 sync-recording 이벤트 전송 - Room ID: ${roomId}`);
