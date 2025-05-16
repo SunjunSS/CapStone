@@ -2,6 +2,7 @@
   <div class="mouse-tracking-container">
     <!-- 다른 사용자들의 마우스를 손가락 모양으로 표시 -->
     <div
+      v-if="!is3DMode"
       v-for="(cursor, userId) in cursors"
       :key="userId"
       class="cursor"
@@ -13,26 +14,29 @@
 </template>
 
 <script>
-import { socket } from "../socket/socket.js"; // ✅ 전역 소켓 사용
+import { socket } from "../socket/socket.js";
 
 export default {
   props: {
-    roomId: String, // ✅ MindMap.vue에서 전달된 roomId
-    userId: String, // ✅ MindMap.vue에서 전달된 userId
+    roomId: String,
+    userId: String,
+    is3DMode: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
-      cursors: {}, // 다른 사용자들의 마우스 위치 저장
+      cursors: {},
       mindmapBounds: { left: 0, top: 0, width: 1, height: 1 },
+      mouseEventRegistered: false,
     };
   },
   methods: {
-    // MindMap 위치 및 크기 가져오기 (마인드맵에서 제공하는 값 사용)
     getMindmapBounds() {
-      return this.mindmapBounds; // 서버에서 받은 MindMap 위치 사용
+      return this.mindmapBounds;
     },
 
-    // 마우스 좌표를 MindMap 기준 상대 좌표로 변환
     getRelativePosition(event) {
       const mindmapBounds = this.getMindmapBounds();
       return {
@@ -41,7 +45,6 @@ export default {
       };
     },
 
-    // 상대 좌표를 내 화면 기준 절대 좌표로 변환
     getAbsolutePosition(relativeX, relativeY) {
       const mindmapBounds = this.getMindmapBounds();
       return {
@@ -49,37 +52,125 @@ export default {
         y: mindmapBounds.top + relativeY * mindmapBounds.height,
       };
     },
+
+    handleMouseMove(event) {
+      // 3D 모드이면 무시
+      if (this.is3DMode) return;
+
+      const relativePosition = this.getRelativePosition(event);
+      if (!this.roomId || !this.userId) return;
+
+      socket.emit("mouse-move", {
+        roomId: this.roomId,
+        userId: this.userId,
+        x: relativePosition.x,
+        y: relativePosition.y,
+      });
+    },
+
+    // 이벤트 리스너 등록 및 제거 관리
+    updateMouseTrackingStatus() {
+      if (this.is3DMode) {
+        // 3D 모드일 때는 이벤트 리스너 제거
+        if (this.mouseEventRegistered) {
+          console.log("3D 모드로 전환: 마우스 이벤트 리스너 제거");
+          window.removeEventListener("mousemove", this.handleMouseMove);
+          this.mouseEventRegistered = false;
+
+          // 다른 사용자에게 커서 숨김 알림
+          socket.emit("hide-cursor", {
+            roomId: this.roomId,
+            userId: this.userId,
+          });
+        }
+      } else {
+        // 2D 모드일 때는 이벤트 리스너 등록
+        if (!this.mouseEventRegistered) {
+          console.log("2D 모드로 전환: 마우스 이벤트 리스너 등록");
+          window.addEventListener("mousemove", this.handleMouseMove);
+          this.mouseEventRegistered = true;
+        }
+      }
+    },
   },
+
+  watch: {
+    is3DMode: {
+      immediate: true, // 컴포넌트 초기화 시에도 실행
+      handler(newValue) {
+        if (!this.roomId || !this.userId) return;
+
+        console.log("모드 변경 감지:", newValue ? "3D" : "2D");
+
+        // 이벤트 리스너 관리
+        this.updateMouseTrackingStatus();
+
+        // 모드 변경 이벤트 발송
+        socket.emit("mode-change", {
+          roomId: this.roomId,
+          userId: this.userId,
+          is3DMode: newValue,
+        });
+      },
+    },
+  },
+
   mounted() {
+    // 초기 세팅 (컴포넌트 마운트 시 현재 모드에 맞게 설정)
+    this.updateMouseTrackingStatus();
+
     socket.on("update-mindmap-bounds", (bounds) => {
       this.mindmapBounds = bounds;
     });
 
-    // ✅ 마우스 이동 이벤트 감지 후 서버로 전송
-    window.addEventListener("mousemove", (event) => {
-      const relativePosition = this.getRelativePosition(event);
-      if (!this.roomId) return; // ✅ roomId가 없을 경우 방어 코드 추가
-
-      socket.emit("mouse-move", {
-        roomId: this.roomId, // ✅ 같은 방 ID 사용
-        userId: this.userId, // ✅ 같은 userId 유지
-        x: relativePosition.x,
-        y: relativePosition.y,
-      });
-    });
-
-    // ✅ 다른 사용자들의 마우스 위치 업데이트
     socket.on("update-mouse", ({ userId, x, y }) => {
       const absolutePosition = this.getAbsolutePosition(x, y);
       this.cursors[userId] = { x: absolutePosition.x, y: absolutePosition.y };
     });
 
-    // ✅ 사용자 퇴장 시 마우스 표시 제거
     socket.on("user-disconnected", (disconnectedUserId) => {
       if (this.cursors[disconnectedUserId]) {
         delete this.cursors[disconnectedUserId];
       }
     });
+
+    socket.on("user-mode-changed", ({ userId, is3DMode }) => {
+      if (is3DMode && this.cursors[userId]) {
+        delete this.cursors[userId];
+      }
+    });
+
+    socket.on("hide-user-cursor", (userId) => {
+      if (this.cursors[userId]) {
+        delete this.cursors[userId];
+      }
+    });
+  },
+
+  beforeUnmount() {
+    // 이벤트 리스너 정리
+    if (this.mouseEventRegistered) {
+      window.removeEventListener("mousemove", this.handleMouseMove);
+      this.mouseEventRegistered = false;
+    }
+
+    // 소켓 이벤트 리스너 정리
+    socket.off("update-mindmap-bounds");
+    socket.off("update-mouse");
+    socket.off("user-disconnected");
+    socket.off("user-mode-changed");
+    socket.off("hide-user-cursor");
+
+    // 컴포넌트 언마운트 시 커서 제거 알림
+    if (this.roomId && this.userId) {
+      socket.emit("leave-mouse-tracking", {
+        roomId: this.roomId,
+        userId: this.userId,
+      });
+    }
+
+    this.cursors = {};
+    this.mindmapBounds = { left: 0, top: 0, width: 1, height: 1 };
   },
 };
 </script>
