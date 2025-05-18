@@ -229,6 +229,7 @@
     </div>
   </teleport>
 
+  <!-- 베스트 아이디어 모달 템플릿 업데이트 -->
   <teleport to="body">
     <div
       v-if="isTopicSuggestionModalOpen"
@@ -236,14 +237,29 @@
       @click="closeTopicSuggestionModal"
     >
       <div class="modal-content topic-suggestion-modal" @click.stop>
-        <h2>AI 주제 추천</h2>
-        <div class="topic-suggestion-list">
-          <ol>
+        <h2>베스트 아이디어 목록</h2>
+
+        <!-- 로딩 UI -->
+        <div v-if="isLoadingSuggestions" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>베스트 아이디어를 불러오는 중...</p>
+        </div>
+
+        <!-- 아이디어 목록 -->
+        <div v-else class="topic-suggestion-list">
+          <ol v-if="suggestedTopics.length > 0">
             <li v-for="(topic, index) in suggestedTopics" :key="index">
               <span class="topic-text">{{ topic }}</span>
             </li>
           </ol>
+          <div v-else class="empty-state">
+            <p>현재 프로젝트에 등록된 베스트 아이디어가 없습니다.</p>
+            <p class="empty-hint">
+              아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
+            </p>
+          </div>
         </div>
+
         <div class="modal-buttons">
           <button @click="closeTopicSuggestionModal" class="cancel-btn">
             닫기
@@ -294,6 +310,7 @@ import {
   updateUserRole,
   removeUserFromProject,
 } from "@/api/projectApi";
+import bestIdeaApi from "@/api/bestIdeaApi"; // 파일 상단에 import 추가
 
 export default {
   components: {
@@ -374,6 +391,7 @@ export default {
 
     // 주제 추천 모달 관련 상태 변수
     const isTopicSuggestionModalOpen = ref(false);
+    const isLoadingSuggestions = ref(false); // 이 줄을 추가
     const suggestedTopics = ref([
       "디지털 트랜스포메이션과 기업의 미래",
       "인공지능이 바꿀 미래 산업 구조",
@@ -398,8 +416,46 @@ export default {
     ]);
 
     // 주제 추천 모달 열기
-    const openTopicSuggestionModal = () => {
-      isTopicSuggestionModalOpen.value = true;
+    const openTopicSuggestionModal = async () => {
+      try {
+        // 토스트 메시지로 로딩 중 표시
+        showToast("베스트 아이디어 목록을 불러오는 중...");
+
+        // 모달 먼저 열기 (로딩 상태로)
+        isTopicSuggestionModalOpen.value = true;
+        isLoadingSuggestions.value = true;
+        suggestedTopics.value = []; // 로딩 중에는 비워두기
+
+        // bestIdeaApi를 통해 현재 프로젝트의 베스트 아이디어 목록을 가져옴
+        const bestIdeas = await bestIdeaApi.getBestIdeasByProjectId(
+          paramProject_id.value
+        );
+
+        // 목록이 존재하면 베스트 아이디어의 title을 주제 목록으로 설정
+        if (bestIdeas && bestIdeas.length > 0) {
+          suggestedTopics.value = bestIdeas.map((idea) => idea.title);
+        } else {
+          // 아이디어가 없는 경우 메시지 표시
+          suggestedTopics.value = [
+            "현재 프로젝트에 등록된 베스트 아이디어가 없습니다.",
+          ];
+        }
+      } catch (error) {
+        console.error("❌ 베스트 아이디어 목록 불러오기 실패:", error);
+
+        // 오류 발생 시 메시지 표시
+        suggestedTopics.value = [
+          "베스트 아이디어를 불러오는데 문제가 발생했습니다.",
+        ];
+
+        // 오류 메시지 표시
+        showToast(
+          "베스트 아이디어 목록을 불러오는데 문제가 발생했습니다.",
+          true
+        );
+      } finally {
+        isLoadingSuggestions.value = false;
+      }
     };
 
     // 주제 추천 모달 닫기
@@ -2922,6 +2978,7 @@ export default {
       suggestedTopics,
       openTopicSuggestionModal,
       closeTopicSuggestionModal,
+      isLoadingSuggestions,
     };
   },
 };
