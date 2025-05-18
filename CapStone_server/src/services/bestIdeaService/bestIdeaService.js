@@ -164,27 +164,31 @@ class BestIdeaService {
       );
 
       // 4. 각 아이디어에 대해 중복 확인 후 저장
+      // 수정된 generateAndSaveBestIdeas 메서드 부분
+
+      // 4. 각 아이디어에 대해 중복 확인 후 저장
       let newIdeasAdded = 0;
       for (const idea of ideasArray) {
-        const { bestNode, improvedIdea } = idea;
+        const { bestNode } = idea; // improvedIdea는 사용하지 않음
 
-        // 아이디어에 bestNode와 improvedIdea가 모두 있는지 확인
-        if (!bestNode || !improvedIdea) {
+        // bestNode가 있는지만 확인 (추천 주제만 필요)
+        if (!bestNode) {
           console.warn("불완전한 아이디어 건너뜀:", idea);
           continue;
         }
 
-        // 중복 확인
+        // 중복 확인 (description 필드에 bestNode를 저장)
         const isDuplicate = existingIdeas.some(
-          (existingIdea) => existingIdea.description === improvedIdea
+          (existingIdea) => existingIdea.description === bestNode
         );
 
         // 중복이 아닌 경우에만 새 아이디어 저장
         if (!isDuplicate) {
           const bestIdeaData = {
-            description: improvedIdea,
+            description: bestNode, // bestNode를 description에 저장
             project_id: numericProjectId,
-            original_node: bestNode,
+            // original_node 필드가 필요하지 않다면 제거하거나 null로 설정
+            original_node: null,
           };
 
           await bestIdeaRepository.create(bestIdeaData);
