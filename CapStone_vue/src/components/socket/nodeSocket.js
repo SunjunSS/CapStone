@@ -239,4 +239,7 @@ export const unregisterSocketHandlers = (roomId, userId) => {
   } else {
     console.warn("⚠️ unregisterSocketHandlers: roomIdValue가 없음.");
   }
+  // 소켓 연결까지 완전히 끊고 싶을 때만
+  socket.disconnect();
+  console.log("🔌 소켓 연결 종료됨");
 };
