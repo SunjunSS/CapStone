@@ -237,7 +237,7 @@
       @click="closeTopicSuggestionModal"
     >
       <div class="modal-content topic-suggestion-modal" @click.stop>
-        <h2>베스트 아이디어 목록</h2>
+        <h2>AI 주제 추천</h2>
 
         <!-- 로딩 UI -->
         <div v-if="isLoadingSuggestions" class="loading-container">
@@ -392,67 +392,50 @@ export default {
     // 주제 추천 모달 관련 상태 변수
     const isTopicSuggestionModalOpen = ref(false);
     const isLoadingSuggestions = ref(false); // 이 줄을 추가
-    const suggestedTopics = ref([
-      "디지털 트랜스포메이션과 기업의 미래",
-      "인공지능이 바꿀 미래 산업 구조",
-      "지속가능한 비즈니스 모델 구축 전략",
-      "메타버스 플랫폼의 진화와 비즈니스 기회",
-      "데이터 기반 의사결정 프로세스 개선 방안",
-      "원격 근무 환경에서의 팀 협업 강화 전략",
-      "고객 경험(CX) 혁신을 위한 디지털 전략",
-      "블록체인 기술의 산업별 적용 사례 연구",
-      "디지털 마케팅 트렌드와 효과적인 채널 전략",
-      "사이버 보안 위협과 기업의 대응 전략",
-      "클라우드 컴퓨팅 도입을 통한 IT 인프라 최적화",
-      "빅데이터 분석을 통한 비즈니스 인사이트 도출",
-      "자동화와 로봇 공학이 제조업에 미치는 영향",
-      "사물인터넷(IoT)의 산업 적용 사례와 가치 창출",
-      "스마트 시티 개발과 도시 문제 해결 방안",
-      "디지털 헬스케어 트렌드와 의료 산업 혁신",
-      "가상현실(VR)과 증강현실(AR)의 교육적 활용",
-      "친환경 에너지 기술 개발과 미래 전망",
-      "AI 윤리와 책임 있는 기술 개발 원칙",
-      "디지털 시대의 리더십과 조직 문화 변화",
-    ]);
+    const suggestedTopics = ref([]);
 
     // 주제 추천 모달 열기
     const openTopicSuggestionModal = async () => {
       try {
         // 토스트 메시지로 로딩 중 표시
-        showToast("베스트 아이디어 목록을 불러오는 중...");
+        showToast("베스트 아이디어를 분석 중입니다...");
 
         // 모달 먼저 열기 (로딩 상태로)
         isTopicSuggestionModalOpen.value = true;
         isLoadingSuggestions.value = true;
         suggestedTopics.value = []; // 로딩 중에는 비워두기
 
-        // bestIdeaApi를 통해 현재 프로젝트의 베스트 아이디어 목록을 가져옴
-        const bestIdeas = await bestIdeaApi.getBestIdeasByProjectId(
+        // 새 아이디어 생성 및 전체 목록 반환 API 호출
+        const allIdeas = await bestIdeaApi.generateAndSaveBestIdeas(
           paramProject_id.value
         );
 
-        // 목록이 존재하면 베스트 아이디어의 title을 주제 목록으로 설정
-        if (bestIdeas && bestIdeas.length > 0) {
-          suggestedTopics.value = bestIdeas.map((idea) => idea.title);
+        // 목록 표시
+        if (allIdeas && allIdeas.length > 0) {
+          suggestedTopics.value = allIdeas.map((idea) => idea.title);
+          showToast("베스트 아이디어 분석이 완료되었습니다!");
         } else {
           // 아이디어가 없는 경우 메시지 표시
           suggestedTopics.value = [
-            "현재 프로젝트에 등록된 베스트 아이디어가 없습니다.",
+            "마인드맵에 충분한 노드가 없어 베스트 아이디어를 생성할 수 없습니다.",
+            "더 많은 아이디어를 마인드맵에 추가한 후 다시 시도해주세요.",
           ];
+          showToast(
+            "마인드맵에 노드가 부족합니다. 더 많은 아이디어를 추가해보세요.",
+            true
+          );
         }
       } catch (error) {
-        console.error("❌ 베스트 아이디어 목록 불러오기 실패:", error);
+        console.error("❌ 베스트 아이디어 분석 실패:", error);
 
         // 오류 발생 시 메시지 표시
         suggestedTopics.value = [
-          "베스트 아이디어를 불러오는데 문제가 발생했습니다.",
+          "베스트 아이디어 분석 중 문제가 발생했습니다.",
+          "잠시 후 다시 시도해주세요.",
         ];
 
         // 오류 메시지 표시
-        showToast(
-          "베스트 아이디어 목록을 불러오는데 문제가 발생했습니다.",
-          true
-        );
+        showToast("베스트 아이디어 분석 중 문제가 발생했습니다.", true);
       } finally {
         isLoadingSuggestions.value = false;
       }

@@ -204,6 +204,23 @@ const bestIdeaApi = {
         throw error;
       });
   },
+  generateAndSaveBestIdeas(projectId) {
+    return axios
+      .post(`${API_ENDPOINT}/project/${projectId}/generate`)
+      .then((response) => {
+        return response.data.data.map((idea) => ({
+          id: idea.bi_id,
+          title: idea.description, // description을 title로 매핑
+          project_id: idea.project_id,
+          createdAt: idea.createdAt,
+          originalNode: idea.original_node || null,
+        }));
+      })
+      .catch((error) => {
+        console.error(`AI 추천 베스트 아이디어 생성 및 저장 실패:`, error);
+        throw error;
+      });
+  },
 };
 
 export default bestIdeaApi;

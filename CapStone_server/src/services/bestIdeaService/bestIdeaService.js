@@ -1,7 +1,8 @@
 // services/bestIdeaService.js
 const bestIdeaRepository = require("../../repositories/bestIdeaRepository");
 const { Project } = require("../../models");
-
+const nodeRepository = require("../../repositories/nodeRepository"); // 노드 리포지토리 import
+const { getBestMindmapIdea } = require("./openAIService");
 class BestIdeaService {
   // 모든 베스트 아이디어 조회
   async getAllBestIdeas() {
@@ -118,6 +119,76 @@ class BestIdeaService {
       const deleted = await bestIdeaRepository.deleteByProjectId(projectId);
       return { message: `${deleted}개의 베스트 아이디어가 삭제되었습니다.` };
     } catch (error) {
+      throw error;
+    }
+  }
+
+  async generateAndSaveBestIdeas(projectId) {
+    try {
+      // 문자열로 전달된 project_id를 숫자로 변환
+      const numericProjectId = parseInt(projectId, 10);
+
+      if (isNaN(numericProjectId)) {
+        throw new Error("유효하지 않은 프로젝트 ID입니다.");
+      }
+
+      // 프로젝트가 존재하는지 확인
+      const project = await Project.findByPk(numericProjectId);
+      if (!project) {
+        throw new Error("해당 프로젝트가 존재하지 않습니다.");
+      }
+
+      // 1. 프로젝트의 모든 노드 가져오기 (nodeRepository 사용)
+      const nodes = await nodeRepository.getAllNodesByProject(numericProjectId);
+
+      if (!nodes || nodes.length === 0) {
+        throw new Error("마인드맵에 노드가 없습니다.");
+      }
+
+      // 노드 내용(content)만 추출
+      const nodeContents = nodes.map((node) => node.content);
+
+      // 루트 노드 찾기 (parent_key가 null인 노드)
+      const rootNode = nodes.find((node) => node.parent_key === null);
+      const rootNodeContent = rootNode ? rootNode.content : "프로젝트 주제";
+
+      // 2. OpenAI API를 통해 베스트 아이디어 및 개선된 아이디어 얻기
+      const { bestNode, improvedIdea } = await getBestMindmapIdea(
+        nodeContents,
+        rootNodeContent
+      );
+
+      if (!bestNode || !improvedIdea) {
+        throw new Error("AI가 베스트 아이디어를 생성하는데 실패했습니다.");
+      }
+
+      // 3. 모든 베스트 아이디어 가져오기
+      const allBestIdeas = await bestIdeaRepository.findByProjectId(
+        numericProjectId
+      );
+
+      // 4. 중복 확인
+      const isDuplicate = allBestIdeas.some(
+        (idea) => idea.description === improvedIdea
+      );
+
+      // 5. 중복이 아닌 경우에만 새 아이디어 저장
+      if (!isDuplicate) {
+        const bestIdeaData = {
+          description: improvedIdea,
+          project_id: numericProjectId, // 숫자로 변환된 프로젝트 ID 사용
+        };
+
+        await bestIdeaRepository.create(bestIdeaData);
+      }
+
+      // 6. 업데이트된 베스트 아이디어 목록 반환
+      const updatedBestIdeas = await bestIdeaRepository.findByProjectId(
+        numericProjectId
+      );
+      return updatedBestIdeas;
+    } catch (error) {
+      console.error("베스트 아이디어 생성 실패:", error);
       throw error;
     }
   }
