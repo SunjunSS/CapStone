@@ -16,6 +16,10 @@ router.get("/project/:projectId", bestIdeaController.getBestIdeasByProjectId);
 
 // 베스트 아이디어 생성
 router.post("/", bestIdeaController.createBestIdea);
+router.post(
+  "/project/:projectId/generate",
+  bestIdeaController.generateAndSaveBestIdeas
+);
 
 // 베스트 아이디어 수정
 router.put("/:id", bestIdeaController.updateBestIdea);

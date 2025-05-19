@@ -128,6 +128,33 @@ class BestIdeaController {
       });
     }
   }
+
+  async generateAndSaveBestIdeas(req, res) {
+    try {
+      const { projectId } = req.params;
+      const bestIdeas = await bestIdeaService.generateAndSaveBestIdeas(
+        projectId
+      );
+
+      res.status(201).json({
+        status: "success",
+        data: bestIdeas,
+      });
+    } catch (error) {
+      console.error("베스트 아이디어 생성 오류:", error);
+
+      const statusCode =
+        error.message.includes("존재하지 않습니다") ||
+        error.message.includes("노드가 없습니다")
+          ? 404
+          : 500;
+
+      res.status(statusCode).json({
+        status: "error",
+        message: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new BestIdeaController();

@@ -2,6 +2,15 @@
 const { BestIdea, Project } = require("../models");
 
 class BestIdeaRepository {
+  async findOne(conditions) {
+    try {
+      return await BestIdea.findOne({
+        where: conditions,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
   // 모든 베스트 아이디어 조회
   async findAll() {
     try {

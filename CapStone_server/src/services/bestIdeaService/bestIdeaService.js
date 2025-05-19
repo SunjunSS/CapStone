@@ -1,7 +1,8 @@
 // services/bestIdeaService.js
 const bestIdeaRepository = require("../../repositories/bestIdeaRepository");
 const { Project } = require("../../models");
-
+const nodeRepository = require("../../repositories/nodeRepository"); // 노드 리포지토리 import
+const { getBestMindmapIdeas } = require("./openAIService");
 class BestIdeaService {
   // 모든 베스트 아이디어 조회
   async getAllBestIdeas() {
@@ -118,6 +119,92 @@ class BestIdeaService {
       const deleted = await bestIdeaRepository.deleteByProjectId(projectId);
       return { message: `${deleted}개의 베스트 아이디어가 삭제되었습니다.` };
     } catch (error) {
+      throw error;
+    }
+  }
+
+  async generateAndSaveBestIdeas(projectId) {
+    try {
+      // 문자열로 전달된 project_id를 숫자로 변환
+      const numericProjectId = parseInt(projectId, 10);
+
+      if (isNaN(numericProjectId)) {
+        throw new Error("유효하지 않은 프로젝트 ID입니다.");
+      }
+
+      // 프로젝트가 존재하는지 확인
+      const project = await Project.findByPk(numericProjectId);
+      if (!project) {
+        throw new Error("해당 프로젝트가 존재하지 않습니다.");
+      }
+
+      // 1. 프로젝트의 모든 노드 가져오기 (nodeRepository 사용)
+      const nodes = await nodeRepository.getAllNodesByProject(numericProjectId);
+
+      if (!nodes || nodes.length === 0) {
+        throw new Error("마인드맵에 노드가 없습니다.");
+      }
+
+      // 노드 내용(content)만 추출
+      const nodeContents = nodes.map((node) => node.content);
+
+      // 2. OpenAI API를 통해 여러 개의 베스트 아이디어 얻기
+      const ideasArray = await getBestMindmapIdeas(nodeContents);
+
+      // ideasArray가 배열이 아니거나 비어있으면 오류 처리
+      if (!Array.isArray(ideasArray) || ideasArray.length === 0) {
+        throw new Error("AI가 베스트 아이디어를 생성하는데 실패했습니다.");
+      }
+
+      console.log("AI로부터 받은 아이디어:", ideasArray); // 로깅 추가
+
+      // 3. 모든 베스트 아이디어 가져오기
+      const existingIdeas = await bestIdeaRepository.findByProjectId(
+        numericProjectId
+      );
+
+      // 4. 각 아이디어에 대해 중복 확인 후 저장
+      // 수정된 generateAndSaveBestIdeas 메서드 부분
+
+      // 4. 각 아이디어에 대해 중복 확인 후 저장
+      let newIdeasAdded = 0;
+      for (const idea of ideasArray) {
+        const { bestNode } = idea; // improvedIdea는 사용하지 않음
+
+        // bestNode가 있는지만 확인 (추천 주제만 필요)
+        if (!bestNode) {
+          console.warn("불완전한 아이디어 건너뜀:", idea);
+          continue;
+        }
+
+        // 중복 확인 (description 필드에 bestNode를 저장)
+        const isDuplicate = existingIdeas.some(
+          (existingIdea) => existingIdea.description === bestNode
+        );
+
+        // 중복이 아닌 경우에만 새 아이디어 저장
+        if (!isDuplicate) {
+          const bestIdeaData = {
+            description: bestNode, // bestNode를 description에 저장
+            project_id: numericProjectId,
+            // original_node 필드가 필요하지 않다면 제거하거나 null로 설정
+            original_node: null,
+          };
+
+          await bestIdeaRepository.create(bestIdeaData);
+          newIdeasAdded++;
+        }
+      }
+
+      console.log(`새로 추가된 아이디어 수: ${newIdeasAdded}`);
+
+      // 5. 업데이트된 베스트 아이디어 목록 반환
+      const updatedBestIdeas = await bestIdeaRepository.findByProjectId(
+        numericProjectId
+      );
+      return updatedBestIdeas;
+    } catch (error) {
+      console.error("베스트 아이디어 생성 실패:", error);
       throw error;
     }
   }
