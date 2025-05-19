@@ -83,21 +83,7 @@ export default function meetingContent(content) {
         </ul>
         <br>
 
-        <h4>추천노드</h4>
-        <ul>
-          ${
-            Array.isArray(minutes.recommendNodes)
-              ? minutes.recommendNodes
-                  .map(
-                    (node) =>
-                      `<li style="margin-left: 20px;">"추천 노드: "${node.content} </li>`
-                      
-                  )
-                  .join("")
-              : "<li>추천 노드 없음</li>"
-          }
-        </ul>
-        <br>
+        
 
 
       `;
