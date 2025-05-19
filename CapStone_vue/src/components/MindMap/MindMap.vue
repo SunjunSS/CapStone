@@ -260,7 +260,7 @@
             </li>
           </ol>
           <div v-else class="empty-state">
-            <p>현재 프로젝트에 등록된 베스트 아이디어가 없습니다.</p>
+            <p>현재 프로젝트에 등록된 AI추천 아이디어가 없습니다.</p>
             <p class="empty-hint">
               아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
             </p>
@@ -405,7 +405,7 @@ export default {
     const openTopicSuggestionModal = async () => {
       try {
         // 토스트 메시지로 로딩 중 표시
-        showToast("베스트 아이디어를 분석 중입니다...");
+        showToast("최적의 아이디어를 분석 중입니다...");
 
         // 모달 먼저 열기 (로딩 상태로)
         isTopicSuggestionModalOpen.value = true;
@@ -420,11 +420,11 @@ export default {
         // 목록 표시
         if (allIdeas && allIdeas.length > 0) {
           suggestedTopics.value = allIdeas.map((idea) => idea.title);
-          showToast("베스트 아이디어 분석이 완료되었습니다!");
+          showToast("최적의 아이디어 분석이 완료되었습니다!");
         } else {
           // 아이디어가 없는 경우 메시지 표시
           suggestedTopics.value = [
-            "마인드맵에 충분한 노드가 없어 베스트 아이디어를 생성할 수 없습니다.",
+            "마인드맵에 충분한 노드가 없어 최적의 아이디어를 생성할 수 없습니다.",
             "더 많은 아이디어를 마인드맵에 추가한 후 다시 시도해주세요.",
           ];
           showToast(
@@ -433,16 +433,16 @@ export default {
           );
         }
       } catch (error) {
-        console.error("❌ 베스트 아이디어 분석 실패:", error);
+        console.error("❌ 최적의 아이디어 분석 실패:", error);
 
         // 오류 발생 시 메시지 표시
         suggestedTopics.value = [
-          "베스트 아이디어 분석 중 문제가 발생했습니다.",
+          "최적의 아이디어 분석 중 문제가 발생했습니다.",
           "잠시 후 다시 시도해주세요.",
         ];
 
         // 오류 메시지 표시
-        showToast("베스트 아이디어 분석 중 문제가 발생했습니다.", true);
+        showToast("최적의 아이디어 분석 중 문제가 발생했습니다.", true);
       } finally {
         isLoadingSuggestions.value = false;
       }
@@ -3197,11 +3197,21 @@ export default {
   outline: none;
 }
 
+/* 기본 모달 버튼 스타일 (공통 부분) */
 .modal-buttons {
-  margin-top: -10px !important;
   display: flex;
   justify-content: center;
   gap: 12px;
+}
+
+/* 팀원 초대 모달의 버튼 스타일 */
+.modal-content:not(.topic-suggestion-modal) .modal-buttons {
+  margin-top: 20px !important; /* 팀원 초대 모달에서는 양수 마진 */
+}
+
+/* AI 주제 추천 모달의 버튼 스타일 */
+.topic-suggestion-modal .modal-buttons {
+  margin-top: -10px !important; /* AI 주제 추천 모달에서는 음수 마진 유지 */
 }
 
 .confirm-btn {
