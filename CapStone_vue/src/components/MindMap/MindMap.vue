@@ -241,8 +241,15 @@
 
         <!-- 로딩 UI -->
         <div v-if="isLoadingSuggestions" class="loading-container">
-          <div class="loading-spinner"></div>
-          <p>베스트 아이디어를 불러오는 중...</p>
+          <div class="loading-spinner">
+            <div class="pulse-orb"></div>
+            <div class="pulse-wave pulse-wave-red"></div>
+            <div class="pulse-wave pulse-wave-blue"></div>
+            <div class="pulse-wave pulse-wave-green"></div>
+            <div class="pulse-wave pulse-wave-purple"></div>
+            <div class="pulse-light"></div>
+          </div>
+          <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
         </div>
 
         <!-- 아이디어 목록 -->
@@ -3191,7 +3198,7 @@ export default {
 }
 
 .modal-buttons {
-  margin-top: 20px;
+  margin-top: -10px !important;
   display: flex;
   justify-content: center;
   gap: 12px;
@@ -3494,7 +3501,7 @@ button:disabled {
 
 /* 주제 추천 모달 스타일 업데이트 */
 .topic-suggestion-modal {
-  width: 550px;
+  width: 600px;
   max-width: 90vw;
   border-radius: 16px;
   padding: 32px;
@@ -3641,6 +3648,295 @@ button:disabled {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* 로딩 스피너 스타일 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 20px;
+}
+
+.loading-spinner {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  margin-bottom: 5px;
+}
+
+/* 중심 오브 */
+.pulse-orb {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(20, 20, 35, 0.2) 0%,
+    rgba(30, 30, 60, 0.5) 40%,
+    rgba(45, 25, 65, 0.7) 70%,
+    rgba(60, 20, 60, 0.9) 100%
+  );
+  box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
+    0 0 50px 4px rgba(114, 9, 183, 0.3);
+  opacity: 0.85;
+  border: 1px solid rgba(100, 50, 150, 0.3);
+  animation: orb-pulse 8s ease-in-out infinite;
+}
+
+/* 공통 파형 스타일 */
+.pulse-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(2.5px);
+  opacity: 0.7;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+
+/* 각 파형별 고유 스타일 */
+.pulse-wave-red {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #ff5b79, #fc3a5e);
+  animation: morph-red 4s ease-in-out infinite,
+    rotate-red 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-blue {
+  width: 42px;
+  height: 36px;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  animation: morph-blue 5s ease-in-out infinite,
+    rotate-blue 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-green {
+  width: 38px;
+  height: 36px;
+  background: linear-gradient(135deg, #00ff99, #00cc66);
+  animation: morph-green 6s ease-in-out infinite,
+    rotate-green 9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-purple {
+  width: 45px;
+  height: 38px;
+  background: linear-gradient(135deg, #b967ff, #7f00ff);
+  animation: morph-purple 7s ease-in-out infinite,
+    rotate-purple 11s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 중앙 빛나는 핵심 효과 */
+.pulse-light {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  filter: blur(3px);
+  box-shadow: 0 0 16px 8px rgba(255, 255, 255, 0.8),
+    0 0 32px 16px rgba(200, 220, 255, 0.4);
+  opacity: 0.9;
+  z-index: 3;
+  animation: pulse-light 3s ease-in-out infinite;
+}
+
+.loading-text {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #000;
+  margin-top: 15px;
+  opacity: 0.9;
+  animation: text-pulse 2s ease-in-out infinite;
+}
+
+/* 애니메이션 키프레임 정의 */
+@keyframes orb-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
+      0 0 50px 4px rgba(80, 30, 120, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: inset 0 0 25px rgba(60, 20, 60, 0.8),
+      0 0 60px 6px rgba(100, 40, 140, 0.5);
+  }
+}
+
+@keyframes morph-red {
+  0%,
+  100% {
+    border-radius: 42% 58% 70% 30% / 45% 55% 45% 55%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  50% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    border-radius: 60% 40% 30% 70% / 30% 70% 50% 60%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes morph-blue {
+  0%,
+  100% {
+    border-radius: 35% 65% 65% 35% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% {
+    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  50% {
+    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    border-radius: 20% 80% 50% 50% / 75% 20% 80% 25%;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+}
+
+@keyframes morph-green {
+  0%,
+  100% {
+    border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  33% {
+    border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  66% {
+    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes morph-purple {
+  0%,
+  100% {
+    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  33% {
+    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  66% {
+    border-radius: 60% 40% 40% 60% / 70% 30% 70% 30%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes rotate-red {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-53%, -48%) rotate(90deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg);
+  }
+  75% {
+    transform: translate(-47%, -52%) rotate(270deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes rotate-blue {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-47%, -52%) rotate(-90deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(-180deg);
+  }
+  75% {
+    transform: translate(-53%, -48%) rotate(-270deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+@keyframes rotate-green {
+  0% {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  33% {
+    transform: translate(-48%, -53%) rotate(165deg);
+  }
+  66% {
+    transform: translate(-52%, -47%) rotate(285deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(405deg);
+  }
+}
+
+@keyframes rotate-purple {
+  0% {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+  33% {
+    transform: translate(-52%, -47%) rotate(-165deg);
+  }
+  66% {
+    transform: translate(-48%, -53%) rotate(-285deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-405deg);
+  }
+}
+
+@keyframes pulse-light {
+  0%,
+  100% {
+    opacity: 0.7;
+    filter: blur(3px);
+    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.6),
+      0 0 20px 10px rgba(170, 200, 255, 0.15);
+  }
+  50% {
+    opacity: 0.85;
+    filter: blur(4px);
+    box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.7),
+      0 0 30px 15px rgba(170, 200, 255, 0.2);
+  }
+}
+
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.6;
   }
 }
 </style>

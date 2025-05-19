@@ -127,10 +127,32 @@
       <div class="report-section">
         <h3 class="section-title">회의 기록</h3>
 
-        <div class="meeting-report" v-html="meetingContent"></div>
+        <!-- 🔹 처리 중 로딩 오버레이 -->
+        <div v-if="isLoading" class="loading-overlay-in-card">
+          <div class="processing-container">
+            <div class="loading-spinner">
+              <div class="pulse-orb"></div>
+              <div class="pulse-wave pulse-wave-red"></div>
+              <div class="pulse-wave pulse-wave-blue"></div>
+              <div class="pulse-wave pulse-wave-green"></div>
+              <div class="pulse-wave pulse-wave-purple"></div>
+              <div class="pulse-light"></div>
+            </div>
 
-        <!-- ✅ 카드 내부로 이동, 가운데 정렬을 위한 wrapper 추가 -->
-        <div class="download-buttons-centered">
+            <div class="processing-text">회의록 생성 중</div>
+
+            <div class="progress-bar-container">
+              <div class="progress-bar"></div>
+            </div>
+
+            <!-- status-dots 부분을 제거 -->
+          </div>
+        </div>
+
+        <!-- 회의 내용이 있을 경우 -->
+        <div class="meeting-report" v-else v-html="meetingContent"></div>
+
+        <div class="download-buttons-centered" v-if="!isLoading">
           <button class="download-button" @click="downloadAudio">
             음성파일 다운로드
           </button>
@@ -206,6 +228,7 @@ export default {
       headerBlob: null,
       pdfBlob: null,
       isProcessingRecording: false, // 녹음 처리 중이면 true
+      isLoading: false,
     };
   },
   // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
@@ -216,17 +239,13 @@ export default {
       // 자동 참가는 하지 않고, 사용자가 버튼을 클릭할 때만 참가
     }
 
-    window.addEventListener('popstate', this.handlePopState);
-
-
+    window.addEventListener("popstate", this.handlePopState);
   },
 
   beforeUnmount() {
-    window.removeEventListener('popstate', this.handlePopState);
+    window.removeEventListener("popstate", this.handlePopState);
     this.leaveRoom(); // 컴포넌트가 파괴될 때도 방 떠나기
   },
-
-  
 
   computed: {
     // 현재 사용자의 닉네임 (MainHomeSideBar와 유사한 방식)
@@ -252,9 +271,8 @@ export default {
     },
   },
   methods: {
-
     handlePopState() {
-      console.log('뒤로가기 감지');
+      console.log("뒤로가기 감지");
       this.leaveRoom();
     },
 
@@ -404,37 +422,32 @@ export default {
       try {
         // 헤더 블롭을 한 번만 설정
 
-        if(this.headerBlob == null) {
+        if (this.headerBlob == null) {
           const headerAudio = await fetchHeaderBlob();
-          
-          this.headerBlob = headerAudio; 
+
+          this.headerBlob = headerAudio;
           console.log("✅ 헤더오디오 저장완료!");
 
           // this.recordedChunks.push(this.headerBlob);
         }
-        
       } catch (error) {
         console.error("헤더 오디오 로드실패:", error);
       }
-      
-      
+
       this.mediaRecorder = new MediaRecorder(this.localStream, {
         mimeType: "audio/webm; codecs=opus;",
         bitrateMode: "variable",
-        audioBitsPerSecond: 64000
+        audioBitsPerSecond: 64000,
       });
 
       this.mediaRecorder.ondataavailable = async (event) => {
-
-
         const blob = new Blob([this.headerBlob, event.data], {
-          type: "audio/webm" // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
+          type: "audio/webm", // Blob의 MIME 타입을 설정 (여기서는 예시로 webm을 사용)
         });
 
         console.log(`🔄 ondataavailable: ${blob.size}bytes`);
 
         this.recordedChunks.push(event.data);
-
 
         if (blob.size > 0 && this.mediaRecorder.state === "recording") {
           try {
@@ -446,7 +459,6 @@ export default {
         } else {
           console.warn("🚫 빈 blob");
         }
-
       };
 
       this.uploadInterval = setInterval(async () => {
@@ -454,9 +466,6 @@ export default {
           this.mediaRecorder.requestData(); // => 이때 ondataavailable 이벤트 발생
         }
       }, 20000);
-
-
-      
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
@@ -486,7 +495,8 @@ export default {
     // 녹음 중지 메서드
     stopRecording() {
       if (this.mediaRecorder) {
-        this.isProcessingRecording = true; // 🔹 처리 중 표시
+        this.isProcessingRecording = true;
+        this.isLoading = true; // 🔹 로딩 시작
         this.mediaRecorder.stop();
       }
       this.isRecording = false;
@@ -582,6 +592,7 @@ export default {
           this.meetingContent = report;
 
           this.isProcessingRecording = false; // 🔹 완료 시 녹음 버튼 다시 활성화
+          this.isLoading = false; // 🔹 회의록 수신 후 로딩 종료
         });
 
         this.socket.on("return-keyword", (data) => {
@@ -610,7 +621,9 @@ export default {
 
             for (const userId of participants) {
               if (userId !== this.currentUserId) {
-                console.log(`협상요청 ${this.participantNicknames[userId]}님에게 진행`)
+                console.log(
+                  `협상요청 ${this.participantNicknames[userId]}님에게 진행`
+                );
                 await this.createPeerConnection(userId, true);
               }
             }
@@ -652,10 +665,9 @@ export default {
         await this.handlePeerConnectionFailure(userId);
       }
 
-      // 새로운 유저라면 isInitiator = true이다. 
+      // 새로운 유저라면 isInitiator = true이다.
       // 새 유저가 아니면 imPolite로 설정(false)
       this.isPoliteMap[userId] = isInitiator;
-
 
       const configuration = {
         iceServers: [
@@ -687,7 +699,6 @@ export default {
       if (!this.isCreatingOfferMap) this.isCreatingOfferMap = {};
       this.isCreatingOfferMap[userId] = false;
 
-
       peerConnection.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           const remoteStream = event.streams[0];
@@ -714,9 +725,14 @@ export default {
 
       peerConnection.onnegotiationneeded = async () => {
         try {
-          if (this.isPoliteMap[userId] && peerConnection.signalingState === "stable" && !this.isCreatingOfferMap[userId]) {
-
-            console.log(`🌟 ${this.participantNicknames[userId]} is polite: Creating an offer.`);
+          if (
+            this.isPoliteMap[userId] &&
+            peerConnection.signalingState === "stable" &&
+            !this.isCreatingOfferMap[userId]
+          ) {
+            console.log(
+              `🌟 ${this.participantNicknames[userId]} is polite: Creating an offer.`
+            );
             this.isCreatingOfferMap[userId] = true;
 
             const offer = await peerConnection.createOffer({
@@ -732,14 +748,16 @@ export default {
             });
 
             console.log("✅ Offer created and sent successfully.");
-            } else {
-              console.warn("🚫 Negotiation skipped: Not in stable state or polite.");
-            }
-          } catch (error) {
-            console.error("Negotiation failed:", error);
-          } finally {
-            this.isCreatingOfferMap[userId] = false;
+          } else {
+            console.warn(
+              "🚫 Negotiation skipped: Not in stable state or polite."
+            );
           }
+        } catch (error) {
+          console.error("Negotiation failed:", error);
+        } finally {
+          this.isCreatingOfferMap[userId] = false;
+        }
       };
 
       peerConnection.onconnectionstatechange = () => {
@@ -837,7 +855,6 @@ export default {
     },
 
     handlePeerConnectionFailure(userId) {
-
       console.warn(`🚫 Cleaning up failed connection with ${userId}`);
 
       if (this.peerConnections[userId]) {
@@ -854,7 +871,6 @@ export default {
         delete this.audioElements[userId];
       }
 
-    
       console.log(`🔄 Connection with ${userId} has been cleaned up.`);
     },
 
@@ -1570,5 +1586,345 @@ export default {
   cursor: not-allowed; /* 금지 표시 커서 */
   opacity: 0.7; /* 시각적으로 흐리게 */
   animation: none !important; /* pulse 애니메이션 비활성화 */
+}
+
+.loading-overlay-in-card {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background-color: rgba(245, 245, 250, 0.05);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 10;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.processing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.loading-spinner {
+  position: relative;
+  width: 50px; /* 60px에서 50px로 줄임 */
+  height: 50px; /* 60px에서 50px로 줄임 */
+  margin-bottom: 5px;
+}
+
+/* 중심 오브 */
+.pulse-orb {
+  position: absolute;
+  width: 50px; /* 60px에서 50px로 줄임 */
+  height: 50px; /* 60px에서 50px로 줄임 */
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(20, 20, 35, 0.2) 0%,
+    rgba(30, 30, 60, 0.5) 40%,
+    rgba(45, 25, 65, 0.7) 70%,
+    rgba(60, 20, 60, 0.9) 100%
+  );
+  box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
+    /* 그림자도 비례적으로 줄임 */ 0 0 50px 4px rgba(114, 9, 183, 0.3);
+  opacity: 0.85;
+  border: 1px solid rgba(100, 50, 150, 0.3);
+  animation: orb-pulse 8s ease-in-out infinite;
+}
+
+/* 공통 파형 스타일 */
+.pulse-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(2.5px); /* 3px에서 약간 줄임 */
+  opacity: 0.7;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+
+/* 각 파형별 고유 스타일 - 크기 조정 */
+.pulse-wave-red {
+  width: 28px; /* 35px에서 28px로 줄임 */
+  height: 28px; /* 35px에서 28px로 줄임 */
+  background: linear-gradient(135deg, #ff5b79, #fc3a5e);
+  animation: morph-red 4s ease-in-out infinite,
+    rotate-red 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-blue {
+  width: 42px; /* 52px에서 42px로 줄임 */
+  height: 36px; /* 45px에서 36px로 줄임 */
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  animation: morph-blue 5s ease-in-out infinite,
+    rotate-blue 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-green {
+  width: 38px; /* 48px에서 38px로 줄임 */
+  height: 36px; /* 45px에서 36px로 줄임 */
+  background: linear-gradient(135deg, #00ff99, #00cc66);
+  animation: morph-green 6s ease-in-out infinite,
+    rotate-green 9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-wave-purple {
+  width: 45px; /* 56px에서 45px로 줄임 */
+  height: 38px; /* 48px에서 38px로 줄임 */
+  background: linear-gradient(135deg, #b967ff, #7f00ff);
+  animation: morph-purple 7s ease-in-out infinite,
+    rotate-purple 11s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 중앙 빛나는 핵심 효과 */
+.pulse-light {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; /* 14px에서 12px로 줄임 */
+  height: 12px; /* 14px에서 12px로 줄임 */
+  background: #ffffff;
+  border-radius: 50%;
+  filter: blur(3px); /* 약간 줄임 */
+  box-shadow: 0 0 16px 8px rgba(255, 255, 255, 0.8),
+    /* 그림자도 비례적으로 줄임 */ 0 0 32px 16px rgba(200, 220, 255, 0.4);
+  opacity: 0.9;
+  z-index: 3;
+  animation: pulse-light 3s ease-in-out infinite;
+}
+
+/* 처리 중 텍스트 */
+.processing-text {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-top: 15px;
+  opacity: 0.9;
+  animation: text-pulse 2s ease-in-out infinite;
+}
+
+/* 진행 상태 표시줄 */
+.progress-bar-container {
+  width: 200px;
+  height: 4px;
+  background-color: rgba(200, 200, 220, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00c6ff, #0072ff, #7c3aed);
+  border-radius: 2px;
+  animation: progress-animation 2.5s ease-in-out infinite;
+}
+
+/* 오브 펄스 애니메이션 */
+@keyframes orb-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
+      0 0 50px 4px rgba(80, 30, 120, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: inset 0 0 25px rgba(60, 20, 60, 0.8),
+      0 0 60px 6px rgba(100, 40, 140, 0.5);
+  }
+}
+
+/* 모프 애니메이션 */
+@keyframes morph-red {
+  0%,
+  100% {
+    border-radius: 42% 58% 70% 30% / 45% 55% 45% 55%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  50% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    border-radius: 60% 40% 30% 70% / 30% 70% 50% 60%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes morph-blue {
+  0%,
+  100% {
+    border-radius: 35% 65% 65% 35% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% {
+    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  50% {
+    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    border-radius: 20% 80% 50% 50% / 75% 20% 80% 25%;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+}
+
+@keyframes morph-green {
+  0%,
+  100% {
+    border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  33% {
+    border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  66% {
+    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes morph-purple {
+  0%,
+  100% {
+    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  33% {
+    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  66% {
+    border-radius: 60% 40% 40% 60% / 70% 30% 70% 30%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+/* 회전 애니메이션 */
+@keyframes rotate-red {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-53%, -48%) rotate(90deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg);
+  }
+  75% {
+    transform: translate(-47%, -52%) rotate(270deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes rotate-blue {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-47%, -52%) rotate(-90deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(-180deg);
+  }
+  75% {
+    transform: translate(-53%, -48%) rotate(-270deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+@keyframes rotate-green {
+  0% {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  33% {
+    transform: translate(-48%, -53%) rotate(165deg);
+  }
+  66% {
+    transform: translate(-52%, -47%) rotate(285deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(405deg);
+  }
+}
+
+@keyframes rotate-purple {
+  0% {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+  33% {
+    transform: translate(-52%, -47%) rotate(-165deg);
+  }
+  66% {
+    transform: translate(-48%, -53%) rotate(-285deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-405deg);
+  }
+}
+
+@keyframes pulse-light {
+  0%,
+  100% {
+    opacity: 0.7;
+    filter: blur(3px);
+    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.6),
+      0 0 20px 10px rgba(170, 200, 255, 0.15);
+  }
+  50% {
+    opacity: 0.85;
+    filter: blur(4px);
+    box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.7),
+      0 0 30px 15px rgba(170, 200, 255, 0.2);
+  }
+}
+
+/* 텍스트 펄스 애니메이션 */
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* 진행 상태 표시줄 애니메이션 */
+@keyframes progress-animation {
+  0% {
+    width: 10%;
+    background-position: 0% 50%;
+  }
+  50% {
+    width: 70%;
+    background-position: 100% 50%;
+  }
+  100% {
+    width: 10%;
+    background-position: 0% 50%;
+  }
 }
 </style>
