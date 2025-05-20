@@ -1,130 +1,168 @@
 --Drawing(그림판 타이틀 제거, 캔버스 영역 확대)--
 
 <template>
-  <div class="drawing-app">
-    <div class="toolbar">
-      <button
-        @click="triggerImageUpload"
-        :disabled="showColorPicker"
-        :class="{
-          active: mode === 'imageUpload',
-          'image-upload': mode === 'imageUpload',
-        }"
-      >
-        이미지 업로드
-      </button>
+  <div class="drawing-page">
+    <div class="drawing-card">
+      <!-- 툴바 좌우 분리 -->
+      <div class="toolbar toolbar-justify">
+        <!-- 왼쪽 툴바 그룹 -->
+        <div class="toolbar-left">
+          <div class="toolbar-group">
+            <button
+              @click="triggerImageUpload"
+              :disabled="showColorPicker"
+              :class="{
+                active: mode === 'imageUpload',
+                'image-upload': mode === 'imageUpload',
+              }"
+            >
+              <i class="fas fa-image"></i>
+              <span>업로드</span>
+            </button>
 
-      <button
-        @click="downloadCanvas"
-        :disabled="showColorPicker"
-        :class="{ active: mode === 'download', 'download-button': true }"
-      >
-        캔버스 다운로드
-      </button>
+            <button
+              @click="downloadCanvas"
+              :disabled="showColorPicker"
+              :class="{
+                active: mode === 'download',
+                'download-button': true,
+              }"
+            >
+              <i class="fas fa-download"></i>
+              <span>저장</span>
+            </button>
 
-      <input
-        type="file"
-        ref="imageInput"
-        accept="image/*"
-        style="display: none"
-        @change="handleImageUpload"
-        :disabled="isUploadingImage"
-      />
-      <button
-        @click="setMode('select')"
-        :class="{ active: mode === 'select' }"
-        :disabled="showColorPicker"
-      >
-        선택
-      </button>
-      <button
-        @click="setMode('pencil')"
-        :class="{ active: mode === 'pencil' }"
-        :disabled="showColorPicker"
-      >
-        연필
-      </button>
-      <button
-        @click="setMode('line')"
-        :class="{ active: mode === 'line' }"
-        :disabled="showColorPicker"
-      >
-        직선
-      </button>
-      <button
-        @click="setMode('rect')"
-        :class="{ active: mode === 'rect' }"
-        :disabled="showColorPicker"
-      >
-        사각형
-      </button>
-      <button
-        @click="setMode('circle')"
-        :class="{ active: mode === 'circle' }"
-        :disabled="showColorPicker"
-      >
-        원
-      </button>
-      <button
-        @click="deleteSelectedObjects"
-        :disabled="showColorPicker || !isObjectSelected"
-      >
-        지우기
-      </button>
-      <button
-        @click="clearCanvas"
-        :disabled="showColorPicker || !hasObjectsOnCanvas"
-      >
-        모두 지우기
-      </button>
+            <input
+              type="file"
+              ref="imageInput"
+              accept="image/*"
+              style="display: none"
+              @change="handleImageUpload"
+              :disabled="isUploadingImage"
+            />
+          </div>
 
-      <select v-model="brushSize" :disabled="showColorPicker">
-        <option value="1">1px</option>
-        <option value="3">3px</option>
-        <option value="5">5px</option>
-        <option value="10">10px</option>
-        <option value="15">15px</option>
-        <option value="20">20px</option>
-      </select>
-    </div>
+          <div class="toolbar-group">
+            <button
+              @click="setMode('select')"
+              :class="{ active: mode === 'select' }"
+              :disabled="showColorPicker"
+            >
+              <i class="fas fa-mouse-pointer"></i>
+              <span>선택</span>
+            </button>
 
-    <!-- 색상 팔레트 수정 -->
-    <div class="color-palette">
-      <div class="color-grid">
-        <!-- 기본 색상들 -->
-        <div
-          v-for="(colorValue, index) in basicColors"
-          :key="'color-' + index"
-          class="color-swatch"
-          :style="{ backgroundColor: colorValue }"
-          :class="{ active: color === colorValue }"
-          @click="!showColorPicker && setColor(colorValue)"
-        ></div>
-        <!-- 무지개 색상 선택 아이콘 -->
-        <div class="rainbow-selector" @click="openColorPicker">
-          <div class="rainbow-icon">+</div>
+            <button
+              @click="setMode('pencil')"
+              :class="{ active: mode === 'pencil' }"
+              :disabled="showColorPicker"
+            >
+              <i class="fas fa-pencil-alt"></i>
+              <span>연필</span>
+            </button>
+
+            <button
+              @click="setMode('line')"
+              :class="{ active: mode === 'line' }"
+              :disabled="showColorPicker"
+            >
+              <i class="fas fa-slash"></i>
+              <span>직선</span>
+            </button>
+
+            <button
+              @click="setMode('rect')"
+              :class="{ active: mode === 'rect' }"
+              :disabled="showColorPicker"
+            >
+              <i class="far fa-square"></i>
+              <span>사각형</span>
+            </button>
+
+            <button
+              @click="setMode('circle')"
+              :class="{ active: mode === 'circle' }"
+              :disabled="showColorPicker"
+            >
+              <i class="far fa-circle"></i>
+              <span>원</span>
+            </button>
+          </div>
+
+          <div class="toolbar-group">
+            <button
+              @click="deleteSelectedObjects"
+              :disabled="showColorPicker || !isObjectSelected"
+              :class="{ 'danger-action': isObjectSelected }"
+            >
+              <i class="fas fa-eraser"></i>
+              <span>지우기</span>
+            </button>
+
+            <button
+              @click="clearCanvas"
+              :disabled="showColorPicker || !hasObjectsOnCanvas"
+              :class="{ 'danger-action': hasObjectsOnCanvas }"
+            >
+              <i class="fas fa-trash-alt"></i>
+              <span>모두 지우기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 오른쪽 툴바 그룹 (px select) -->
+        <div class="toolbar-right">
+          <div class="toolbar-group">
+            <select v-model="brushSize" :disabled="showColorPicker">
+              <option value="1">1px</option>
+              <option value="3">3px</option>
+              <option value="5">5px</option>
+              <option value="10">10px</option>
+              <option value="15">15px</option>
+              <option value="20">20px</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <!-- 컬러 피커 대화상자 -->
+      <!-- 색상 팔레트 -->
+      <div class="color-palette">
+        <div class="color-grid">
+          <div
+            v-for="(colorValue, index) in basicColors"
+            :key="'color-' + index"
+            class="color-swatch"
+            :style="{ backgroundColor: colorValue }"
+            :class="{ active: color === colorValue }"
+            @click="!showColorPicker && setColor(colorValue)"
+          ></div>
+
+          <div class="rainbow-selector" @click="openColorPicker">
+            <div class="rainbow-icon">
+              <i class="fas fa-plus"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 컬러 피커 모달 -->
       <div v-if="showColorPicker" class="color-picker-modal">
         <div class="color-picker-header">
           <h3>색 편집</h3>
-          <button class="close-btn" @click="cancelColorPicker">✕</button>
+          <button class="close-btn" @click="cancelColorPicker">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
 
         <div class="color-picker-content">
-          <!-- 컬러 스펙트럼 -->
           <div
             class="color-spectrum"
             ref="colorSpectrum"
             @click="pickColorFromSpectrum"
           >
-            <!-- 스펙트럼 이미지 대신 gradient 사용 -->
             <div class="spectrum-gradient"></div>
           </div>
 
-          <!-- 색상 미리보기 -->
           <div class="color-preview-container">
             <div
               class="color-preview"
@@ -132,7 +170,6 @@
             ></div>
           </div>
 
-          <!-- RGB 입력 필드 -->
           <div class="color-inputs">
             <div class="input-group">
               <label for="hexColor">HEX:</label>
@@ -181,17 +218,21 @@
             </div>
           </div>
 
-          <!-- 버튼 -->
           <div class="color-picker-buttons">
-            <button @click="applyColor">확인</button>
-            <button @click="cancelColorPicker">취소</button>
+            <button @click="applyColor">
+              <span>확인</span>
+            </button>
+            <button @click="cancelColorPicker">
+              <span>취소</span>
+            </button>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="canvas-container">
-      <canvas ref="canvas"></canvas>
+      <!-- 캔버스 -->
+      <div class="canvas-container">
+        <canvas ref="canvas"></canvas>
+      </div>
     </div>
   </div>
 </template>
@@ -264,6 +305,43 @@ export default {
       // ✅ 캔버스 오브젝트 변경 감지
       this.canvas.on("object:added", this.updateCanvasObjectState);
       this.canvas.on("object:removed", this.updateCanvasObjectState);
+
+      // 🧱 경계 제한 이벤트 추가
+      this.canvas.on("object:moving", function (e) {
+        const obj = e.target;
+        const objWidth = obj.getScaledWidth();
+        const objHeight = obj.getScaledHeight();
+        const canvasWidth = obj.canvas.getWidth();
+        const canvasHeight = obj.canvas.getHeight();
+
+        if (obj.left < 0) obj.left = 0;
+        if (obj.left + objWidth > canvasWidth)
+          obj.left = canvasWidth - objWidth;
+
+        if (obj.top < 0) obj.top = 0;
+        if (obj.top + objHeight > canvasHeight)
+          obj.top = canvasHeight - objHeight;
+      });
+
+      this.canvas.on("object:scaling", function (e) {
+        const obj = e.target;
+
+        const objWidth = obj.getScaledWidth();
+        const objHeight = obj.getScaledHeight();
+
+        const canvasWidth = obj.canvas.getWidth();
+        const canvasHeight = obj.canvas.getHeight();
+
+        // X축 제한
+        if (obj.left < 0) obj.left = 0;
+        if (obj.left + objWidth > canvasWidth)
+          obj.scaleX = (canvasWidth - obj.left) / obj.width;
+
+        // Y축 제한
+        if (obj.top < 0) obj.top = 0;
+        if (obj.top + objHeight > canvasHeight)
+          obj.scaleY = (canvasHeight - obj.top) / obj.height;
+      });
     });
   },
   beforeDestroy() {
@@ -1324,82 +1402,210 @@ export default {
 </script>
 
 <style scoped>
-.drawing-app {
-  text-align: center;
-  margin: 0;
-  width: 100%;
+/* 전체 배경 및 중앙 정렬 */
+.drawing-page {
+  width: 100vw;
   height: 100vh;
-  box-sizing: border-box;
-  padding: 10px;
+  background-color: #f0f2f5;
   display: flex;
-  flex-direction: column;
-}
-
-h1 {
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-
-.toolbar {
-  margin-bottom: 10px;
-}
-
-.toolbar button {
-  margin: 0 5px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 13px;
-}
-
-.toolbar button.active {
-  background-color: #4caf50;
-  color: white;
-}
-
-.toolbar button.active.image-upload {
-  background-color: #4d88ff;
-  color: white;
-}
-
-/* 색상 팔레트 스타일 수정 */
-.color-palette {
-  display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 24px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* 카드 형태의 UI */
+.drawing-card {
+  width: 100%;
+  max-width: 1400px;
+  height: 102%;
+  max-height: 880px;
+  background-color: #f8f9fb;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  border: none;
+}
+
+/* 툴바 - 완전히 새로운 디자인 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  background-color: #f1f5f9;
+  border-radius: 16px;
+  padding: 6px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+/* 툴바를 그룹화하기 위한 컨테이너 추가 */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  margin-right: 6px;
+  gap: 5px;
   position: relative;
 }
 
-.color-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 5px;
-  max-width: 600px;
-  margin: 0 auto;
+.toolbar-group:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  height: 24px;
+  width: 2.8px;
+  background-color: rgba(0, 0, 0, 0.35);
 }
 
-.color-swatch {
-  width: 25px;
-  height: 25px;
+/* 버튼 새 디자인 - 붙어있는 디자인 */
+.toolbar button {
+  border: none;
+  background: transparent;
+  height: 35px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  border: 1px solid #ccc;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 10px;
 }
 
-.color-swatch:hover {
+.toolbar button i {
+  font-size: 16px;
+  transition: transform 0.15s ease;
+}
+
+/* 호버 효과 */
+.toolbar button:hover:not(:disabled) {
+  color: #334155;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* 활성 버튼 */
+.toolbar button.active {
+  color: #1e293b;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+
+.toolbar button.active i {
+  color: #4f46e5;
   transform: scale(1.1);
+}
+
+/* 특별 버튼 스타일 */
+.toolbar button.active.image-upload {
+  color: #6366f1;
+}
+
+.toolbar button.active.download-button {
+  color: #ec4899;
+}
+
+/* 비활성화 버튼 */
+.toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 셀렉트 박스 새 디자인 */
+.toolbar select {
+  border: none;
+  background-color: transparent;
+  height: 40px;
+  padding: 0 28px 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  transition: all 0.2s ease;
+  border-radius: 10px;
+}
+
+.toolbar select:hover:not(:disabled) {
+  color: #334155;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.toolbar select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 색상 팔레트 새 디자인 */
+.color-palette {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+  background-color: #f1f5f9;
+  border-radius: 16px;
+  padding: 8px 16px; /* 좌우 패딩 약간 증가 */
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+  width: 100%; /* 너비 100% 확보 */
+}
+
+.color-grid {
+  display: flex;
+  flex-wrap: nowrap; /* 줄바꿈 방지 */
+  gap: 10px;
+  justify-content: center;
+  width: 100%; /* 컨테이너 너비의 100% 사용 */
+  overflow-x: hidden; /* 스크롤바 숨김 */
+  padding: 7px 0;
+  align-items: center;
+}
+
+/* 스크롤바 스타일 완전히 숨기기 */
+.color-grid::-webkit-scrollbar {
+  height: 0;
+  width: 0;
+  display: none;
+}
+
+.color-swatch,
+.rainbow-selector {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.color-swatch:hover,
+.rainbow-selector:hover {
+  transform: scale(1.15);
+  z-index: 5;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 .color-swatch.active {
-  border: 2px solid #333;
   transform: scale(1.1);
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #818a9a;
+  z-index: 10;
 }
 
 .rainbow-selector {
-  width: 25px;
-  height: 25px;
-  cursor: pointer;
-  border: 1px solid #ccc;
   background: linear-gradient(
     to right,
     red,
@@ -1413,60 +1619,90 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
 }
 
 .rainbow-icon {
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
-/* 컬러 피커 모달 스타일 */
+.rainbow-icon i {
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+/* 컬러 피커 모달 새 디자인 */
 .color-picker-modal {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 350px;
-  background: white;
-  border-radius: 5px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  width: 360px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  z-index: 9999;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .color-picker-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #eee;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .color-picker-header h3 {
   margin: 0;
   font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .close-btn {
-  background: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.04);
   border: none;
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #1e293b;
 }
 
 .color-picker-content {
-  padding: 15px;
+  padding: 20px;
 }
 
 .color-spectrum {
   width: 100%;
-  height: 150px;
-  margin-bottom: 15px;
-  border: 1px solid #ccc;
-  cursor: crosshair;
-  position: relative;
+  height: 160px;
+  border-radius: 12px;
   overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .spectrum-gradient {
@@ -1482,97 +1718,184 @@ h1 {
     #ff00ff,
     #ff0000
   );
-  background-size: 100% 100%;
 }
 
 .color-preview-container {
-  display: flex;
-  flex-direction: column; /* 세로 방향으로 변경 */
-  margin-bottom: 15px;
-  gap: 10px; /* 요소 간 간격 추가 */
+  margin-bottom: 16px;
 }
 
 .color-preview {
-  width: 100%; /* 전체 너비 사용 */
-  height: 40px; /* 높이 조정 */
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
+/* 컬러 입력 필드 - 세로 배치로 수정 */
 .color-inputs {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .input-group {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 12px;
 }
 
 .input-group label {
-  width: 60px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  min-width: 50px;
   text-align: left;
 }
 
 .input-group input {
-  flex-grow: 1;
-  padding: 5px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 14px;
+  background-color: rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  flex: 1;
 }
 
+.input-group input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+  outline: none;
+  background-color: white;
+}
+
+/* 컬러 피커 버튼 */
 .color-picker-buttons {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .color-picker-buttons button {
-  margin-left: 10px;
-  padding: 5px 15px;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
+.color-picker-buttons button:first-child {
+  background-color: #2563eb;
+  color: white;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.color-picker-buttons button:first-child:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.color-picker-buttons button:last-child {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #64748b;
+}
+
+.color-picker-buttons button:last-child:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  color: #1e293b;
+  transform: translateY(-1px);
+}
+
+.color-picker-buttons button:active {
+  transform: translateY(1px);
+}
+
+/* 캔버스 새 디자인 */
 .canvas-container {
-  width: 100%;
   flex-grow: 1;
+  background-color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
-  height: calc(100vh - 60px); /* 툴바 높이를 뺀 캔버스 높이 */
 }
 
 canvas {
-  border: 1px solid #ccc;
   max-width: 100%;
   max-height: 100%;
+  background-color: white;
 }
 
-.toolbar button:disabled,
-.toolbar select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* 기타 폼 요소 */
+button:focus,
+select:focus,
+input:focus {
+  outline: none;
 }
 
-.color-swatch.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Vue 템플릿 수정을 위한 추가 클래스들 */
+.toolbar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-button:focus {
-  outline: none; /* 포커스 테두리 제거 */
+/* 버튼 내용 스타일링 */
+.toolbar button span,
+.toolbar select {
+  font-weight: 500;
 }
 
-.toolbar button.active.download-button {
-  background-color: #ba68c8;
-  color: white;
+/* 상단 액션 헤더 - 좌우 정렬 */
+.toolbar-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
-select {
-  border: none; /* 테두리 제거 */
-  padding: 6px 12px; /* 위아래 6px, 좌우 12px */
-  border-radius: 6px; /* 선택창 자체도 부드럽게 */
-  appearance: none; /* 기본 브라우저 스타일 제거 */
+.toolbar-actions-left,
+.toolbar-actions-right {
+  display: flex;
+  gap: 8px;
 }
 
-select:focus {
-  outline: none; /* 포커스 시 테두리 제거 */
+/* 특수 버튼 스타일 */
+.primary-action {
+  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+  color: white !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3) !important;
+}
+
+.danger-action {
+  background: linear-gradient(135deg, #ef4444, #f43f5e) !important;
+  color: white !important;
+}
+
+.primary-action:hover,
+.danger-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.toolbar-justify {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
 }
 </style>
