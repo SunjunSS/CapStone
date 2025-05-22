@@ -44,8 +44,6 @@ const invokeUrl = process.env.INVOKE_URL;
 
 async function callClovaSpeechAPI(filePath) {
   try {
-
-  
     // 요청 설정
     const requestEntity = {
       language: "ko-KR",
@@ -93,12 +91,23 @@ async function callClovaSpeechAPI(filePath) {
 
     console.log("HTTP 응답 코드:", response.status);
 
-    // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
-    console.log("SRT 변환 결과:\n", response.data);
-    console.log("---------------------------");
-    // console.log("SRT 변환 결과:\n", response);
+    // ✅ SRT 시간 포맷에서 밀리초 제거
+    let rawSrt = response.data;
 
-    return response.data; // API 응답 반환
+    // 00:00:35,318 --> 00:00:42,800 이런 형식에서 ,뒤 제거
+    let cleanedSrt = rawSrt.replace(/(\d{2}:\d{2}:\d{2}),\d{3}/g, "$1");
+
+    console.log("밀리초 제거된 SRT 결과:\n", cleanedSrt);
+    console.log("---------------------------");
+
+    return cleanedSrt;
+
+    // // ✅ 응답 데이터가 SRT 형식이라면, 단순 출력
+    // console.log("SRT 변환 결과:\n", response.data);
+    // console.log("---------------------------");
+    // // console.log("SRT 변환 결과:\n", response);
+
+    // return response.data; // API 응답 반환
   } catch (error) {
     console.error("오류 발생:", error.message);
     throw error;
