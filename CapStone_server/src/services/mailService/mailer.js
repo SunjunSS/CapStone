@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 const sendMail = ({ to, subject, html }) => {
   return transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"마음지도" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
