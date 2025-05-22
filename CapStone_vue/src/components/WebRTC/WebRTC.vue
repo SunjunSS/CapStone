@@ -457,7 +457,7 @@ export default {
             console.error("❌ 업로드 실패:", err.message);
           }
         } else {
-          console.warn("🚫 빈 blob");
+          console.warn("🚫 실시간 종료");
         }
       };
 
@@ -465,7 +465,7 @@ export default {
         if (this.mediaRecorder.state === "recording") {
           this.mediaRecorder.requestData(); // => 이때 ondataavailable 이벤트 발생
         }
-      }, 20000);
+      }, 15000);
 
       this.mediaRecorder.onstop = async () => {
         if (this.recordedChunks.length === 0) {
