@@ -549,19 +549,15 @@ export default {
 
     // 🔹 추천 내역 로드 함수 (중복 실행 방지 로직 추가)
     const loadHistory = async () => {
-      // 이미 로딩 중이면 중복 실행 방지
       if (isLoadingHistory.value) {
         console.log("⏳ 이미 추천 내역 로딩 중 - 중복 실행 생략");
         return;
       }
 
       try {
-        // 토스트 메시지로 로딩 중 표시
         showToast("추천 내역을 조회 중입니다...");
-
         isLoadingHistory.value = true;
 
-        // 🔹 실제 추천 내역 API 호출
         const bestIdeas = await bestIdeaApi.getBestIdeasByProjectId(
           paramProject_id.value
         );
@@ -573,13 +569,27 @@ export default {
             createdAt: idea.createdAt,
             project_id: idea.project_id,
           }));
-
-          // 성공 토스트 메시지 표시
           showToast("추천 내역 조회가 완료되었습니다!");
         } else {
-          // 데이터가 없는 경우
-          historyItems.value = [];
-          showToast("등록된 추천 내역이 없습니다.");
+          // ✅ 내역이 없을 경우 자동으로 AI 추천 요청
+          showToast("추천 내역이 없어 AI 추천을 요청합니다...");
+
+          const newIdeas = await bestIdeaApi.generateAndSaveBestIdeas(
+            paramProject_id.value
+          );
+
+          if (newIdeas && newIdeas.length > 0) {
+            historyItems.value = newIdeas.map((idea) => ({
+              action: idea.title,
+              id: idea.id,
+              createdAt: idea.createdAt,
+              project_id: idea.project_id,
+            }));
+
+            showToast("AI가 추천 주제를 생성했습니다!");
+          } else {
+            showToast("AI 추천 생성에 실패했습니다.", true);
+          }
         }
       } catch (error) {
         console.error("❌ 추천 내역 로드 실패:", error);
