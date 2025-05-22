@@ -198,11 +198,32 @@ class BestIdeaService {
 
       console.log(`새로 추가된 아이디어 수: ${newIdeasAdded}`);
 
-      // 5. 업데이트된 베스트 아이디어 목록 반환
-      const updatedBestIdeas = await bestIdeaRepository.findByProjectId(
-        numericProjectId
-      );
-      return updatedBestIdeas;
+      // 5. 새로 생성된 베스트 아이디어만 반환
+      const newBestIdeas = [];
+      for (const idea of ideasArray) {
+        const { bestNode } = idea;
+
+        if (!bestNode) {
+          continue;
+        }
+
+        const isDuplicate = existingIdeas.some(
+          (existingIdea) => existingIdea.description === bestNode
+        );
+
+        if (!isDuplicate) {
+          const bestIdeaData = {
+            description: bestNode,
+            project_id: numericProjectId,
+            original_node: null,
+          };
+
+          const createdIdea = await bestIdeaRepository.create(bestIdeaData);
+          newBestIdeas.push(createdIdea); // 새로 생성된 아이디어를 배열에 추가
+        }
+      }
+
+      return newBestIdeas; // 새로 생성된 3개만 반환
     } catch (error) {
       console.error("베스트 아이디어 생성 실패:", error);
       throw error;
