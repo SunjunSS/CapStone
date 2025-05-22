@@ -311,7 +311,11 @@
           <!-- 추천 내역 목록 (기존 UI 스타일과 동일) -->
           <div v-else class="topic-suggestion-list">
             <ol v-if="historyItems.length > 0">
-              <li v-for="(item, index) in historyItems" :key="index">
+              <li
+                v-for="(item, index) in historyItems"
+                :key="index"
+                @click="confirmDeleteHistoryItem(item.id, index)"
+              >
                 <span class="topic-text">{{ item.action }}</span>
               </li>
             </ol>
@@ -573,6 +577,20 @@ export default {
         showToast("추천 내역을 불러오는데 실패했습니다.", true);
       } finally {
         isLoadingHistory.value = false;
+      }
+    };
+
+    const confirmDeleteHistoryItem = async (id, index) => {
+      const confirmed = confirm("삭제하시겠습니까?");
+      if (!confirmed) return;
+
+      try {
+        await bestIdeaApi.deleteBestIdeaById(id);
+        historyItems.value.splice(index, 1);
+        showToast("추천 내역이 삭제되었습니다.");
+      } catch (error) {
+        console.error("❌ 삭제 실패:", error);
+        showToast("추천 내역 삭제에 실패했습니다.", true);
       }
     };
 
@@ -3109,6 +3127,7 @@ export default {
       isLoadingHistory,
       historyItems,
       loadHistory,
+      confirmDeleteHistoryItem,
     };
   },
 };
