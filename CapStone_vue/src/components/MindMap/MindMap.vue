@@ -498,30 +498,24 @@ export default {
 
     // 🔹 새로 추가: 주제 추천 로드 함수 (중복 실행 방지 로직 추가)
     const loadSuggestions = async () => {
-      // 이미 로딩 중이면 중복 실행 방지
       if (isLoadingSuggestions.value) {
         console.log("⏳ 이미 추천 아이디어 로딩 중 - 중복 실행 생략");
         return;
       }
 
       try {
-        // 토스트 메시지로 로딩 중 표시
         showToast("최적의 아이디어를 분석 중입니다...");
-
         isLoadingSuggestions.value = true;
-        suggestedTopics.value = []; // 로딩 중에는 비워두기
+        suggestedTopics.value = [];
 
-        // 새 아이디어 생성 및 전체 목록 반환 API 호출
         const allIdeas = await bestIdeaApi.generateAndSaveBestIdeas(
           paramProject_id.value
         );
 
-        // 목록 표시
         if (allIdeas && allIdeas.length > 0) {
           suggestedTopics.value = allIdeas.map((idea) => idea.title);
           showToast("최적의 아이디어 분석이 완료되었습니다!");
         } else {
-          // 아이디어가 없는 경우 메시지 표시
           suggestedTopics.value = [
             "마인드맵에 충분한 노드가 없어 최적의 아이디어를 생성할 수 없습니다.",
             "더 많은 아이디어를 마인드맵에 추가한 후 다시 시도해주세요.",
@@ -533,14 +527,10 @@ export default {
         }
       } catch (error) {
         console.error("❌ 최적의 아이디어 분석 실패:", error);
-
-        // 오류 발생 시 메시지 표시
         suggestedTopics.value = [
           "최적의 아이디어 분석 중 문제가 발생했습니다.",
           "잠시 후 다시 시도해주세요.",
         ];
-
-        // 오류 메시지 표시
         showToast("최적의 아이디어 분석 중 문제가 발생했습니다.", true);
       } finally {
         isLoadingSuggestions.value = false;
@@ -571,25 +561,11 @@ export default {
           }));
           showToast("추천 내역 조회가 완료되었습니다!");
         } else {
-          // ✅ 내역이 없을 경우 자동으로 AI 추천 요청
+          // ✅ 추천 내역이 없으면 자동 추천 생성 + 탭 전환
           showToast("추천 내역이 없어 AI 추천을 요청합니다...");
+          activeTab.value = "suggestions"; // 자동 탭 전환 (중복 호출 방지됨)
 
-          const newIdeas = await bestIdeaApi.generateAndSaveBestIdeas(
-            paramProject_id.value
-          );
-
-          if (newIdeas && newIdeas.length > 0) {
-            historyItems.value = newIdeas.map((idea) => ({
-              action: idea.title,
-              id: idea.id,
-              createdAt: idea.createdAt,
-              project_id: idea.project_id,
-            }));
-
-            showToast("AI가 추천 주제를 생성했습니다!");
-          } else {
-            showToast("AI 추천 생성에 실패했습니다.", true);
-          }
+          await loadSuggestions(); // 중복 요청 방지 로직 포함된 함수
         }
       } catch (error) {
         console.error("❌ 추천 내역 로드 실패:", error);
