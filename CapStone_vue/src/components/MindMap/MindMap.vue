@@ -239,31 +239,92 @@
       <div class="modal-content topic-suggestion-modal" @click.stop>
         <h2>AI 주제 추천</h2>
 
-        <!-- 로딩 UI -->
-        <div v-if="isLoadingSuggestions" class="loading-container">
-          <div class="loading-spinner">
-            <div class="pulse-orb"></div>
-            <div class="pulse-wave pulse-wave-red"></div>
-            <div class="pulse-wave pulse-wave-blue"></div>
-            <div class="pulse-wave pulse-wave-green"></div>
-            <div class="pulse-wave pulse-wave-purple"></div>
-            <div class="pulse-light"></div>
-          </div>
-          <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
+        <!-- 🔹 모달 내부 탭 버튼들 -->
+        <div
+          v-if="!isLoadingSuggestions && !isLoadingHistory"
+          class="tab-buttons"
+        >
+          <button
+            class="tab-button"
+            :class="{ active: activeTab === 'suggestions' }"
+            @click="switchTab('suggestions')"
+          >
+            <i class="fas fa-lightbulb"></i>
+            추천 주제
+          </button>
+          <button
+            class="tab-button"
+            :class="{ active: activeTab === 'history' }"
+            @click="switchTab('history')"
+          >
+            <i class="fas fa-history"></i>
+            추천 내역
+          </button>
         </div>
 
-        <!-- 아이디어 목록 -->
-        <div v-else class="topic-suggestion-list">
-          <ol v-if="suggestedTopics.length > 0">
-            <li v-for="(topic, index) in suggestedTopics" :key="index">
-              <span class="topic-text">{{ topic }}</span>
-            </li>
-          </ol>
-          <div v-else class="empty-state">
-            <p>현재 프로젝트에 등록된 AI추천 아이디어가 없습니다.</p>
-            <p class="empty-hint">
-              아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
-            </p>
+        <!-- 🔹 추천 주제 탭 (기본값, 기존 UI와 동일) -->
+        <div v-if="activeTab === 'suggestions'">
+          <!-- 로딩 UI -->
+          <div v-if="isLoadingSuggestions" class="loading-container">
+            <div class="loading-spinner">
+              <div class="pulse-orb"></div>
+              <div class="pulse-wave pulse-wave-red"></div>
+              <div class="pulse-wave pulse-wave-blue"></div>
+              <div class="pulse-wave pulse-wave-green"></div>
+              <div class="pulse-wave pulse-wave-purple"></div>
+              <div class="pulse-light"></div>
+            </div>
+            <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
+          </div>
+
+          <!-- 아이디어 목록 (기존과 동일) -->
+          <div v-else class="topic-suggestion-list">
+            <ol v-if="suggestedTopics.length > 0">
+              <li v-for="(topic, index) in suggestedTopics" :key="index">
+                <span class="topic-text">{{ topic }}</span>
+              </li>
+            </ol>
+            <div v-else class="empty-state">
+              <p>현재 프로젝트에 등록된 AI추천 아이디어가 없습니다.</p>
+              <p class="empty-hint">
+                아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🔹 추천 내역 탭 -->
+        <div v-if="activeTab === 'history'">
+          <!-- 로딩 UI -->
+          <div v-if="isLoadingHistory" class="loading-container">
+            <div class="loading-spinner">
+              <div class="pulse-orb"></div>
+              <div class="pulse-wave pulse-wave-red"></div>
+              <div class="pulse-wave pulse-wave-blue"></div>
+              <div class="pulse-wave pulse-wave-green"></div>
+              <div class="pulse-wave pulse-wave-purple"></div>
+              <div class="pulse-light"></div>
+            </div>
+            <p class="loading-text">추천 내역을을 불러오는 중...</p>
+          </div>
+
+          <!-- 추천 내역 목록 (기존 UI 스타일과 동일) -->
+          <div v-else class="topic-suggestion-list">
+            <ol v-if="historyItems.length > 0">
+              <li
+                v-for="(item, index) in historyItems"
+                :key="index"
+                @click="confirmDeleteHistoryItem(item.id, index)"
+              >
+                <span class="topic-text">{{ item.action }}</span>
+              </li>
+            </ol>
+            <div v-else class="empty-state">
+              <p>아직 기록된 추천 내역이 없습니다.</p>
+              <p class="empty-hint">
+                마인드맵을 편집하면 추적 내역이 쌓입니다.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -400,29 +461,65 @@ export default {
     const isTopicSuggestionModalOpen = ref(false);
     const isLoadingSuggestions = ref(false); // 이 줄을 추가
     const suggestedTopics = ref([]);
+    const activeTab = ref("history"); // 기본값: 추천 주제
+    const isLoadingHistory = ref(false);
+    const historyItems = ref([]);
 
-    // 주제 추천 모달 열기
+    // 🔹 주제 추천 모달 열기 (수정된 함수)
     const openTopicSuggestionModal = async () => {
       try {
-        // 토스트 메시지로 로딩 중 표시
-        showToast("최적의 아이디어를 분석 중입니다...");
-
-        // 모달 먼저 열기 (로딩 상태로)
+        // 모달 먼저 열기 (추천 내역 탭으로)
         isTopicSuggestionModalOpen.value = true;
-        isLoadingSuggestions.value = true;
-        suggestedTopics.value = []; // 로딩 중에는 비워두기
+        activeTab.value = "history"; // 추천 내역 탭을 기본으로 설정
 
-        // 새 아이디어 생성 및 전체 목록 반환 API 호출
+        // 🔹 첫 로드만 실행 (중복 방지)
+        if (historyItems.value.length === 0) {
+          await loadHistory();
+        }
+      } catch (error) {
+        console.error("❌ 모달 열기 실패:", error);
+        showToast("모달을 열 수 없습니다.", true);
+      }
+    };
+
+    // 🔹 탭 전환 함수 (수정된 버전) - 중복 실행 방지
+    const switchTab = async (tabName) => {
+      // 이미 같은 탭이 활성화되어 있으면 아무것도 하지 않음
+      if (activeTab.value === tabName) {
+        console.log(`⏭️ 이미 ${tabName} 탭이 활성화되어 있음 - 중복 실행 생략`);
+        return;
+      }
+
+      activeTab.value = tabName;
+
+      if (tabName === "suggestions") {
+        // 🔹 "추천 주제" 탭으로 전환할 때마다 새로운 추천 요청
+        await loadSuggestions();
+      } else if (tabName === "history") {
+        await loadHistory();
+      }
+    };
+
+    // 🔹 새로 추가: 주제 추천 로드 함수 (중복 실행 방지 로직 추가)
+    const loadSuggestions = async () => {
+      if (isLoadingSuggestions.value) {
+        console.log("⏳ 이미 추천 아이디어 로딩 중 - 중복 실행 생략");
+        return;
+      }
+
+      try {
+        showToast("최적의 아이디어를 분석 중입니다...");
+        isLoadingSuggestions.value = true;
+        suggestedTopics.value = [];
+
         const allIdeas = await bestIdeaApi.generateAndSaveBestIdeas(
           paramProject_id.value
         );
 
-        // 목록 표시
         if (allIdeas && allIdeas.length > 0) {
           suggestedTopics.value = allIdeas.map((idea) => idea.title);
           showToast("최적의 아이디어 분석이 완료되었습니다!");
         } else {
-          // 아이디어가 없는 경우 메시지 표시
           suggestedTopics.value = [
             "마인드맵에 충분한 노드가 없어 최적의 아이디어를 생성할 수 없습니다.",
             "더 많은 아이디어를 마인드맵에 추가한 후 다시 시도해주세요.",
@@ -434,23 +531,75 @@ export default {
         }
       } catch (error) {
         console.error("❌ 최적의 아이디어 분석 실패:", error);
-
-        // 오류 발생 시 메시지 표시
         suggestedTopics.value = [
           "최적의 아이디어 분석 중 문제가 발생했습니다.",
           "잠시 후 다시 시도해주세요.",
         ];
-
-        // 오류 메시지 표시
         showToast("최적의 아이디어 분석 중 문제가 발생했습니다.", true);
       } finally {
         isLoadingSuggestions.value = false;
       }
     };
 
-    // 주제 추천 모달 닫기
+    // 🔹 추천 내역 로드 함수 (중복 실행 방지 로직 추가)
+    const loadHistory = async () => {
+      if (isLoadingHistory.value) {
+        console.log("⏳ 이미 추천 내역 로딩 중 - 중복 실행 생략");
+        return;
+      }
+
+      try {
+        showToast("추천 내역을 조회 중입니다...");
+        isLoadingHistory.value = true;
+
+        const bestIdeas = await bestIdeaApi.getBestIdeasByProjectId(
+          paramProject_id.value
+        );
+
+        if (bestIdeas && bestIdeas.length > 0) {
+          historyItems.value = bestIdeas.map((idea) => ({
+            action: idea.title,
+            id: idea.id,
+            createdAt: idea.createdAt,
+            project_id: idea.project_id,
+          }));
+          showToast("추천 내역 조회가 완료되었습니다!");
+        } else {
+          // ✅ 추천 내역이 없으면 자동 추천 생성 + 탭 전환
+          showToast("추천 내역이 없어 AI 추천을 요청합니다...");
+          activeTab.value = "suggestions"; // 자동 탭 전환 (중복 호출 방지됨)
+
+          await loadSuggestions(); // 중복 요청 방지 로직 포함된 함수
+        }
+      } catch (error) {
+        console.error("❌ 추천 내역 로드 실패:", error);
+        historyItems.value = [];
+        showToast("추천 내역을 불러오는데 실패했습니다.", true);
+      } finally {
+        isLoadingHistory.value = false;
+      }
+    };
+
+    const confirmDeleteHistoryItem = async (id, index) => {
+      const confirmed = confirm("삭제하시겠습니까?");
+      if (!confirmed) return;
+
+      try {
+        await bestIdeaApi.deleteBestIdea(id);
+        historyItems.value.splice(index, 1);
+        showToast("추천 내역이 삭제되었습니다.");
+      } catch (error) {
+        console.error("❌ 삭제 실패:", error);
+        showToast("추천 내역 삭제에 실패했습니다.", true);
+      }
+    };
+
+    // 주제 추천 모달 닫기 (기존과 동일)
     const closeTopicSuggestionModal = () => {
       isTopicSuggestionModalOpen.value = false;
+
+      // 🔹 모달을 닫을 때 항상 "추천 내역" 탭으로 초기화
+      activeTab.value = "history";
     };
 
     // 1. Three.js 디버그 로깅 강화
@@ -2969,6 +3118,16 @@ export default {
       openTopicSuggestionModal,
       closeTopicSuggestionModal,
       isLoadingSuggestions,
+
+      // 탭 관련
+      activeTab,
+      switchTab,
+
+      // 추천 내역 관련
+      isLoadingHistory,
+      historyItems,
+      loadHistory,
+      confirmDeleteHistoryItem,
     };
   },
 };
@@ -3948,5 +4107,52 @@ button:disabled {
   50% {
     opacity: 0.6;
   }
+}
+
+.tab-buttons {
+  display: flex;
+  margin-bottom: 20px;
+  background-color: #f8f9ff;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  background-color: transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab-button.active {
+  background-color: white;
+  color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.tab-button:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.6);
+  color: #555;
+}
+
+.tab-button i {
+  font-size: 13px;
+}
+
+/* 🔹 추천 내역 호버 효과 */
+.topic-suggestion-list li:hover .history-item .topic-text {
+  transform: scale(1.02);
+  color: #2d3d8a;
 }
 </style>

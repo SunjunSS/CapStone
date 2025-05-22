@@ -158,51 +158,15 @@ class BestIdeaService {
 
       console.log("AI로부터 받은 아이디어:", ideasArray); // 로깅 추가
 
-      // 3. 모든 베스트 아이디어 가져오기
       const existingIdeas = await bestIdeaRepository.findByProjectId(
         numericProjectId
       );
 
-      // 4. 각 아이디어에 대해 중복 확인 후 저장
-      // 수정된 generateAndSaveBestIdeas 메서드 부분
-
-      // 4. 각 아이디어에 대해 중복 확인 후 저장
-      let newIdeasAdded = 0;
-      for (const idea of ideasArray) {
-        const { bestNode } = idea; // improvedIdea는 사용하지 않음
-
-        // bestNode가 있는지만 확인 (추천 주제만 필요)
-        if (!bestNode) {
-          console.warn("불완전한 아이디어 건너뜀:", idea);
-          continue;
-        }
-
-        // 중복 확인 (description 필드에 bestNode를 저장)
-        const isDuplicate = existingIdeas.some(
-          (existingIdea) => existingIdea.description === bestNode
-        );
-
-        // 중복이 아닌 경우에만 새 아이디어 저장
-        if (!isDuplicate) {
-          const bestIdeaData = {
-            description: bestNode, // bestNode를 description에 저장
-            project_id: numericProjectId,
-            // original_node 필드가 필요하지 않다면 제거하거나 null로 설정
-            original_node: null,
-          };
-
-          await bestIdeaRepository.create(bestIdeaData);
-          newIdeasAdded++;
-        }
-      }
-
-      console.log(`새로 추가된 아이디어 수: ${newIdeasAdded}`);
-
-      // 5. 새로 생성된 베스트 아이디어만 반환
+      // 새로 추가된 베스트 아이디어만 추적하며 저장
       const newBestIdeas = [];
+
       for (const idea of ideasArray) {
         const { bestNode } = idea;
-
         if (!bestNode) {
           continue;
         }
@@ -219,11 +183,12 @@ class BestIdeaService {
           };
 
           const createdIdea = await bestIdeaRepository.create(bestIdeaData);
-          newBestIdeas.push(createdIdea); // 새로 생성된 아이디어를 배열에 추가
+          newBestIdeas.push(createdIdea); // 생성 후 바로 배열에 추가
         }
       }
 
-      return newBestIdeas; // 새로 생성된 3개만 반환
+      console.log(`새로 추가된 아이디어 수: ${newBestIdeas.length}`);
+      return newBestIdeas; // 새로 추가된 것만 반환
     } catch (error) {
       console.error("베스트 아이디어 생성 실패:", error);
       throw error;
