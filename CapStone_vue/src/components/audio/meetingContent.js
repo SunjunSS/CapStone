@@ -67,25 +67,6 @@ export default function meetingContent(content) {
         <h4>요약</h4>
         <p>${minutes.summary || "요약 없음"}</p><br>
         <br>
-
-        <h4>키워드</h4>
-        <ul>
-          ${
-            Array.isArray(minutes.keywords)
-              ? minutes.keywords
-                  .map(
-                    (keyword) =>
-                      `<li style="margin-left: 20px;">${keyword}</li>`
-                  )
-                  .join("")
-              : "<li>키워드 없음</li>"
-          }
-        </ul>
-        <br>
-
-        
-
-
       `;
     } else {
       report += "<p style='color: #bbb;'>회의록 데이터 없음</p>";
