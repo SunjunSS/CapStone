@@ -585,7 +585,7 @@ export default {
       if (!confirmed) return;
 
       try {
-        await bestIdeaApi.deleteBestIdeaById(id);
+        await bestIdeaApi.deleteBestIdea(id);
         historyItems.value.splice(index, 1);
         showToast("추천 내역이 삭제되었습니다.");
       } catch (error) {
