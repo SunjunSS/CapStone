@@ -239,31 +239,88 @@
       <div class="modal-content topic-suggestion-modal" @click.stop>
         <h2>AI 주제 추천</h2>
 
-        <!-- 로딩 UI -->
-        <div v-if="isLoadingSuggestions" class="loading-container">
-          <div class="loading-spinner">
-            <div class="pulse-orb"></div>
-            <div class="pulse-wave pulse-wave-red"></div>
-            <div class="pulse-wave pulse-wave-blue"></div>
-            <div class="pulse-wave pulse-wave-green"></div>
-            <div class="pulse-wave pulse-wave-purple"></div>
-            <div class="pulse-light"></div>
-          </div>
-          <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
+        <!-- 🔹 모달 내부 탭 버튼들 -->
+        <div
+          v-if="!isLoadingSuggestions && !isLoadingHistory"
+          class="tab-buttons"
+        >
+          <button
+            class="tab-button"
+            :class="{ active: activeTab === 'suggestions' }"
+            @click="switchTab('suggestions')"
+          >
+            <i class="fas fa-lightbulb"></i>
+            추천 주제
+          </button>
+          <button
+            class="tab-button"
+            :class="{ active: activeTab === 'history' }"
+            @click="switchTab('history')"
+          >
+            <i class="fas fa-history"></i>
+            추천 내역
+          </button>
         </div>
 
-        <!-- 아이디어 목록 -->
-        <div v-else class="topic-suggestion-list">
-          <ol v-if="suggestedTopics.length > 0">
-            <li v-for="(topic, index) in suggestedTopics" :key="index">
-              <span class="topic-text">{{ topic }}</span>
-            </li>
-          </ol>
-          <div v-else class="empty-state">
-            <p>현재 프로젝트에 등록된 AI추천 아이디어가 없습니다.</p>
-            <p class="empty-hint">
-              아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
-            </p>
+        <!-- 🔹 추천 주제 탭 (기본값, 기존 UI와 동일) -->
+        <div v-if="activeTab === 'suggestions'">
+          <!-- 로딩 UI -->
+          <div v-if="isLoadingSuggestions" class="loading-container">
+            <div class="loading-spinner">
+              <div class="pulse-orb"></div>
+              <div class="pulse-wave pulse-wave-red"></div>
+              <div class="pulse-wave pulse-wave-blue"></div>
+              <div class="pulse-wave pulse-wave-green"></div>
+              <div class="pulse-wave pulse-wave-purple"></div>
+              <div class="pulse-light"></div>
+            </div>
+            <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
+          </div>
+
+          <!-- 아이디어 목록 (기존과 동일) -->
+          <div v-else class="topic-suggestion-list">
+            <ol v-if="suggestedTopics.length > 0">
+              <li v-for="(topic, index) in suggestedTopics" :key="index">
+                <span class="topic-text">{{ topic }}</span>
+              </li>
+            </ol>
+            <div v-else class="empty-state">
+              <p>현재 프로젝트에 등록된 AI추천 아이디어가 없습니다.</p>
+              <p class="empty-hint">
+                아이디어를 추가하려면 프로젝트 관리자에게 문의하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🔹 추천 내역 탭 -->
+        <div v-if="activeTab === 'history'">
+          <!-- 로딩 UI -->
+          <div v-if="isLoadingHistory" class="loading-container">
+            <div class="loading-spinner">
+              <div class="pulse-orb"></div>
+              <div class="pulse-wave pulse-wave-red"></div>
+              <div class="pulse-wave pulse-wave-blue"></div>
+              <div class="pulse-wave pulse-wave-green"></div>
+              <div class="pulse-wave pulse-wave-purple"></div>
+              <div class="pulse-light"></div>
+            </div>
+            <p class="loading-text">추천 내역을을 불러오는 중...</p>
+          </div>
+
+          <!-- 추천 내역 목록 (기존 UI 스타일과 동일) -->
+          <div v-else class="topic-suggestion-list">
+            <ol v-if="historyItems.length > 0">
+              <li v-for="(item, index) in historyItems" :key="index">
+                <span class="topic-text">{{ item.action }}</span>
+              </li>
+            </ol>
+            <div v-else class="empty-state">
+              <p>아직 기록된 추천 내역이 없습니다.</p>
+              <p class="empty-hint">
+                마인드맵을 편집하면 추적 내역이 쌓입니다.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -400,6 +457,9 @@ export default {
     const isTopicSuggestionModalOpen = ref(false);
     const isLoadingSuggestions = ref(false); // 이 줄을 추가
     const suggestedTopics = ref([]);
+    const activeTab = ref("suggestions"); // 기본값: 추천 주제
+    const isLoadingHistory = ref(false);
+    const historyItems = ref([]);
 
     // 주제 추천 모달 열기
     const openTopicSuggestionModal = async () => {
@@ -448,9 +508,54 @@ export default {
       }
     };
 
+    // 🔹 탭 전환 함수
+    const switchTab = (tabName) => {
+      activeTab.value = tabName;
+
+      // 추천 내역 탭으로 전환할 때 데이터가 없으면 로드
+      if (tabName === "history" && historyItems.value.length === 0) {
+        loadHistory();
+      }
+    };
+
+    // 🔹 추천 내역 로드 함수
+    const loadHistory = async () => {
+      try {
+        // 토스트 메시지로 로딩 중 표시
+        showToast("추천 내역을 조회 중입니다...");
+
+        isLoadingHistory.value = true;
+
+        // 🔹 실제 추천 내역 API 호출 (현재는 임시 데이터)
+        // TODO: 실제 추천 내역 API로 교체 필요
+        await new Promise((resolve) => setTimeout(resolve, 1500)); // 로딩 시뮬레이션
+
+        historyItems.value = [
+          {
+            action: "추천 목록입니다.",
+          },
+          {
+            action: "이 부분은 추천했던 목록들의 조회부분입니다.",
+          },
+        ];
+
+        // 성공 토스트 메시지 표시
+        showToast("추천 내역 조회가 완료되었습니다!");
+      } catch (error) {
+        console.error("❌ 추천 내역 로드 실패:", error);
+        historyItems.value = [];
+        showToast("추천 내역을 불러오는데 실패했습니다.", true);
+      } finally {
+        isLoadingHistory.value = false;
+      }
+    };
+
     // 주제 추천 모달 닫기
     const closeTopicSuggestionModal = () => {
       isTopicSuggestionModalOpen.value = false;
+
+      // 🔹 모달을 닫을 때 항상 "추천 주제" 탭으로 초기화
+      activeTab.value = "suggestions";
     };
 
     // 1. Three.js 디버그 로깅 강화
@@ -2969,6 +3074,15 @@ export default {
       openTopicSuggestionModal,
       closeTopicSuggestionModal,
       isLoadingSuggestions,
+
+      // 탭 관련
+      activeTab,
+      switchTab,
+
+      // 추천 내역 관련
+      isLoadingHistory,
+      historyItems,
+      loadHistory,
     };
   },
 };
@@ -3948,5 +4062,52 @@ button:disabled {
   50% {
     opacity: 0.6;
   }
+}
+
+.tab-buttons {
+  display: flex;
+  margin-bottom: 20px;
+  background-color: #f8f9ff;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  background-color: transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab-button.active {
+  background-color: white;
+  color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.tab-button:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.6);
+  color: #555;
+}
+
+.tab-button i {
+  font-size: 13px;
+}
+
+/* 🔹 추천 내역 호버 효과 */
+.topic-suggestion-list li:hover .history-item .topic-text {
+  transform: scale(1.02);
+  color: #2d3d8a;
 }
 </style>
