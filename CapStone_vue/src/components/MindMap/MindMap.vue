@@ -457,18 +457,57 @@ export default {
     const isTopicSuggestionModalOpen = ref(false);
     const isLoadingSuggestions = ref(false); // 이 줄을 추가
     const suggestedTopics = ref([]);
-    const activeTab = ref("suggestions"); // 기본값: 추천 주제
+    const activeTab = ref("history"); // 기본값: 추천 주제
     const isLoadingHistory = ref(false);
     const historyItems = ref([]);
 
-    // 주제 추천 모달 열기
+    // 🔹 주제 추천 모달 열기 (수정된 함수)
     const openTopicSuggestionModal = async () => {
+      try {
+        // 모달 먼저 열기 (추천 내역 탭으로)
+        isTopicSuggestionModalOpen.value = true;
+        activeTab.value = "history"; // 추천 내역 탭을 기본으로 설정
+
+        // 🔹 첫 로드만 실행 (중복 방지)
+        if (historyItems.value.length === 0) {
+          await loadHistory();
+        }
+      } catch (error) {
+        console.error("❌ 모달 열기 실패:", error);
+        showToast("모달을 열 수 없습니다.", true);
+      }
+    };
+
+    // 🔹 탭 전환 함수 (수정된 버전) - 중복 실행 방지
+    const switchTab = async (tabName) => {
+      // 이미 같은 탭이 활성화되어 있으면 아무것도 하지 않음
+      if (activeTab.value === tabName) {
+        console.log(`⏭️ 이미 ${tabName} 탭이 활성화되어 있음 - 중복 실행 생략`);
+        return;
+      }
+
+      activeTab.value = tabName;
+
+      if (tabName === "suggestions") {
+        // 🔹 "추천 주제" 탭으로 전환할 때마다 새로운 추천 요청
+        await loadSuggestions();
+      } else if (tabName === "history") {
+        await loadHistory();
+      }
+    };
+
+    // 🔹 새로 추가: 주제 추천 로드 함수 (중복 실행 방지 로직 추가)
+    const loadSuggestions = async () => {
+      // 이미 로딩 중이면 중복 실행 방지
+      if (isLoadingSuggestions.value) {
+        console.log("⏳ 이미 추천 아이디어 로딩 중 - 중복 실행 생략");
+        return;
+      }
+
       try {
         // 토스트 메시지로 로딩 중 표시
         showToast("최적의 아이디어를 분석 중입니다...");
 
-        // 모달 먼저 열기 (로딩 상태로)
-        isTopicSuggestionModalOpen.value = true;
         isLoadingSuggestions.value = true;
         suggestedTopics.value = []; // 로딩 중에는 비워두기
 
@@ -508,39 +547,40 @@ export default {
       }
     };
 
-    // 🔹 탭 전환 함수
-    const switchTab = (tabName) => {
-      activeTab.value = tabName;
-
-      // 추천 내역 탭으로 전환할 때 데이터가 없으면 로드
-      if (tabName === "history" && historyItems.value.length === 0) {
-        loadHistory();
-      }
-    };
-
-    // 🔹 추천 내역 로드 함수
+    // 🔹 추천 내역 로드 함수 (중복 실행 방지 로직 추가)
     const loadHistory = async () => {
+      // 이미 로딩 중이면 중복 실행 방지
+      if (isLoadingHistory.value) {
+        console.log("⏳ 이미 추천 내역 로딩 중 - 중복 실행 생략");
+        return;
+      }
+
       try {
         // 토스트 메시지로 로딩 중 표시
         showToast("추천 내역을 조회 중입니다...");
 
         isLoadingHistory.value = true;
 
-        // 🔹 실제 추천 내역 API 호출 (현재는 임시 데이터)
-        // TODO: 실제 추천 내역 API로 교체 필요
-        await new Promise((resolve) => setTimeout(resolve, 1500)); // 로딩 시뮬레이션
+        // 🔹 실제 추천 내역 API 호출
+        const bestIdeas = await bestIdeaApi.getBestIdeasByProjectId(
+          paramProject_id.value
+        );
 
-        historyItems.value = [
-          {
-            action: "추천 목록입니다.",
-          },
-          {
-            action: "이 부분은 추천했던 목록들의 조회부분입니다.",
-          },
-        ];
+        if (bestIdeas && bestIdeas.length > 0) {
+          historyItems.value = bestIdeas.map((idea) => ({
+            action: idea.title,
+            id: idea.id,
+            createdAt: idea.createdAt,
+            project_id: idea.project_id,
+          }));
 
-        // 성공 토스트 메시지 표시
-        showToast("추천 내역 조회가 완료되었습니다!");
+          // 성공 토스트 메시지 표시
+          showToast("추천 내역 조회가 완료되었습니다!");
+        } else {
+          // 데이터가 없는 경우
+          historyItems.value = [];
+          showToast("등록된 추천 내역이 없습니다.");
+        }
       } catch (error) {
         console.error("❌ 추천 내역 로드 실패:", error);
         historyItems.value = [];
@@ -550,12 +590,12 @@ export default {
       }
     };
 
-    // 주제 추천 모달 닫기
+    // 주제 추천 모달 닫기 (기존과 동일)
     const closeTopicSuggestionModal = () => {
       isTopicSuggestionModalOpen.value = false;
 
-      // 🔹 모달을 닫을 때 항상 "추천 주제" 탭으로 초기화
-      activeTab.value = "suggestions";
+      // 🔹 모달을 닫을 때 항상 "추천 내역" 탭으로 초기화
+      activeTab.value = "history";
     };
 
     // 1. Three.js 디버그 로깅 강화
