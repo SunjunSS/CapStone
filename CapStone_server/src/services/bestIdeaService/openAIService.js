@@ -4,7 +4,7 @@ require("dotenv").config();
 const API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
-async function getBestMindmapIdeas(nodeList, count = 3) {
+async function getBestMindmapIdeas(nodeList, count = 5) {
   if (!nodeList || nodeList.length === 0) {
     throw new Error("노드 목록이 비어 있습니다.");
   }
