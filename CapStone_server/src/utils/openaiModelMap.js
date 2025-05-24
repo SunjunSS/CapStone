@@ -1,6 +1,6 @@
 // utils/openaiModelMap.js
 const modelMap = {
-  컴퓨터공학: "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:BTYMLEek",
+  컴퓨터공학: "ft:gpt-4o-2024-08-06:personal:node-suggestion-computer:Baie1E4c",
   기계전자공학:
     "ft:gpt-4o-2024-08-06:personal:node-suggestion-machine:BUfyWj7w",
   디자인및예술: "ft:gpt-4o-2024-08-06:personal:node-suggestion-design:BV4Eugbl",
