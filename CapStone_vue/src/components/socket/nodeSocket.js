@@ -69,6 +69,11 @@ export const registerSocketHandlers = (myDiagram, roomId, userId) => {
 
     myDiagram.commitTransaction("update node");
 
+    // ✅ 추가: 레이아웃 다시 계산
+    myDiagram.startTransaction("Re-layout after update");
+    myDiagram.layoutDiagram(true);
+    myDiagram.commitTransaction("Re-layout after update");
+
     // 마인드맵 업데이트 이벤트 발생
     window.dispatchEvent(new CustomEvent("mindmap-updated"));
   });
