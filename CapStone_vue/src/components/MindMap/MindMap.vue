@@ -465,6 +465,83 @@ export default {
     const isLoadingHistory = ref(false);
     const historyItems = ref([]);
 
+    // 기존 setConnectedLinksTransparency 함수를 개선된 버전으로 교체
+
+    const setConnectedLinksTransparency = (node, opacity) => {
+      if (!node || !myDiagram) {
+        console.warn("❌ node 또는 myDiagram이 없습니다");
+        return;
+      }
+
+      console.log(
+        `🎨 노드 "${node.data.name}"의 간선 투명도를 ${opacity}로 설정 시작`
+      );
+
+      // 해당 노드와 연결된 모든 간선 찾기
+      const connectedLinks = [];
+      const nodeKey = node.data.key;
+
+      // 1. 노드에서 나가는 간선들 (이 노드가 from인 경우)
+      node.findLinksOutOf().each((link) => {
+        connectedLinks.push(link);
+        console.log(`🔗 나가는 간선 발견: ${link.data.from} → ${link.data.to}`);
+      });
+
+      // 2. 노드로 들어오는 간선들 (이 노드가 to인 경우)
+      node.findLinksInto().each((link) => {
+        connectedLinks.push(link);
+        console.log(
+          `🔗 들어오는 간선 발견: ${link.data.from} → ${link.data.to}`
+        );
+      });
+
+      if (connectedLinks.length === 0) {
+        console.log(`ℹ️ 노드 "${node.data.name}"에 연결된 간선이 없습니다`);
+        return;
+      }
+
+      // 트랜잭션 시작
+      myDiagram.startTransaction("set link transparency");
+
+      let successCount = 0;
+      connectedLinks.forEach((link, index) => {
+        try {
+          // Shape 객체 찾기 (여러 방법 시도)
+          let shape = link.findObject("LINK_SHAPE"); // 이름으로 찾기
+
+          if (!shape) {
+            // 이름으로 못 찾으면 첫 번째 Shape 객체 찾기
+            shape = link.findObject(go.Shape);
+          }
+
+          if (!shape) {
+            // 그래도 못 찾으면 링크의 모든 요소에서 Shape 찾기
+            link.elements.each((element) => {
+              if (element instanceof go.Shape && !shape) {
+                shape = element;
+              }
+            });
+          }
+
+          if (shape) {
+            shape.opacity = opacity;
+            successCount++;
+            console.log(`✅ 간선 ${index + 1} 투명도 설정 성공: ${opacity}`);
+          } else {
+            console.warn(`❌ 간선 ${index + 1}의 Shape 객체를 찾을 수 없음`);
+          }
+        } catch (error) {
+          console.error(`❌ 간선 ${index + 1} 투명도 설정 실패:`, error);
+        }
+      });
+
+      myDiagram.commitTransaction("set link transparency");
+
+      console.log(
+        `🎨 완료: ${connectedLinks.length}개 간선 중 ${successCount}개 투명도 설정됨`
+      );
+    };
+
     // 🔹 주제 추천 모달 열기 (수정된 함수)
     const openTopicSuggestionModal = async () => {
       try {
@@ -2353,6 +2430,73 @@ export default {
         }
       }
 
+      class CustomDraggingTool extends go.DraggingTool {
+        doActivate() {
+          console.log("🚀 CustomDraggingTool doActivate 시작");
+
+          // 기본 doActivate 먼저 호출 (순서 중요!)
+          super.doActivate();
+
+          // 드래그되는 모든 선택된 노드들 처리
+          const selection = this.diagram.selection;
+
+          selection.each((part) => {
+            if (part instanceof go.Node) {
+              console.log(
+                `🟢 드래그 시작된 노드: "${part.data.name}" (key: ${part.data.key})`
+              );
+
+              // 상태 업데이트
+              isNodeDragging.value = true;
+              isDragging.value = false;
+
+              // 해당 노드의 간선들만 투명화
+              setConnectedLinksTransparency(part, 0); // 100% 투명
+            }
+          });
+        }
+
+        doDeactivate() {
+          console.log("🛑 CustomDraggingTool doDeactivate 시작");
+
+          // 드래그 종료 전에 투명도 복원
+          const selection = this.diagram.selection;
+
+          selection.each((part) => {
+            if (part instanceof go.Node) {
+              console.log(
+                `🔄 드래그 종료된 노드: "${part.data.name}" (key: ${part.data.key})`
+              );
+
+              // 해당 노드의 간선들 투명도 복원
+              setConnectedLinksTransparency(part, 1.0); // 100% 불투명
+            }
+          });
+
+          // 상태 업데이트
+          isNodeDragging.value = false;
+          if (!this.diagram.selection.first()) {
+            isDragging.value = true;
+          }
+
+          // 기본 doDeactivate 호출
+          super.doDeactivate();
+        }
+
+        // 추가: 드래그 중에도 투명도 유지 (간선이 다시 나타나는 것을 방지)
+        doDragOver(pt, obj) {
+          super.doDragOver(pt, obj);
+
+          // 드래그 중에 간선 투명도가 초기화되는 것을 방지
+          const selection = this.diagram.selection;
+          selection.each((part) => {
+            if (part instanceof go.Node) {
+              setConnectedLinksTransparency(part, 0);
+            }
+          });
+        }
+      }
+
       myDiagram = $(go.Diagram, diagramDiv.value, {
         initialContentAlignment: go.Spot.Center,
         allowMove: true,
@@ -2377,6 +2521,9 @@ export default {
         "animationManager.duration": ANIMATION_DURATION,
         scale: currentZoom.value,
       });
+
+      // ✅ 커스텀 DraggingTool을 다이어그램에 적용
+      myDiagram.toolManager.draggingTool = new CustomDraggingTool();
 
       myDiagram.addDiagramListener("InitialLayoutCompleted", (e) => {
         const rootNode = myDiagram.model.nodeDataArray.find(
@@ -2484,23 +2631,7 @@ export default {
           // 기본값은 false, 바인딩으로 변경
           movable: false,
 
-          // ✅ 드래그 시작 이벤트
-          mouseDragEnter: (e, node) => {
-            console.log("🟢 노드 드래그 시작됨!", node.data);
-            isNodeDragging.value = true;
-            isDragging.value = false;
-          },
-
-          // ✅ 드래그 종료 이벤트
-          mouseDragLeave: (e, node) => {
-            console.log("🛑 노드 드래그 종료됨!", node.data);
-            isNodeDragging.value = false;
-            if (!myDiagram.selection.first()) {
-              isDragging.value = true;
-            }
-          },
-
-          // ✅ 드롭 이벤트
+          // ✅ 드롭 이벤트만 유지 (DraggingTool에서 투명화 처리)
           mouseDrop: (e, node) => {
             const draggedNode = e.diagram.selection.first();
             if (!draggedNode || draggedNode === node) return;
@@ -2511,6 +2642,9 @@ export default {
               "=>",
               node.data
             );
+
+            // 드롭 완료 후에도 투명도 복원 (안전장치)
+            setConnectedLinksTransparency(draggedNode, 1.0);
 
             socket.emit("move-node", {
               roomId: roomId.value,
@@ -2776,6 +2910,7 @@ export default {
         )
       );
 
+      // 수정된 linkTemplate - 이름 추가
       myDiagram.linkTemplate = $(
         go.Link,
         {
@@ -2788,6 +2923,7 @@ export default {
         $(
           go.Shape,
           {
+            name: "LINK_SHAPE", // 🔥 이름 추가하여 찾기 쉽게
             strokeWidth: 2,
             stroke: "#555",
           },
