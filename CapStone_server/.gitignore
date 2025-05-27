@@ -1,0 +1,14 @@
+.env
+/test/
+/storage/audio/*
+!/storage/audio/.gitkeep  # ✅ `.gitkeep` 파일은 무시하지 않음
+!/storage/audio/headerBlob/
+!/storage/audio/headerBlob/headerBlob.webm
+/storage/temp_audio/*
+!/storage/temp_audio/.gitkeep  # ✅ `.gitkeep` 파일은 무시하지 않음
+
+node_modules/
+
+
+
+CapStone_server/google_key/*.json
