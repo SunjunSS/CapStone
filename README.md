@@ -57,7 +57,7 @@ node server.js # 백엔드 실행
 <br>
 김선준 - [zinzza122@naver.com]
 <br>
-문기업 - [@gmail.com]
+문기업 - [2071187@hansung.ac.kr]
 <br>
 이희찬 - [chan5337@hansug.ac.kr]
 
