@@ -63,4 +63,8 @@ This project is licensed under the MIT License.
 Pull requests are welcome! Feel free to fork and suggest improvements.
 
 ## 📬 Contact
-김문권 - [tofhadlfksek@gmail.com](mailto:tofhadlfksek@gmail.com)
+김문권 - [ok63477@gmail.com](mailto:ok63477@gmail.com)
+김선준 - [tofhadlfksek@gmail.com](mailto:tofhadlfksek@gmail.com)
+문기업 - [tofhadlfksek@gmail.com](mailto:tofhadlfksek@gmail.com)
+이희찬 - [tofhadlfksek@gmail.com](mailto:tofhadlfksek@gmail.com)
+
