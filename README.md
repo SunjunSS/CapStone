@@ -1,7 +1,3 @@
-# 시연영상 링크
-
-https://youtu.be/Y0cK2a4HlEY 
-
 # 🧠 마음지도
 음성 회의를 자동으로 마인드맵으로 시각화해주는 AI 기반 협업 도구
 
@@ -65,3 +61,8 @@ node server.js # 백엔드 실행
 <br>
 이희찬 - [chan5337@hansug.ac.kr]
 
+<br>
+
+# 시연영상 링크
+
+https://youtu.be/Y0cK2a4HlEY 
