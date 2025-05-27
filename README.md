@@ -65,4 +65,4 @@ node server.js # 백엔드 실행
 
 # 시연영상 링크
 
-https://youtu.be/Y0cK2a4HlEY 
+https://youtu.be/0z52JlTuuMM
