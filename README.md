@@ -46,7 +46,10 @@ node server.js # 백엔드 실행
 
 # 📬 Contact
 김문권 - [ok63477@gmail.com]
+<br>
 김선준 - [@gmail.com]
+<br>
 문기업 - [@gmail.com]
+<br>
 이희찬 - [chan5337@hansug.ac.kr]
 
