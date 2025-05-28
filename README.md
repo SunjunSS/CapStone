@@ -121,7 +121,10 @@
   ![image](https://github.com/user-attachments/assets/b0520724-a510-40fb-8168-44af7e54eafe)
 
   ### <회의록 PDF>
-  ![image](https://github.com/user-attachments/assets/a424b6ea-d76e-409f-82c7-ad1a2aa7913d)
+  ![image](https://github.com/user-attachments/assets/d33eb66c-11dd-45fb-8003-941aef9d0fc6)
+
+  <br>
+  ![image](https://github.com/user-attachments/assets/e3672e65-adaf-4527-a9ba-e4f31f5c9318)
 
   
 
