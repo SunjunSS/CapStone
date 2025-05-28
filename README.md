@@ -191,4 +191,14 @@ node server.js # 백엔드 실행
 
 # 시연영상 링크
 
-https://youtu.be/0z52JlTuuMM
+  ## 2분 시연 영상
+  https://youtu.be/0z52JlTuuMM
+  <br>
+
+  ## 마음지도 기능 설명 영상
+  https://youtu.be/e7piBzln1PM
+
+  <br>
+
+
+  
