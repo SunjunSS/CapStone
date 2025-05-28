@@ -2451,7 +2451,7 @@ export default {
               isDragging.value = false;
 
               // 해당 노드의 간선들만 투명화
-              setConnectedLinksTransparency(part, 0); // 100% 투명
+              setConnectedLinksTransparency(part, 0.1); // 100% 투명
             }
           });
         }
@@ -2491,7 +2491,7 @@ export default {
           const selection = this.diagram.selection;
           selection.each((part) => {
             if (part instanceof go.Node) {
-              setConnectedLinksTransparency(part, 0);
+              setConnectedLinksTransparency(part, 0.1);
             }
           });
         }
@@ -2627,11 +2627,20 @@ export default {
           selectionAdorned: false,
           resizable: false,
           layoutConditions: go.Part.LayoutStandard & ~go.Part.LayoutNodeSized,
-
-          // 기본값은 false, 바인딩으로 변경
           movable: false,
 
-          // ✅ 드롭 이벤트만 유지 (DraggingTool에서 투명화 처리)
+          mouseDragEnter: (e, node) => {
+            e.diagram.model.startTransaction("highlight drop target");
+            e.diagram.model.setDataProperty(node.data, "isDropTarget", true);
+            e.diagram.model.commitTransaction("highlight drop target");
+          },
+
+          mouseDragLeave: (e, node) => {
+            e.diagram.model.startTransaction("unhighlight drop target");
+            e.diagram.model.setDataProperty(node.data, "isDropTarget", false);
+            e.diagram.model.commitTransaction("unhighlight drop target");
+          },
+
           mouseDrop: (e, node) => {
             const draggedNode = e.diagram.selection.first();
             if (!draggedNode || draggedNode === node) return;
@@ -2643,7 +2652,6 @@ export default {
               node.data
             );
 
-            // 드롭 완료 후에도 투명도 복원 (안전장치)
             setConnectedLinksTransparency(draggedNode, 1.0);
 
             socket.emit("move-node", {
@@ -2653,11 +2661,14 @@ export default {
               project_id: paramProject_id.value,
             });
 
+            e.diagram.model.startTransaction("drop complete");
+            e.diagram.model.setDataProperty(node.data, "isDropTarget", false);
+            e.diagram.model.commitTransaction("drop complete");
+
             isNodeDragging.value = false;
             isDragging.value = false;
           },
 
-          // ✅ 더블 클릭으로 노드 이름 편집
           doubleClick: (e, node) => {
             if (isViewer.value) {
               console.log("👁️‍🗨️ Viewer 권한 - 노드 이름 편집 비활성화됨");
@@ -2698,7 +2709,6 @@ export default {
 
             updateInputFieldPosition();
 
-            // ✅ 강력한 포커스 보장 로직
             let retryCount = 0;
             const maxRetries = 5;
 
@@ -2718,14 +2728,12 @@ export default {
               }
             };
 
-            // ✅ 브라우저 렌더링 후 안전하게 포커스
             requestAnimationFrame(() => {
               setTimeout(() => {
                 tryFocus();
               }, 0);
             });
 
-            // ✅ iOS 대응: 실제 터치 시에도 포커스 재시도
             inputField.addEventListener("touchend", () => {
               inputField.focus();
               inputField.setSelectionRange(
@@ -2734,7 +2742,6 @@ export default {
               );
             });
 
-            // 상태 관리
             let blurTimeout = null;
             let justOpened = true;
             setTimeout(() => (justOpened = false), 100);
@@ -2808,8 +2815,6 @@ export default {
 
               if (success) {
                 console.log("✅ 서버에 노드 이름 업데이트 성공:", node.data);
-
-                // 마인드맵 업데이트 이벤트 발생
                 window.dispatchEvent(new CustomEvent("mindmap-updated"));
               } else {
                 console.error("❌ 서버에 노드 이름 업데이트 실패");
@@ -2835,9 +2840,7 @@ export default {
           },
         },
 
-        // 🔹 드래그 가능 여부를 isViewer 상태에 따라 바인딩
         new go.Binding("movable", "", () => !isViewer.value).ofObject(),
-
         new go.Binding("isSelected", "isSelected"),
         new go.Binding("zOrder", "isSelected", (s) => (s ? 1 : 0)).makeTwoWay(),
 
@@ -2864,9 +2867,12 @@ export default {
             new go.Binding("fill", "parent", (p) =>
               p === 0 ? "#FFA500" : "white"
             ),
-            new go.Binding("stroke", "isSelected", (s) =>
-              s ? "rgb(0, 170, 255)" : "rgba(0, 0, 255, .15)"
-            ),
+            new go.Binding("stroke", "", (data) => {
+              if (data.isDropTarget) return "rgb(0, 70, 180)"; // 진한 파랑
+              return data.isSelected
+                ? "rgb(0, 170, 255)"
+                : "rgba(0, 0, 255, .15)";
+            }).makeTwoWay(),
             new go.Binding("strokeDashArray", "isSuggested", (isSuggested) =>
               isSuggested ? [10, 5] : null
             )
