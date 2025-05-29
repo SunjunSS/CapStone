@@ -240,7 +240,7 @@ EMAIL_PASS="구글계정 앱 비밀번호"
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-### 4. 프론트 및 백엔드 실
+### 4. 프론트 및 백엔드 실행
 ```
 npm run dev # 프론트 실행
 node server.js # 백엔드 실행
