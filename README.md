@@ -160,7 +160,7 @@
 <br>
 
 # 🛠️ 기술 스택
-- **Frontend**: Vue 3, Vite, GoJS, Three.js, Tailwind CSS
+- **Frontend**: Vue 3, Vite, GoJS, Three.js, Lottie
 - **Backend**: Node.js, Express, Sequelize (MySQL)
 - **Realtime**: Socket.IO, WebRTC
 - **AI**: Clova Speech Recognition, OpenAI GPT API
