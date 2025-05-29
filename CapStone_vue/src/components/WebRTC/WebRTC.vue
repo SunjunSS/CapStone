@@ -131,12 +131,13 @@
         <div v-if="isLoading" class="loading-overlay-in-card">
           <div class="processing-container">
             <div class="loading-spinner">
-              <div class="pulse-orb"></div>
-              <div class="pulse-wave pulse-wave-red"></div>
-              <div class="pulse-wave pulse-wave-blue"></div>
-              <div class="pulse-wave pulse-wave-green"></div>
-              <div class="pulse-wave pulse-wave-purple"></div>
-              <div class="pulse-light"></div>
+              <DotLottieVue
+                style="height: 130px; width: 130px"
+                autoplay
+                loop
+                speed="1.2"
+                :src="lottieUrl"
+              />
             </div>
 
             <div class="processing-text">회의록 생성 중</div>
@@ -180,9 +181,13 @@ import uploadAudio from "../audio/uploadAudio";
 import meetingContent from "../audio/meetingContent";
 import meetingPDF from "../audio/meetingPDF";
 import { fetchHeaderBlob } from "../audio/fetchHeaderBlob";
+import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 
 export default {
   name: "AudioMeetingApp",
+  components: {
+    DotLottieVue,
+  },
   props: {
     // roomId props 추가
     autoJoinRoomId: {
@@ -192,6 +197,8 @@ export default {
   },
   data() {
     return {
+      lottieUrl:
+        "https://lottie.host/40e2218d-5c55-4588-908a-02eb89cdb36a/7109HrIh1Q.lottie",
       socket: null,
       activeBufferIndex: null,
       currentUserId: null,
@@ -231,8 +238,15 @@ export default {
       isLoading: false,
     };
   },
+
   // autoJoinRoomId가 있으면 컴포넌트 마운트 시 자동으로 방에 참여
   async mounted() {
+    // 🔥 Lottie 애니메이션 사전 로딩 추가
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.href = this.lottieUrl;
+    document.head.appendChild(link);
+
     if (this.autoJoinRoomId) {
       // props로 받은 roomId를 바로 설정
       this.roomId = this.autoJoinRoomId;
@@ -1614,92 +1628,12 @@ export default {
 
 .loading-spinner {
   position: relative;
-  width: 50px; /* 60px에서 50px로 줄임 */
-  height: 50px; /* 60px에서 50px로 줄임 */
+  width: 150px;
+  height: 150px;
   margin-bottom: 5px;
-}
-
-/* 중심 오브 */
-.pulse-orb {
-  position: absolute;
-  width: 50px; /* 60px에서 50px로 줄임 */
-  height: 50px; /* 60px에서 50px로 줄임 */
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 40% 40%,
-    rgba(20, 20, 35, 0.2) 0%,
-    rgba(30, 30, 60, 0.5) 40%,
-    rgba(45, 25, 65, 0.7) 70%,
-    rgba(60, 20, 60, 0.9) 100%
-  );
-  box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
-    /* 그림자도 비례적으로 줄임 */ 0 0 50px 4px rgba(114, 9, 183, 0.3);
-  opacity: 0.85;
-  border: 1px solid rgba(100, 50, 150, 0.3);
-  animation: orb-pulse 8s ease-in-out infinite;
-}
-
-/* 공통 파형 스타일 */
-.pulse-wave {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  filter: blur(2.5px); /* 3px에서 약간 줄임 */
-  opacity: 0.7;
-  border-radius: 50%;
-  mix-blend-mode: screen;
-}
-
-/* 각 파형별 고유 스타일 - 크기 조정 */
-.pulse-wave-red {
-  width: 28px; /* 35px에서 28px로 줄임 */
-  height: 28px; /* 35px에서 28px로 줄임 */
-  background: linear-gradient(135deg, #ff5b79, #fc3a5e);
-  animation: morph-red 4s ease-in-out infinite,
-    rotate-red 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-blue {
-  width: 42px; /* 52px에서 42px로 줄임 */
-  height: 36px; /* 45px에서 36px로 줄임 */
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  animation: morph-blue 5s ease-in-out infinite,
-    rotate-blue 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-green {
-  width: 38px; /* 48px에서 38px로 줄임 */
-  height: 36px; /* 45px에서 36px로 줄임 */
-  background: linear-gradient(135deg, #00ff99, #00cc66);
-  animation: morph-green 6s ease-in-out infinite,
-    rotate-green 9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-purple {
-  width: 45px; /* 56px에서 45px로 줄임 */
-  height: 38px; /* 48px에서 38px로 줄임 */
-  background: linear-gradient(135deg, #b967ff, #7f00ff);
-  animation: morph-purple 7s ease-in-out infinite,
-    rotate-purple 11s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* 중앙 빛나는 핵심 효과 */
-.pulse-light {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px; /* 14px에서 12px로 줄임 */
-  height: 12px; /* 14px에서 12px로 줄임 */
-  background: #ffffff;
-  border-radius: 50%;
-  filter: blur(3px); /* 약간 줄임 */
-  box-shadow: 0 0 16px 8px rgba(255, 255, 255, 0.8),
-    /* 그림자도 비례적으로 줄임 */ 0 0 32px 16px rgba(200, 220, 255, 0.4);
-  opacity: 0.9;
-  z-index: 3;
-  animation: pulse-light 3s ease-in-out infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 /* 처리 중 텍스트 */
@@ -1708,7 +1642,7 @@ export default {
   font-size: 16px;
   font-weight: 500;
   color: #333;
-  margin-top: 15px;
+  margin-top: -15px;
   opacity: 0.9;
   animation: text-pulse 2s ease-in-out infinite;
 }
@@ -1728,177 +1662,6 @@ export default {
   background: linear-gradient(90deg, #00c6ff, #0072ff, #7c3aed);
   border-radius: 2px;
   animation: progress-animation 2.5s ease-in-out infinite;
-}
-
-/* 오브 펄스 애니메이션 */
-@keyframes orb-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
-      0 0 50px 4px rgba(80, 30, 120, 0.4);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: inset 0 0 25px rgba(60, 20, 60, 0.8),
-      0 0 60px 6px rgba(100, 40, 140, 0.5);
-  }
-}
-
-/* 모프 애니메이션 */
-@keyframes morph-red {
-  0%,
-  100% {
-    border-radius: 42% 58% 70% 30% / 45% 55% 45% 55%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  25% {
-    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  50% {
-    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  75% {
-    border-radius: 60% 40% 30% 70% / 30% 70% 50% 60%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-@keyframes morph-blue {
-  0%,
-  100% {
-    border-radius: 35% 65% 65% 35% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  25% {
-    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-  50% {
-    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  75% {
-    border-radius: 20% 80% 50% 50% / 75% 20% 80% 25%;
-    transform: translate(-50%, -50%) scale(0.85);
-  }
-}
-
-@keyframes morph-green {
-  0%,
-  100% {
-    border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  33% {
-    border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  66% {
-    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-@keyframes morph-purple {
-  0%,
-  100% {
-    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  33% {
-    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  66% {
-    border-radius: 60% 40% 40% 60% / 70% 30% 70% 30%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-/* 회전 애니메이션 */
-@keyframes rotate-red {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  25% {
-    transform: translate(-53%, -48%) rotate(90deg);
-  }
-  50% {
-    transform: translate(-50%, -50%) rotate(180deg);
-  }
-  75% {
-    transform: translate(-47%, -52%) rotate(270deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-@keyframes rotate-blue {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  25% {
-    transform: translate(-47%, -52%) rotate(-90deg);
-  }
-  50% {
-    transform: translate(-50%, -50%) rotate(-180deg);
-  }
-  75% {
-    transform: translate(-53%, -48%) rotate(-270deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(-360deg);
-  }
-}
-
-@keyframes rotate-green {
-  0% {
-    transform: translate(-50%, -50%) rotate(45deg);
-  }
-  33% {
-    transform: translate(-48%, -53%) rotate(165deg);
-  }
-  66% {
-    transform: translate(-52%, -47%) rotate(285deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(405deg);
-  }
-}
-
-@keyframes rotate-purple {
-  0% {
-    transform: translate(-50%, -50%) rotate(-45deg);
-  }
-  33% {
-    transform: translate(-52%, -47%) rotate(-165deg);
-  }
-  66% {
-    transform: translate(-48%, -53%) rotate(-285deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(-405deg);
-  }
-}
-
-@keyframes pulse-light {
-  0%,
-  100% {
-    opacity: 0.7;
-    filter: blur(3px);
-    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.6),
-      0 0 20px 10px rgba(170, 200, 255, 0.15);
-  }
-  50% {
-    opacity: 0.85;
-    filter: blur(4px);
-    box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.7),
-      0 0 30px 15px rgba(170, 200, 255, 0.2);
-  }
 }
 
 /* 텍스트 펄스 애니메이션 */

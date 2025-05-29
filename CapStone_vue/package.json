@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
+    "@lottiefiles/dotlottie-vue": "^0.6.3",
     "@mdi/font": "^7.4.47",
     "axios": "^1.7.9",
     "buffer": "^6.0.3",
