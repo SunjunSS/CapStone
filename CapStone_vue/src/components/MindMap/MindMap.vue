@@ -266,14 +266,13 @@
         <div v-if="activeTab === 'suggestions'">
           <!-- 로딩 UI -->
           <div v-if="isLoadingSuggestions" class="loading-container">
-            <div class="loading-spinner">
-              <div class="pulse-orb"></div>
-              <div class="pulse-wave pulse-wave-red"></div>
-              <div class="pulse-wave pulse-wave-blue"></div>
-              <div class="pulse-wave pulse-wave-green"></div>
-              <div class="pulse-wave pulse-wave-purple"></div>
-              <div class="pulse-light"></div>
-            </div>
+            <DotLottieVue
+              style="height: 200px; width: 200px"
+              autoplay
+              loop
+              speed="1.35"
+              src="https://lottie.host/6cc178d1-178b-4eed-965b-82a9c785e2c3/EHSYp75X9Z.lottie"
+            />
             <p class="loading-text">최적의 아이디어를 불러오는 중...</p>
           </div>
 
@@ -297,14 +296,13 @@
         <div v-if="activeTab === 'history'">
           <!-- 로딩 UI -->
           <div v-if="isLoadingHistory" class="loading-container">
-            <div class="loading-spinner">
-              <div class="pulse-orb"></div>
-              <div class="pulse-wave pulse-wave-red"></div>
-              <div class="pulse-wave pulse-wave-blue"></div>
-              <div class="pulse-wave pulse-wave-green"></div>
-              <div class="pulse-wave pulse-wave-purple"></div>
-              <div class="pulse-light"></div>
-            </div>
+            <DotLottieVue
+              style="height: 150px; width: 150px"
+              autoplay
+              loop
+              speed="1.3"
+              src="https://lottie.host/6cc178d1-178b-4eed-965b-82a9c785e2c3/EHSYp75X9Z.lottie"
+            />
             <p class="loading-text">추천 내역을을 불러오는 중...</p>
           </div>
 
@@ -334,6 +332,18 @@
           </button>
         </div>
       </div>
+    </div>
+  </teleport>
+
+  <!-- AI 추천 애니메이션 (애니메이션만) -->
+  <teleport to="body">
+    <div v-if="isAIRecommending" class="ai-simple-overlay">
+      <DotLottieVue
+        style="height: 250px; width: 250px"
+        autoplay
+        loop
+        src="https://lottie.host/99da1633-7470-45ae-8f4d-23978dae3090/xJZFhGVtnf.lottie"
+      />
     </div>
   </teleport>
 </template>
@@ -379,11 +389,13 @@ import {
   removeUserFromProject,
 } from "@/api/projectApi";
 import bestIdeaApi from "@/api/bestIdeaApi"; // 파일 상단에 import 추가
+import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 
 export default {
   components: {
     WebRTC,
     mouseTracking,
+    DotLottieVue,
   },
   setup() {
     // mouseTracking과 관련됨
@@ -464,6 +476,7 @@ export default {
     const activeTab = ref("history"); // 기본값: 추천 주제
     const isLoadingHistory = ref(false);
     const historyItems = ref([]);
+    const isAIRecommending = ref(false);
 
     // 기존 setConnectedLinksTransparency 함수를 개선된 버전으로 교체
 
@@ -2169,46 +2182,55 @@ export default {
       }
 
       if (!aiParentNode.value) {
-        aiParentNode.value = selectedNode.value; // 🔥 현재 선택된 노드를 AI 추천 부모 노드로 저장
+        aiParentNode.value = selectedNode.value;
       }
 
       console.log("🟢 AI 추천 버튼 클릭됨", aiParentNode.value);
 
-      const suggestedNodes = await suggestChildNodes(
-        paramProject_id.value,
-        aiParentNode.value.key, // 🔥 기존 선택된 부모 노드를 유지
-        roomId.value
-      );
+      // 🔥 전체 화면 애니메이션 시작
+      isAIRecommending.value = true;
 
-      if (suggestedNodes && suggestedNodes.length > 0) {
-        const individualSuggestions = suggestedNodes
-          .flatMap((s) =>
-            s.split(",").map((s) => s.trim().replace(/^\d+\.\s*/, ""))
-          ) // 숫자 제거
-          .filter(Boolean);
+      try {
+        const suggestedNodes = await suggestChildNodes(
+          paramProject_id.value,
+          aiParentNode.value.key,
+          roomId.value
+        );
 
-        for (const suggestedName of individualSuggestions) {
-          const timestamp = Date.now();
-          const newNode = {
-            id: `temp-${timestamp}`,
-            key: `temp-${timestamp}`,
-            name: suggestedName,
-            parent: aiParentNode.value.key, // 🔥 기존 선택된 부모 노드를 사용
-            isSelected: false,
-            project_id: paramProject_id.value,
-            isSuggested: true,
-          };
+        if (suggestedNodes && suggestedNodes.length > 0) {
+          const individualSuggestions = suggestedNodes
+            .flatMap((s) =>
+              s.split(",").map((s) => s.trim().replace(/^\d+\.\s*/, ""))
+            )
+            .filter(Boolean);
 
-          await addNodeWithAnimation(newNode);
+          for (const suggestedName of individualSuggestions) {
+            const timestamp = Date.now();
+            const newNode = {
+              id: `temp-${timestamp}`,
+              key: `temp-${timestamp}`,
+              name: suggestedName,
+              parent: aiParentNode.value.key,
+              isSelected: false,
+              project_id: paramProject_id.value,
+              isSuggested: true,
+            };
+
+            await addNodeWithAnimation(newNode);
+          }
+
+          window.dispatchEvent(new CustomEvent("mindmap-updated"));
+        } else {
+          console.error("❌ 추천된 노드를 받아오지 못했습니다.");
         }
-
-        // ✅ 모든 노드 추가 후 1회만 업데이트 이벤트 전송
-        window.dispatchEvent(new CustomEvent("mindmap-updated"));
-      } else {
-        console.error("❌ 추천된 노드를 받아오지 못했습니다.");
+      } catch (error) {
+        console.error("❌ AI 추천 중 오류 발생:", error);
+        showToast("AI 추천 중 오류가 발생했습니다.", true);
+      } finally {
+        // 🔥 전체 화면 애니메이션 종료
+        isAIRecommending.value = false;
+        aiParentNode.value = null;
       }
-
-      aiParentNode.value = null; // ✅ AI 추천 완료 후 초기화
     };
 
     const addNode = async (isSibling = false) => {
@@ -3270,6 +3292,7 @@ export default {
       historyItems,
       loadHistory,
       confirmDeleteHistoryItem,
+      isAIRecommending,
     };
   },
 };
@@ -3830,6 +3853,11 @@ button:disabled {
   position: relative;
 }
 
+/* 🔥 로딩 중일 때만 제목 간격 줄이기 */
+.topic-suggestion-modal:has(.loading-container) h2 {
+  margin-bottom: 1px; /* 로딩 중일 때만 간격 줄임 */
+}
+
 .topic-suggestion-modal h2:after {
   content: "";
   position: absolute;
@@ -3969,97 +3997,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  gap: 20px;
-}
-
-.loading-spinner {
-  position: relative;
-  width: 50px;
-  height: 50px;
-  margin-bottom: 5px;
-}
-
-/* 중심 오브 */
-.pulse-orb {
-  position: absolute;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 40% 40%,
-    rgba(20, 20, 35, 0.2) 0%,
-    rgba(30, 30, 60, 0.5) 40%,
-    rgba(45, 25, 65, 0.7) 70%,
-    rgba(60, 20, 60, 0.9) 100%
-  );
-  box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
-    0 0 50px 4px rgba(114, 9, 183, 0.3);
-  opacity: 0.85;
-  border: 1px solid rgba(100, 50, 150, 0.3);
-  animation: orb-pulse 8s ease-in-out infinite;
-}
-
-/* 공통 파형 스타일 */
-.pulse-wave {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  filter: blur(2.5px);
-  opacity: 0.7;
-  border-radius: 50%;
-  mix-blend-mode: screen;
-}
-
-/* 각 파형별 고유 스타일 */
-.pulse-wave-red {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, #ff5b79, #fc3a5e);
-  animation: morph-red 4s ease-in-out infinite,
-    rotate-red 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-blue {
-  width: 42px;
-  height: 36px;
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  animation: morph-blue 5s ease-in-out infinite,
-    rotate-blue 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-green {
-  width: 38px;
-  height: 36px;
-  background: linear-gradient(135deg, #00ff99, #00cc66);
-  animation: morph-green 6s ease-in-out infinite,
-    rotate-green 9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.pulse-wave-purple {
-  width: 45px;
-  height: 38px;
-  background: linear-gradient(135deg, #b967ff, #7f00ff);
-  animation: morph-purple 7s ease-in-out infinite,
-    rotate-purple 11s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* 중앙 빛나는 핵심 효과 */
-.pulse-light {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px;
-  height: 12px;
-  background: #ffffff;
-  border-radius: 50%;
-  filter: blur(3px);
-  box-shadow: 0 0 16px 8px rgba(255, 255, 255, 0.8),
-    0 0 32px 16px rgba(200, 220, 255, 0.4);
-  opacity: 0.9;
-  z-index: 3;
-  animation: pulse-light 3s ease-in-out infinite;
+  gap: 2px;
 }
 
 .loading-text {
@@ -4067,178 +4005,9 @@ button:disabled {
   font-size: 16px;
   font-weight: 500;
   color: #000;
-  margin-top: 15px;
+  margin-top: 5px;
   opacity: 0.9;
   animation: text-pulse 2s ease-in-out infinite;
-}
-
-/* 애니메이션 키프레임 정의 */
-@keyframes orb-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: inset 0 0 25px rgba(50, 15, 50, 0.7),
-      0 0 50px 4px rgba(80, 30, 120, 0.4);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: inset 0 0 25px rgba(60, 20, 60, 0.8),
-      0 0 60px 6px rgba(100, 40, 140, 0.5);
-  }
-}
-
-@keyframes morph-red {
-  0%,
-  100% {
-    border-radius: 42% 58% 70% 30% / 45% 55% 45% 55%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  25% {
-    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  50% {
-    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  75% {
-    border-radius: 60% 40% 30% 70% / 30% 70% 50% 60%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-@keyframes morph-blue {
-  0%,
-  100% {
-    border-radius: 35% 65% 65% 35% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  25% {
-    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-  50% {
-    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  75% {
-    border-radius: 20% 80% 50% 50% / 75% 20% 80% 25%;
-    transform: translate(-50%, -50%) scale(0.85);
-  }
-}
-
-@keyframes morph-green {
-  0%,
-  100% {
-    border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  33% {
-    border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  66% {
-    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-@keyframes morph-purple {
-  0%,
-  100% {
-    border-radius: 65% 35% 35% 65% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  33% {
-    border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  66% {
-    border-radius: 60% 40% 40% 60% / 70% 30% 70% 30%;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-}
-
-@keyframes rotate-red {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  25% {
-    transform: translate(-53%, -48%) rotate(90deg);
-  }
-  50% {
-    transform: translate(-50%, -50%) rotate(180deg);
-  }
-  75% {
-    transform: translate(-47%, -52%) rotate(270deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-@keyframes rotate-blue {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  25% {
-    transform: translate(-47%, -52%) rotate(-90deg);
-  }
-  50% {
-    transform: translate(-50%, -50%) rotate(-180deg);
-  }
-  75% {
-    transform: translate(-53%, -48%) rotate(-270deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(-360deg);
-  }
-}
-
-@keyframes rotate-green {
-  0% {
-    transform: translate(-50%, -50%) rotate(45deg);
-  }
-  33% {
-    transform: translate(-48%, -53%) rotate(165deg);
-  }
-  66% {
-    transform: translate(-52%, -47%) rotate(285deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(405deg);
-  }
-}
-
-@keyframes rotate-purple {
-  0% {
-    transform: translate(-50%, -50%) rotate(-45deg);
-  }
-  33% {
-    transform: translate(-52%, -47%) rotate(-165deg);
-  }
-  66% {
-    transform: translate(-48%, -53%) rotate(-285deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(-405deg);
-  }
-}
-
-@keyframes pulse-light {
-  0%,
-  100% {
-    opacity: 0.7;
-    filter: blur(3px);
-    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.6),
-      0 0 20px 10px rgba(170, 200, 255, 0.15);
-  }
-  50% {
-    opacity: 0.85;
-    filter: blur(4px);
-    box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.7),
-      0 0 30px 15px rgba(170, 200, 255, 0.2);
-  }
 }
 
 @keyframes text-pulse {
@@ -4296,5 +4065,18 @@ button:disabled {
 .topic-suggestion-list li:hover .history-item .topic-text {
   transform: scale(1.02);
   color: #2d3d8a;
+}
+
+.ai-simple-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10001;
 }
 </style>
