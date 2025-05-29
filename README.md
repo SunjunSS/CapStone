@@ -168,18 +168,49 @@
 <br>
 
 # 🚀 실행 방법 (Getting Started)
-### 1. Clone the repository
+### 1. 저장소 클론
+```
 git clone https://github.com/SunjunSS/CapStone.git
+```
 
-### 2. Install dependencies
+### 2. 프론트 및 백엔드 npm 모듈 설치
+```
 cd CapStone/CapStone_vue && npm install
-<br>
 cd CapStone/CapStone_server/src && npm install
+```
 
-### 3. Run
+### 3. 환경 변수 설정
+```
+# Backend 환경변수
+
+# 1. ClovaSpeech Api 키
+SECRET= '클로바 시크릿 키'
+INVOKE_URL='클로바 invoke 키'
+
+# 2. Open ai API 키
+OPENAI_API_KEY='OpenAi API 키'
+
+# 3. DB 설정
+DB_HOST="IP주소"
+DB_USER="사용자"
+DB_PASSWORD="비밀번호"
+DB_NAME="DB이름"
+DB_PORT="포트번호"
+
+# 4. 이메일 계정 등록
+EMAIL_USER="G메일 주소"
+EMAIL_PASS="구글계정 앱 비밀번호"
+
+# Frontend 환경 변수
+
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+### 4. 프론트 및 백엔드 실
+```
 npm run dev # 프론트 실행
-<br>
 node server.js # 백엔드 실행
+```
 
 <br>
 
