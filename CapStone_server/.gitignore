@@ -12,3 +12,10 @@ node_modules/
 
 
 CapStone_server/google_key/*.json
+
+
+*.pem
+*.key
+*.crt
+*.cer
+cert/

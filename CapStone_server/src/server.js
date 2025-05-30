@@ -5,21 +5,23 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
+const https = require("https"); // HTTP 대신 HTTPS 사용
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { initDB } = require("./models");
 
 const app = express();
 // const server = http.createServer(app);
-const server = require("http").createServer(
-  {
-    maxConnections: 1000,
-    headersTimeout: 60000,
-    keepAliveTimeout: 60000,
-  },
-  app
-);
+// HTTPS 인증서 설정
+const options = {
+  key: fs.readFileSync(path.join(__dirname, "../cert/192.168.0.9+3-key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "../cert/192.168.0.9+3.pem")),
+};
+// HTTPS 서버 생성
+const server = https.createServer(options, app);
 
+// const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
